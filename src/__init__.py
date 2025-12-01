@@ -3,6 +3,7 @@ from .logger import logger
 
 modules = [
     # 模块列表
+    "i18n",
 ]
 
 reg, unreg = bpy.utils.register_submodule_factory(__package__, modules)
