@@ -6,3 +6,4 @@ log.log
 *.log*
 .idea
 .vscode
+imgui.ini
