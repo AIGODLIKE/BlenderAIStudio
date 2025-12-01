@@ -7,6 +7,7 @@ __all__ = [
 
 modules = [
     "ops",
+    "gui",
     "ime",
 ]
 
