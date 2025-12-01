@@ -1,5 +1,6 @@
 import bpy
 from ..i18n import PANEL_TCTX
+from ..studio import AIStudioEntry
 
 
 class AIStudioPanel(bpy.types.Panel):
@@ -14,3 +15,4 @@ class AIStudioPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         layout.label(text="Blender AI Studio")
+        layout.operator(AIStudioEntry.bl_idname)

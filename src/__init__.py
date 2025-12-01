@@ -4,6 +4,7 @@ from .logger import logger
 modules = [
     # 模块列表
     "i18n",
+    "studio",
     "utils",
     "ui",
 ]
