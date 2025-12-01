@@ -1,5 +1,11 @@
 import bpy
 from .loader import load_translations
+from .translations.zh_HANS import PANEL_TCTX, PROP_TCTX
+
+__all__ = [
+    "PROP_TCTX",
+    "PANEL_TCTX",
+]
 
 
 def register():
