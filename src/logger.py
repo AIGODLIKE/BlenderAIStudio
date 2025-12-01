@@ -3,7 +3,7 @@ from logging import handlers
 from pathlib import Path
 DEBUG = True
 LOGFILE = Path(__file__).parent.parent / "log.log"
-NAME = "Blender AI Studio"
+NAME = "BlenderAIStudio"
 
 L = logging.WARNING
 if DEBUG:
