@@ -1,4 +1,5 @@
 import bpy
+
 from .studio import AIStudio
 from ..i18n import OPS_TCTX
 
@@ -33,8 +34,56 @@ class AIStudioEntry(bpy.types.Operator):
         return {"RUNNING_MODAL"}
 
 
+class EditImage(bpy.types.Operator):
+    bl_idname = "bas.edit_image"
+    bl_description = "Edit Image"
+    bl_translation_context = OPS_TCTX
+    bl_label = "Edit Image"
+
+    @classmethod
+    def poll(cls, context):
+        space = context.space_data
+        return getattr(space, "image", None)
+
+    def execute(self, context):
+        space = context.space_data
+        image = getattr(space, "image")
+        print(self.bl_idname, image)
+        return {"FINISHED"}
+
+
+class ApplyEditImage(bpy.types.Operator):
+    bl_idname = "bas.apply_edit_image"
+    bl_description = "Apply Edit Image"
+    bl_translation_context = OPS_TCTX
+    bl_label = "Apply Edit Image"
+
+    @classmethod
+    def poll(cls, context):
+        space = context.space_data
+        return getattr(space, "image", None)
+
+    def execute(self, context):
+        image = getattr(context, "image")
+        print(self.bl_idname, image)
+        return {"FINISHED"}
+
+
+class GenerateImage(bpy.types.Operator):
+    bl_idname = "bas.generate_image"
+    bl_description = "Generate Image"
+    bl_translation_context = OPS_TCTX
+    bl_label = "Generate Image"
+
+    def execute(self, context):
+        return {"FINISHED"}
+
+
 clss = [
     AIStudioEntry,
+    EditImage,
+    ApplyEditImage,
+    GenerateImage,
 ]
 
 reg, unreg = bpy.utils.register_classes_factory(clss)

@@ -34,5 +34,14 @@ class AIStudioImagePanel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
+
+        space_data = context.space_data
+        image = space_data.image
+
         layout.label(text="Blender AI Studio")
+        layout.label(text=f"{image.size[:]}")
+
+        layout.operator("bas.edit_image")
+        layout.operator("bas.apply_edit_image")
+        layout.operator("bas.generate_image")
         layout.operator(AIStudioEntry.bl_idname)
