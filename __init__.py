@@ -11,6 +11,7 @@ import bpy  # noqa: E402
 
 modules = [
     "src",
+    "preferences",
 ]
 
 reg, unreg = bpy.utils.register_submodule_factory(__package__, modules)
