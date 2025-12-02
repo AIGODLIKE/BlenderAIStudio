@@ -47,8 +47,22 @@ class EditImage(bpy.types.Operator):
 
     def execute(self, context):
         space = context.space_data
-        image = getattr(space, "image")
-        print(self.bl_idname, image)
+        origin = getattr(space, "image")
+        origin.use_fake_user = True
+        edit_image = origin.copy()
+
+        edit_image.name = f"{origin.name}_edit"
+        edit_image.use_fake_user = True
+        aip = edit_image.blender_ai_studio_image_property
+        aip.is_edit_image = True
+        print(self.bl_idname, origin)
+
+        space.image = edit_image
+        space.ui_mode = "PAINT"
+        bpy.ops.brush.asset_activate(
+            asset_library_type='ESSENTIALS',
+            asset_library_identifier="",
+            relative_asset_identifier="brushes\\essentials_brushes-mesh_texture.blend\\Brush\\Erase Hard")
         return {"FINISHED"}
 
 
@@ -61,11 +75,23 @@ class ApplyEditImage(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         space = context.space_data
-        return getattr(space, "image", None)
+        image = getattr(space, "image", None)
+        return image and image.blender_ai_studio_image_property.is_edit_image
 
     def execute(self, context):
-        image = getattr(context, "image")
-        print(self.bl_idname, image)
+        space = context.space_data
+        origin = getattr(space, "image")
+        print(self.bl_idname, origin)
+        origin.use_fake_user = True
+        origin.save()
+
+        edit_image = origin.copy()
+        edit_image.use_fake_user = True
+        edit_image.name = f"{origin.name}_apply"
+        aip = edit_image.blender_ai_studio_image_property
+        aip.is_edit_image = False
+        space.image = edit_image
+        space.ui_mode = "VIEW"
         return {"FINISHED"}
 
 
