@@ -159,10 +159,13 @@ class NanoBanana(StudioClient):
         self.reference_images: list[str] = []
         self.size_config = "Auto"
         self.resolution = "1K"
+        self.api_key = ""
         self.meta = {
             "input_image": {
                 "display_name": "Input Image",
+                "category": "Input",
                 "type": "ENUM",
+                "hide_title": False,
                 "options": [
                     "CameraRender",
                     "CameraDepth",
@@ -170,17 +173,24 @@ class NanoBanana(StudioClient):
             },
             "prompt": {
                 "display_name": "Prompt",
+                "category": "Input",
                 "type": "STRING",
+                "hide_title": False,
+                "multiline": True,
                 "default": "",
             },
             "reference_images": {
                 "display_name": "Reference Images",
+                "category": "Input",
                 "type": StudioImagesDescriptor.ptype,
+                "hide_title": False,
                 "limit": 12,
             },
             "size_config": {
                 "display_name": "Size Config",
+                "category": "Input",
                 "type": "ENUM",
+                "hide_title": False,
                 "options": [
                     "Auto",
                     "1:1",
@@ -197,12 +207,22 @@ class NanoBanana(StudioClient):
             },
             "resolution": {
                 "display_name": "Resolution",
+                "category": "Input",
                 "type": "ENUM",
+                "hide_title": False,
                 "options": [
                     "1K",
                     "2K",
                     "4K",
                 ],
+            },
+            "api_key": {
+                "display_name": "API Key",
+                "category": "Settings",
+                "type": "STRING",
+                "hide_title": True,
+                "multiline": False,
+                "default": "",
             },
         }
 
@@ -260,7 +280,7 @@ class StudioWrapper:
     def __init__(self):
         self.studio_client: StudioClient = None
         self.display_name: str = ""
-        self.widgets: dict[str, WidgetDescriptor] = {}
+        self.widgets: dict[str, list[WidgetDescriptor]] = {}
         self.adapter: BaseAdapter = None
 
     @property
@@ -279,8 +299,14 @@ class StudioWrapper:
             widget = DescriptorFactory.create(prop_name, widget_type, self)
             widget.adapter = client
             widget.widget_def = meta
-            self.widgets[prop_name] = widget
+            category = widget.category
+            if category not in self.widgets:
+                self.widgets[category] = []
+            self.widgets[category].append(widget)
         self.adapter = None
+
+    def get_widgets_by_category(self, category: str):
+        return self.widgets.get(category, [])
 
 
 class AIStudioPanelType(Enum):
@@ -294,7 +320,120 @@ class AIStudio(AppHud):
         super().__init__(*args, **kwargs)
         self.active_panel = AIStudioPanelType.GENERATION
         self.clients = {c.VENDOR: c() for c in StudioClient.__subclasses__()}
+        self.fill_fake_clients()
         self.active_client = NanoBanana.VENDOR
+        self.clients_wrappers: dict[str, StudioWrapper] = {}
+        self.init_clients_wrapper()
+
+    def fill_fake_clients(self):
+        fake_clients = [
+            "Nano Banana Pro (Gemini 3 Pro Image)",
+            "FLUX.2 [pro]",
+            "Seedream 4.0",
+            "FLUX.2 [flex]",
+            "Imagen 4 Ultra Preview 0606",
+            "Nano Banana (Gemini 2.5 Flash Image)",
+            "Imagen 4 Preview 0606",
+            "ImagineArt 1.5 Preview",
+            "FLUX.2 [dev]",
+            "GPT-5",
+            "Seedream 3.0",
+            "Wan 2.5 Preview",
+            "Vivago 2.1",
+            "Qwen Image Edit 2509",
+            "Kolors 2.1",
+            "Lucid Origin Ultra",
+            "FLUX.1 Kontext [max]",
+            "Vidu Q2",
+            "Lucid Origin Fast",
+            "Recraft V3",
+            "HunyuanImage 3.0 (Fal)",
+            "Vivago 2.0",
+            "Reve V1",
+            "GPT Image 1 (high)",
+            "FLUX.1.1 [pro] Ultra",
+            "Imagen 3 (v002)",
+            "Ideogram 3.0",
+            "Reve Image (Halfmoon)",
+            "Dreamina 3.1",
+            "FLUX.1 Kontext [pro]",
+            "FLUX.1.1 [pro]",
+            "Imagen 4 Fast Preview 0606",
+            "SRPO",
+            "SeedEdit 3.0",
+            "HiDream-I1-Dev",
+            "HunyuanImage 2.1",
+            "FLUX.1 [pro]",
+            "GPT Image 1 Mini (medium)",
+            "Qwen-Image",
+            "Image-01",
+            "HiDream-I1-Fast",
+            "FIBO",
+            "Midjourney v7 Alpha",
+            "Midjourney v6.1",
+            "Ideogram v2",
+            "FLUX.1 [dev]",
+            "Midjourney v6",
+            "Luma Photon",
+            "Ideogram v2 Turbo",
+            "Stable Diffusion 3.5 Large Turbo",
+            "Stable Diffusion 3.5 Large",
+            "Phoenix 1.0 Ultra",
+            "Firefly Image 5 Preview",
+            "Ideogram v1",
+            "Infinity 8B",
+            "Krea 1",
+            "Stable Diffusion 3 Large",
+            "FLUX.1 Krea [dev]",
+            "MAI Image 1",
+            "Ideogram v2a",
+            "FLUX.1 Kontext [dev]",
+            "Ideogram v2a Turbo",
+            "Firefly Image 4",
+            "FLUX.1 [schnell]",
+            "Playground v3 (beta)",
+            "HiDream-E1.1",
+            "Phoenix 0.9 Ultra",
+            "Runway Gen-4 Image",
+            "Phoenix 1.0 Fast",
+            "Gemini 2.0 Flash Preview",
+            "Recraft 20B",
+            "Luma Photon Flash",
+            "Gemini 2.0 Flash Experimental",
+            "Playground v2.5",
+            "Lumina Image v2",
+            "DALLE 3 HD",
+            "Firefly Image 3",
+            "step1x-edit-v1p2-preview",
+            "Grok 2",
+            "Stable Diffusion 3.5 Medium",
+            "DALLE 3",
+            "Bagel",
+            "Stable Diffusion 3 Medium",
+            "Bria 3.2",
+            "Amazon Titan G1 v2 (Standard)",
+            "Sana Sprint 1.6B",
+            "OmniGen V2",
+            "Stable Diffusion 3 Large Turbo",
+            "Stable Diffusion 1.6",
+            "Amazon Titan G1 (Standard)",
+            "SDXL Lightning",
+            "Step1X-Edit",
+            "Stable Diffusion XL 1.0",
+            "HiDream-E1-Full",
+            "DALLE 2",
+            "Stable Diffusion 2.1",
+            "Janus Pro",
+            "Stable Diffusion 1.5",
+        ]
+        for fc in fake_clients:
+            self.clients[fc] = StudioClient()
+
+    def init_clients_wrapper(self):
+        for cname, client in self.clients.items():
+            wrapper = StudioWrapper()
+            wrapper.load(client)
+            self.clients_wrappers[cname] = wrapper
 
     def handler_draw(self, _area: bpy.types.Area):
         self.draw_studio_panel()
@@ -451,10 +590,8 @@ class AIStudio(AppHud):
             gen_btn_height = 79
             imgui.push_style_color(imgui.Col.FRAME_BG, (48 / 255, 48 / 255, 48 / 255, 1))
             with with_child("Outer", (0, avail_height - gen_btn_height - wp[1] - item_spacing[1]), flags):
-                wrapper = StudioWrapper()
-                wrapper.load(self.clients[self.active_client])
-
-                for widget in wrapper.widgets.values():
+                wrapper = self.clients_wrappers.get(self.active_client, StudioWrapper())
+                for widget in wrapper.get_widgets_by_category("Input"):
                     widget.col_bg = Const.WINDOW_BG
                     widget.col_widget = Const.FRAME_BG
                     widget.display_begin(widget, self)

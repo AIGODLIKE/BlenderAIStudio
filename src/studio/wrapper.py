@@ -90,6 +90,14 @@ class WidgetDescriptor:
     def title(self):
         return self.adapter.name
 
+    @property
+    def hide_title(self) -> bool:
+        return self.widget_def.get("hide_title", False)
+
+    @property
+    def category(self):
+        return self.widget_def.get("category", "")
+
     def display_begin(self, wrapper, app: App):
         imgui.push_id(f"{self.title}_{self.widget_name}")
 
@@ -117,6 +125,8 @@ class IntDescriptor(WidgetDescriptor):
         imgui.push_style_color(imgui.Col.SLIDER_GRAB_ACTIVE, Const.SLIDER_ACTIVE)
         imgui.push_style_color(imgui.Col.FRAME_BG, self.col_bg)
         with with_child("##Int", (0, 0), child_flags=self.flags):
+            if not self.hide_title:
+                imgui.text(self.display_name)
             imgui.push_item_width(-1)
             vmin = max(-(2**30), int(cfg.get("min", -65535)))
             vmax = min(2**30 - 1, int(cfg.get("max", +65535)))
@@ -148,6 +158,8 @@ class FloatDescriptor(WidgetDescriptor):
         imgui.push_style_color(imgui.Col.SLIDER_GRAB_ACTIVE, Const.SLIDER_ACTIVE)
         imgui.push_style_color(imgui.Col.FRAME_BG, self.col_bg)
         with with_child("##Float", (0, 0), child_flags=self.flags):
+            if not self.hide_title:
+                imgui.text(self.display_name)
             imgui.push_item_width(-1)
             imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.RP_FRAME_INNER_R)
             imgui.push_style_color(imgui.Col.FRAME_BG, self.col_widget)
@@ -178,23 +190,32 @@ class EnumDescriptor(WidgetDescriptor):
     def display(self, wrapper, app: App):
         imgui.push_style_color(imgui.Col.FRAME_BG, self.col_bg)
         with with_child("##Enum", (0, 0), child_flags=self.flags):
+            if not self.hide_title:
+                imgui.text(self.display_name)
             imgui.push_item_width(-1)
             imgui.push_style_var_x(imgui.StyleVar.FRAME_PADDING, Const.RP_FRAME_P[0])
             imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.RP_FRAME_INNER_R)
+            imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, (0, Const.RP_FRAME_P[0]))
+            imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0)
+            imgui.push_style_var(imgui.StyleVar.POPUP_ROUNDING, 12)
             imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, Const.RP_CHILD_IS)
             imgui.push_style_color(imgui.Col.FRAME_BG, self.col_widget)
+            imgui.push_style_color(imgui.Col.BUTTON, (0, 0, 0, 0))
             preview = pgettext(self.value, self.adapter.get_ctxt())
             if imgui.begin_combo(f"##{self.widget_name}", preview):
                 for item in self.widget_def.get("options", []):
                     is_selected = self.value == item
                     translated_item = pgettext(item, self.adapter.get_ctxt())
-                    if imgui.selectable(translated_item, is_selected)[0]:
-                        self.value = item
                     if is_selected:
-                        imgui.set_item_default_focus()
+                        imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
+                    if imgui.button(translated_item, (-imgui.FLT_MIN, 0)):
+                        self.value = item
+                        imgui.close_current_popup()
+                    if is_selected:
+                        imgui.pop_style_color()
                 imgui.end_combo()
-            imgui.pop_style_color()
-            imgui.pop_style_var(3)
+            imgui.pop_style_color(2)
+            imgui.pop_style_var(6)
             imgui.pop_item_width()
         imgui.pop_style_color(1)
 
@@ -208,9 +229,11 @@ class StringDescriptor(WidgetDescriptor):
 
     def display(self, wrapper, app: App):
         imgui.push_style_color(imgui.Col.FRAME_BG, self.col_bg)
-        with with_child("##String", (0, 240), child_flags=self.flags):
-            imgui.text(self.display_name)
-            imgui.dummy((1, 4))
+        multiline = self.widget_def.get("multiline", False)
+        child_width = 240 if multiline else 0
+        with with_child("##String", (0, child_width), child_flags=self.flags):
+            if not self.hide_title:
+                imgui.text(self.display_name)
             imgui.push_style_var(imgui.StyleVar.SCROLLBAR_ROUNDING, Const.CHILD_SB_R)
             imgui.push_style_var(imgui.StyleVar.SCROLLBAR_SIZE, Const.CHILD_SB_S)
             imgui.push_style_var(imgui.StyleVar.SCROLLBAR_PADDING, Const.CHILD_SB_P)
@@ -220,8 +243,13 @@ class StringDescriptor(WidgetDescriptor):
             imgui.push_style_color(imgui.Col.SCROLLBAR_GRAB_ACTIVE, Const.CHILD_SB_GRAB_ACTIVE)
             imgui.push_style_color(imgui.Col.SCROLLBAR_GRAB_HOVERED, Const.CHILD_SB_GRAB_HOVERED)
             app.font_manager.push_content_font()
-            mlt_flags = imgui.InputTextFlags.WORD_WRAP
-            changed, val = imgui.input_text_multiline(f"##{self.widget_name}", str(self.value), (-1, -1), mlt_flags)
+            if multiline:
+                mlt_flags = imgui.InputTextFlags.WORD_WRAP
+                changed, val = imgui.input_text_multiline(f"##{self.widget_name}", str(self.value), (-1, -1), mlt_flags)
+            else:
+                imgui.push_item_width(imgui.get_content_region_avail()[0])
+                changed, val = imgui.input_text(f"##{self.widget_name}", str(self.value))
+                imgui.pop_item_width()
             if changed:
                 self.value = val
             app.font_manager.pop_font()
@@ -236,7 +264,8 @@ class ImageDescriptor(WidgetDescriptor):
     def display(self, wrapper, app: App):
         imgui.push_style_color(imgui.Col.FRAME_BG, self.col_bg)
         with with_child("##Image", (0, 0), child_flags=self.flags):
-            imgui.text(f"{getattr(self.owner, 'display_name', '')}: {self.display_name}")
+            if not self.hide_title:
+                imgui.text(f"{getattr(self.owner, 'display_name', '')}: {self.display_name}")
             imgui.push_style_color(imgui.Col.FRAME_BG, self.col_widget)
             with with_child("##Inner", (0, 0), child_flags=self.flags):
                 imgui.push_style_var_x(imgui.StyleVar.CELL_PADDING, 0)
@@ -351,6 +380,8 @@ class ColorDescriptor(WidgetDescriptor):
             return
         imgui.push_style_color(imgui.Col.FRAME_BG, self.col_bg)
         with with_child(f"##{self.title}_{self.widget_name}", (0, 0), child_flags=self.flags):
+            if not self.hide_title:
+                imgui.text(self.display_name)
             imgui.push_item_width(120)
             imgui.push_style_color(imgui.Col.FRAME_BG, self.col_widget)
             imgui.push_style_var(imgui.StyleVar.FRAME_PADDING, (0, 0))
