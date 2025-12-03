@@ -1,4 +1,7 @@
 import bpy
+from uuid import uuid4
+from bpy_extras.io_utils import ImportHelper
+from pathlib import Path
 
 from .studio import AIStudio
 from ..i18n import OPS_TCTX
@@ -32,6 +35,48 @@ class AIStudioEntry(bpy.types.Operator):
         if self.app.should_exit():
             self.app.shutdown()
         return {"RUNNING_MODAL"}
+
+
+class FileCallbackRegistry:
+    """管理文件选择回调的注册表"""
+
+    _registry = {}
+
+    @classmethod
+    def register_callback(cls, callback, *args, **kwargs):
+        """注册回调并返回唯一ID"""
+        callback_id = str(uuid4())
+        cls._registry[callback_id] = {"callback": callback, "args": args, "kwargs": kwargs}
+        return callback_id
+
+    @classmethod
+    def execute_callback(cls, callback_id, filepath):
+        """执行注册的回调"""
+        if callback_id in cls._registry:
+            data = cls._registry.pop(callback_id)  # 执行后移除
+            callback = data["callback"]
+            args = data["args"]
+            kwargs = data["kwargs"]
+            return callback(filepath, *args, **kwargs)
+        return None
+
+
+class FileImporter(bpy.types.Operator, ImportHelper):
+    bl_idname = "bas.file_importer"
+    bl_label = "Import File"
+
+    filter_glob: bpy.props.StringProperty(default="*.png;*.jpg;*.jpeg;*.bmp;*.tiff;", options={"HIDDEN"})
+    filepath: bpy.props.StringProperty(subtype="FILE_PATH")
+    callback_id: bpy.props.StringProperty()
+
+    def invoke(self, context: bpy.types.Context, event: bpy.types.Event):
+        bpy.context.window_manager.fileselect_add(self)
+        return {"RUNNING_MODAL"}
+
+    def execute(self, context):
+        img_path = Path(self.filepath).as_posix()
+        FileCallbackRegistry.execute_callback(self.callback_id, img_path)
+        return {"FINISHED"}
 
 
 class EditImage(bpy.types.Operator):
@@ -107,6 +152,7 @@ class GenerateImage(bpy.types.Operator):
 
 clss = [
     AIStudioEntry,
+    FileImporter,
     EditImage,
     ApplyEditImage,
     GenerateImage,
