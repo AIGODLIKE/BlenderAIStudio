@@ -24,16 +24,19 @@ class AIStudioEntry(bpy.types.Operator):
         return {"RUNNING_MODAL"}
 
     def modal(self, context, event):
-        if context.area != self.area:
-            return {"PASS_THROUGH"}
-        context.area.tag_redraw()
+        if context.area:
+            if context.area != self.area:
+                return {"PASS_THROUGH"}
+            context.area.tag_redraw()
+        else:
+            self.app.queue_shoutdown()
+        if self.app.should_exit():
+            self.app.shutdown()
         if self.app.is_closed():
             return {"FINISHED"}
         self.app.push_event(event)
         if self.app.should_pass_event():
             return {"PASS_THROUGH"}
-        if self.app.should_exit():
-            self.app.shutdown()
         return {"RUNNING_MODAL"}
 
 
