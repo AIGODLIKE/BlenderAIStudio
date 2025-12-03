@@ -1,3 +1,4 @@
+import bpy
 from .pkg_installer import PkgInstaller
 
 __all__ = [

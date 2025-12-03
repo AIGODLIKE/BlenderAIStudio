@@ -14,4 +14,10 @@ translations = (
     ("Auto", "自适应", PROP_TCTX),
     ("Resolution", "分辨率", PROP_TCTX),
     ("Open AI Studio", "打开 AI Studio", None),
+    ("Prompt", "提示", None),
+    ("History", "历史", None),
+    ("Out Resolution", "输出分辨率", None),
+    ("Keep original resolution", "保持原分辨率", None),
+    ("Input Size", "输入大小    ", None),
+    ("Image size", "图像尺寸", None),
 )
