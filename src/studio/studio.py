@@ -159,9 +159,11 @@ class NanoBanana(StudioClient):
         self.reference_images: list[str] = []
         self.size_config = "Auto"
         self.resolution = "1K"
+        self.api_key = ""
         self.meta = {
             "input_image": {
                 "display_name": "Input Image",
+                "category": "Input",
                 "type": "ENUM",
                 "options": [
                     "CameraRender",
@@ -170,16 +172,20 @@ class NanoBanana(StudioClient):
             },
             "prompt": {
                 "display_name": "Prompt",
+                "category": "Input",
                 "type": "STRING",
+                "multiline": True,
                 "default": "",
             },
             "reference_images": {
                 "display_name": "Reference Images",
+                "category": "Input",
                 "type": StudioImagesDescriptor.ptype,
                 "limit": 12,
             },
             "size_config": {
                 "display_name": "Size Config",
+                "category": "Input",
                 "type": "ENUM",
                 "options": [
                     "Auto",
@@ -197,12 +203,20 @@ class NanoBanana(StudioClient):
             },
             "resolution": {
                 "display_name": "Resolution",
+                "category": "Input",
                 "type": "ENUM",
                 "options": [
                     "1K",
                     "2K",
                     "4K",
                 ],
+            },
+            "api_key": {
+                "display_name": "API Key",
+                "category": "Settings",
+                "type": "STRING",
+                "multiline": False,
+                "default": "",
             },
         }
 
@@ -455,6 +469,8 @@ class AIStudio(AppHud):
                 wrapper.load(self.clients[self.active_client])
 
                 for widget in wrapper.widgets.values():
+                    if widget.category != "Input":
+                        continue
                     widget.col_bg = Const.WINDOW_BG
                     widget.col_widget = Const.FRAME_BG
                     widget.display_begin(widget, self)
