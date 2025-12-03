@@ -8,7 +8,6 @@ modules = [
     "studio",
     "utils",
     "ui",
-    "property",
 ]
 
 reg, unreg = bpy.utils.register_submodule_factory(__package__, modules)

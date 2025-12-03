@@ -76,7 +76,7 @@ class ApplyEditImage(bpy.types.Operator):
     def poll(cls, context):
         space = context.space_data
         image = getattr(space, "image", None)
-        return image and image.blender_ai_studio_image_property.is_edit_image
+        return image
 
     def execute(self, context):
         space = context.space_data
