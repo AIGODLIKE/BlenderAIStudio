@@ -274,7 +274,7 @@ class StudioWrapper:
     def __init__(self):
         self.studio_client: StudioClient = None
         self.display_name: str = ""
-        self.widgets: dict[str, WidgetDescriptor] = {}
+        self.widgets: dict[str, list[WidgetDescriptor]] = {}
         self.adapter: BaseAdapter = None
 
     @property
@@ -293,8 +293,14 @@ class StudioWrapper:
             widget = DescriptorFactory.create(prop_name, widget_type, self)
             widget.adapter = client
             widget.widget_def = meta
-            self.widgets[prop_name] = widget
+            category = widget.category
+            if category not in self.widgets:
+                self.widgets[category] = []
+            self.widgets[category].append(widget)
         self.adapter = None
+
+    def get_widgets_by_category(self, category: str):
+        return self.widgets.get(category, [])
 
 
 class AIStudioPanelType(Enum):
@@ -309,6 +315,14 @@ class AIStudio(AppHud):
         self.active_panel = AIStudioPanelType.GENERATION
         self.clients = {c.VENDOR: c() for c in StudioClient.__subclasses__()}
         self.active_client = NanoBanana.VENDOR
+        self.clients_wrappers: dict[str, StudioWrapper] = {}
+        self.init_clients_wrapper()
+
+    def init_clients_wrapper(self):
+        for cname, client in self.clients.items():
+            wrapper = StudioWrapper()
+            wrapper.load(client)
+            self.clients_wrappers[cname] = wrapper
 
     def handler_draw(self, _area: bpy.types.Area):
         self.draw_studio_panel()
@@ -465,12 +479,8 @@ class AIStudio(AppHud):
             gen_btn_height = 79
             imgui.push_style_color(imgui.Col.FRAME_BG, (48 / 255, 48 / 255, 48 / 255, 1))
             with with_child("Outer", (0, avail_height - gen_btn_height - wp[1] - item_spacing[1]), flags):
-                wrapper = StudioWrapper()
-                wrapper.load(self.clients[self.active_client])
-
-                for widget in wrapper.widgets.values():
-                    if widget.category != "Input":
-                        continue
+                wrapper = self.clients_wrappers.get(self.active_client, StudioWrapper())
+                for widget in wrapper.get_widgets_by_category("Input"):
                     widget.col_bg = Const.WINDOW_BG
                     widget.col_widget = Const.FRAME_BG
                     widget.display_begin(widget, self)
