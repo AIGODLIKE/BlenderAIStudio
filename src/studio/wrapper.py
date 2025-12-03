@@ -195,20 +195,27 @@ class EnumDescriptor(WidgetDescriptor):
             imgui.push_item_width(-1)
             imgui.push_style_var_x(imgui.StyleVar.FRAME_PADDING, Const.RP_FRAME_P[0])
             imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.RP_FRAME_INNER_R)
+            imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, (0, Const.RP_FRAME_P[0]))
+            imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0)
+            imgui.push_style_var(imgui.StyleVar.POPUP_ROUNDING, 12)
             imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, Const.RP_CHILD_IS)
             imgui.push_style_color(imgui.Col.FRAME_BG, self.col_widget)
+            imgui.push_style_color(imgui.Col.BUTTON, (0, 0, 0, 0))
             preview = pgettext(self.value, self.adapter.get_ctxt())
             if imgui.begin_combo(f"##{self.widget_name}", preview):
                 for item in self.widget_def.get("options", []):
                     is_selected = self.value == item
                     translated_item = pgettext(item, self.adapter.get_ctxt())
-                    if imgui.selectable(translated_item, is_selected)[0]:
-                        self.value = item
                     if is_selected:
-                        imgui.set_item_default_focus()
+                        imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
+                    if imgui.button(translated_item, (-imgui.FLT_MIN, 0)):
+                        self.value = item
+                        imgui.close_current_popup()
+                    if is_selected:
+                        imgui.pop_style_color()
                 imgui.end_combo()
-            imgui.pop_style_color()
-            imgui.pop_style_var(3)
+            imgui.pop_style_color(2)
+            imgui.pop_style_var(6)
             imgui.pop_item_width()
         imgui.pop_style_color(1)
 
