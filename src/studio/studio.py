@@ -165,6 +165,7 @@ class NanoBanana(StudioClient):
                 "display_name": "Input Image",
                 "category": "Input",
                 "type": "ENUM",
+                "hide_title": False,
                 "options": [
                     "CameraRender",
                     "CameraDepth",
@@ -174,6 +175,7 @@ class NanoBanana(StudioClient):
                 "display_name": "Prompt",
                 "category": "Input",
                 "type": "STRING",
+                "hide_title": False,
                 "multiline": True,
                 "default": "",
             },
@@ -181,12 +183,14 @@ class NanoBanana(StudioClient):
                 "display_name": "Reference Images",
                 "category": "Input",
                 "type": StudioImagesDescriptor.ptype,
+                "hide_title": False,
                 "limit": 12,
             },
             "size_config": {
                 "display_name": "Size Config",
                 "category": "Input",
                 "type": "ENUM",
+                "hide_title": False,
                 "options": [
                     "Auto",
                     "1:1",
@@ -205,6 +209,7 @@ class NanoBanana(StudioClient):
                 "display_name": "Resolution",
                 "category": "Input",
                 "type": "ENUM",
+                "hide_title": False,
                 "options": [
                     "1K",
                     "2K",
@@ -215,6 +220,7 @@ class NanoBanana(StudioClient):
                 "display_name": "API Key",
                 "category": "Settings",
                 "type": "STRING",
+                "hide_title": True,
                 "multiline": False,
                 "default": "",
             },
