@@ -89,6 +89,10 @@ class WidgetDescriptor:
     @property
     def title(self):
         return self.adapter.name
+    
+    @property
+    def category(self):
+        return self.widget_def.get("category", "")
 
     def display_begin(self, wrapper, app: App):
         imgui.push_id(f"{self.title}_{self.widget_name}")
@@ -208,9 +212,10 @@ class StringDescriptor(WidgetDescriptor):
 
     def display(self, wrapper, app: App):
         imgui.push_style_color(imgui.Col.FRAME_BG, self.col_bg)
-        with with_child("##String", (0, 240), child_flags=self.flags):
+        multiline = self.widget_def.get("multiline", False)
+        child_width = 240 if multiline else 0
+        with with_child("##String", (0, child_width), child_flags=self.flags):
             imgui.text(self.display_name)
-            imgui.dummy((1, 4))
             imgui.push_style_var(imgui.StyleVar.SCROLLBAR_ROUNDING, Const.CHILD_SB_R)
             imgui.push_style_var(imgui.StyleVar.SCROLLBAR_SIZE, Const.CHILD_SB_S)
             imgui.push_style_var(imgui.StyleVar.SCROLLBAR_PADDING, Const.CHILD_SB_P)
@@ -220,8 +225,13 @@ class StringDescriptor(WidgetDescriptor):
             imgui.push_style_color(imgui.Col.SCROLLBAR_GRAB_ACTIVE, Const.CHILD_SB_GRAB_ACTIVE)
             imgui.push_style_color(imgui.Col.SCROLLBAR_GRAB_HOVERED, Const.CHILD_SB_GRAB_HOVERED)
             app.font_manager.push_content_font()
-            mlt_flags = imgui.InputTextFlags.WORD_WRAP
-            changed, val = imgui.input_text_multiline(f"##{self.widget_name}", str(self.value), (-1, -1), mlt_flags)
+            if multiline:
+                mlt_flags = imgui.InputTextFlags.WORD_WRAP
+                changed, val = imgui.input_text_multiline(f"##{self.widget_name}", str(self.value), (-1, -1), mlt_flags)
+            else:
+                imgui.push_item_width(imgui.get_content_region_avail()[0])
+                changed, val = imgui.input_text(f"##{self.widget_name}", str(self.value))
+                imgui.pop_item_width()
             if changed:
                 self.value = val
             app.font_manager.pop_font()
