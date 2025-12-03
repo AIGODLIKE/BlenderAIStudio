@@ -226,6 +226,7 @@ class App:
         return imgui.is_mouse_dragging(imgui.MouseButton.LEFT) or imgui.is_mouse_dragging(imgui.MouseButton.RIGHT) or imgui.is_mouse_dragging(imgui.MouseButton.MIDDLE)
 
     def should_pass_event(self):
+        self.backend.ensure_ctx()
         if not self.any_hovered() and not self.is_mouse_dragging():
             self.io.clear_input_mouse()
             return True
