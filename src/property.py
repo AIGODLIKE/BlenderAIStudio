@@ -81,7 +81,6 @@ class SceneProperty(bpy.types.PropertyGroup):
         if self.hide_reference:
             return
 
-        column = box.column()
         """
         # row.template_ID(item, "icons", open="icons.open")
         # row.template_ID_preview(item, "icons", hide_buttons=True)
@@ -93,13 +92,15 @@ class SceneProperty(bpy.types.PropertyGroup):
         for i in bpy.context.scene.blender_ai_studio_property.mask_images:print(i)
         """
 
-        is_small_width = context.region.width < 300
+        column = box.column(align=True)
+        is_small_width = context.region.width < 200
         for i, item in enumerate(self.reference_images):
             if item.image:
+                ib = column.box()
                 if is_small_width:
-                    ly = column.column(align=True)
+                    ly = ib.column(align=True)
                 else:
-                    ly = column.row(align=True)
+                    ly = ib.split(align=True, factor=0.7)
                 ly.template_icon(item.image.preview.icon_id, scale=5)
                 col = ly.column(align=True)
                 if not is_small_width:
