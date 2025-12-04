@@ -19,6 +19,10 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences):
             layout.label(text="Please input your API Key")
 
 
+def get_pref() -> BlenderAIStudioPref:
+    return bpy.context.preferences.addons[base_name].preferences
+
+
 def register():
     bpy.utils.register_class(BlenderAIStudioPref)
 
