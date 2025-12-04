@@ -6,4 +6,5 @@ log.log
 *.log*
 .idea
 .vscode
+src/studio/gui/example
 imgui.ini
