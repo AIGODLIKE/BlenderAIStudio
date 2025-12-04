@@ -1,4 +1,5 @@
 import bpy
+import webbrowser
 from enum import Enum
 from typing import Iterable
 from .gui.texture import TexturePool
@@ -148,6 +149,7 @@ class StudioClient(BaseAdapter):
 
     def __init__(self) -> None:
         self._name = self.VENDOR
+        self.help_url = ""
 
     def get_ctxt(self) -> str:
         return PROP_TCTX
@@ -176,6 +178,7 @@ class NanoBanana(StudioClient):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self.help_url = "https://ai.google.dev/gemini-api/docs/image-generation?hl=zh-cn"
         self.input_image = "CameraRender"
         self.prompt = ""
         self.reference_images: list[str] = []
@@ -581,9 +584,65 @@ class AIStudio(AppHud):
         # 生成面板
         if True:
             imgui.dummy(dummy_size)
+            imgui.begin_table("#Engine", 4)
+            imgui.table_setup_column("#EngineEle1", imgui.TableColumnFlags.WIDTH_FIXED, 0, 0)
+            imgui.table_setup_column("#EngineEle2", imgui.TableColumnFlags.WIDTH_FIXED, 0, 1)
+            imgui.table_setup_column("#EngineEle3", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 2)
+            imgui.table_setup_column("#EngineEle4", imgui.TableColumnFlags.WIDTH_FIXED, 0, 3)
+            imgui.table_next_column()
             self.font_manager.push_h2_font()
             imgui.text("引擎")
             self.font_manager.pop_font()
+
+            # 小字
+            imgui.table_next_column()
+            imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+            imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
+            imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
+            imgui.push_style_var_y(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0)
+            imgui.push_font(None, 12 * Const.SCALE)
+            imgui.button("Engine")
+            imgui.pop_font()
+            imgui.pop_style_var()
+            imgui.pop_style_color(3)
+
+            imgui.table_next_column()
+            imgui.text("")
+
+            imgui.table_next_column()
+            imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0.75)
+            imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R)
+            imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)
+            imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
+            imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
+            self.font_manager.push_h1_font(24)
+            label = " 帮助"
+            label_size = imgui.calc_text_size(label)
+            if imgui.button(f"##{label}", (112, 44)):
+                help_url = self.clients.get(self.active_client, StudioClient()).help_url
+                if help_url:
+                    webbrowser.open(help_url)
+
+            pmin = imgui.get_item_rect_min()
+            pmax = imgui.get_item_rect_max()
+            icon_size = imgui.get_text_line_height()
+            inner_width = icon_size + label_size[0]
+            inner_height = label_size[1]
+            offset_x = (pmax[0] - pmin[0] - inner_width) * 0.5
+            offset_y = (pmax[1] - pmin[1] - inner_height) * 0.5
+            pmin = pmin[0] + offset_x, pmin[1] + offset_y
+            pmax = pmax[0] - offset_x, pmax[1] - offset_y
+            icon = TexturePool.get_tex_id("help")
+            dl = imgui.get_window_draw_list()
+            dl.add_image(icon, pmin, (pmin[0] + icon_size, pmax[1]))
+            col = imgui.get_color_u32(Const.BUTTON_SELECTED)
+            dl.add_text((pmin[0] + icon_size, pmin[1]), col, label)
+
+            self.font_manager.pop_font()
+            imgui.pop_style_color(3)
+            imgui.pop_style_var(2)
+
+            imgui.end_table()
             imgui.dummy((dummy_size[0], dummy_size[1] - 8))
 
             imgui.push_style_var_y(imgui.StyleVar.WINDOW_PADDING, 24)
