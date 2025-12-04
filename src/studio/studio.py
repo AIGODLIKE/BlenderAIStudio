@@ -1,4 +1,5 @@
 import bpy
+import webbrowser
 from enum import Enum
 from typing import Iterable
 from .gui.texture import TexturePool
@@ -27,8 +28,12 @@ class StudioImagesDescriptor(WidgetDescriptor):
             imgui.push_style_color(imgui.Col.FRAME_BG, self.col_widget)
 
             with with_child("##Inner", (0, 0), child_flags=self.flags):
-                imgui.push_style_var_x(imgui.StyleVar.CELL_PADDING, 0)
-                imgui.begin_table("##Table", 3)
+                imgui.push_style_var(imgui.StyleVar.CELL_PADDING, imgui.get_style().item_spacing)
+                imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, (0, 0))
+                imgui.push_style_color(imgui.Col.TABLE_BORDER_STRONG, Const.TRANSPARENT)
+                imgui.begin_table("##Table", 3, imgui.TableFlags.BORDERS)
+                for i in range(3):
+                    imgui.table_setup_column(f"##Column{i}", imgui.TableColumnFlags.WIDTH_STRETCH, 0, i)
                 for i, img in enumerate(self.value):
                     imgui.table_next_column()
                     imgui.push_id(f"##Image{i}")
@@ -42,13 +47,14 @@ class StudioImagesDescriptor(WidgetDescriptor):
                     imgui.pop_id()
                 imgui.end_table()
 
-                imgui.pop_style_var(1)
+                imgui.pop_style_var(2)
+                imgui.pop_style_color(1)
             imgui.same_line()
             imgui.pop_style_color()
         imgui.pop_style_color(1)
 
     def display_upload_image(self):
-        bw, bh = 102, 102
+        bw = bh = imgui.get_content_region_avail()[0]
         icon = TexturePool.get_tex_id("image_new")
         tex = TexturePool.get_tex(icon)
         fbw = tex.width / max(tex.width, tex.height) if tex else 1
@@ -58,11 +64,14 @@ class StudioImagesDescriptor(WidgetDescriptor):
         imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
         imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
         imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
-        clicked = imgui.button(f"##{self.title}_{self.widget_name}1", (bw * fbw, bh * fbh))
+        clicked = imgui.button(f"##{self.title}_{self.widget_name}1", (bw, bh))
+        iw, ih = (bw * fbw, bh * fbh)
         pmin = imgui.get_item_rect_min()
+        pmini = (pmin[0] + (bw - iw) / 2, pmin[1] + (bh - ih) / 2)
         pmax = imgui.get_item_rect_max()
+        pmaxi = (pmax[0] - (bw - iw) / 2, pmax[1] - (bh - ih) / 2)
         dl = imgui.get_window_draw_list()
-        dl.add_image(icon, pmin, pmax)
+        dl.add_image_rounded(icon, pmini, pmaxi, (0, 0), (1, 1), 0xFFFFFFFF, 15)
         imgui.pop_style_color(3)
         if clicked:
             pos = imgui.get_mouse_pos()
@@ -73,7 +82,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
     def display_image_with_close(self, img_path: str = "", index=-1):
         if not img_path:
             return
-        bw, bh = 102, 102
+        bw = bh = imgui.get_content_region_avail()[0]
         icon = TexturePool.get_tex_id(img_path)
         tex = TexturePool.get_tex(icon)
         fbw = tex.width / max(tex.width, tex.height) if tex else 1
@@ -83,11 +92,23 @@ class StudioImagesDescriptor(WidgetDescriptor):
         imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
         imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
         imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
-        clicked = imgui.button(f"##{self.title}_{self.widget_name}1", (bw * fbw, bh * fbh))
+        clicked = imgui.button(f"##{self.title}_{self.widget_name}1", (bw, bh))
+        iw, ih = (bw * fbw, bh * fbh)
         pmin = imgui.get_item_rect_min()
+        pmini = (pmin[0] + (bw - iw) / 2, pmin[1] + (bh - ih) / 2)
         pmax = imgui.get_item_rect_max()
+        pmaxi = (pmax[0] - (bw - iw) / 2, pmax[1] - (bh - ih) / 2)
         dl = imgui.get_window_draw_list()
-        dl.add_image(icon, pmin, pmax)
+        dl.add_image_rounded(icon, pmini, pmaxi, (0, 0), (1, 1), 0xFFFFFFFF, 15)
+        col = (84 / 255, 84 / 255, 84 / 255, 1)
+        is_hovered = False
+        if imgui.is_item_active():
+            col = (67 / 255, 207 / 255, 124 / 255, 1)
+        elif imgui.is_mouse_hovering_rect(pmin, pmax):
+            col = (67 / 255, 207 / 255, 124 / 255, 1)
+            is_hovered = True
+        col = imgui.get_color_u32(col)
+        dl.add_rect((pmin[0] + 1, pmin[1] + 1), (pmax[0] - 1, pmax[1] - 1), col, 15, thickness=4)
         imgui.pop_style_color(3)
         if clicked:
             pos = imgui.get_mouse_pos()
@@ -97,8 +118,8 @@ class StudioImagesDescriptor(WidgetDescriptor):
         imgui.same_line()
         pos = imgui.get_cursor_pos()
         bw2, bh2 = 30, 30
-        isx = imgui.get_style().item_spacing[0]
-        imgui.set_cursor_pos((pos[0] - isx - bw2 / 2, pos[1] - bh2 / 2 + 9))
+        isx = imgui.get_style().cell_padding[0]
+        imgui.set_cursor_pos((pos[0] - bw2, pos[1]))
 
         imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
         imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
@@ -107,17 +128,19 @@ class StudioImagesDescriptor(WidgetDescriptor):
         if imgui.button(f"##{self.title}_{self.widget_name}x", (bw2, bh2)):
             self.adapter.on_image_action(self.widget_name, "delete_image", index)
         imgui.pop_style_color(3)
-        imgui.set_cursor_pos(pos)
-        col = Const.SLIDER_NORMAL
-        if imgui.is_item_active():
-            col = Const.CLOSE_BUTTON_ACTIVE
-        elif imgui.is_item_hovered():
-            col = Const.CLOSE_BUTTON_HOVERED
-        col = imgui.get_color_u32(col)
-        icon = TexturePool.get_tex_id("close")
-        dl = imgui.get_window_draw_list()
-        dl.add_image(icon, imgui.get_item_rect_min(), imgui.get_item_rect_max(), col=col)
-        imgui.set_cursor_pos(pos)
+        if is_hovered:
+            imgui.set_cursor_pos(pos)
+            col = (67 / 255, 207 / 255, 124 / 255, 1)
+            if imgui.is_item_active():
+                col = Const.CLOSE_BUTTON_ACTIVE
+            elif imgui.is_item_hovered():
+                col = Const.CLOSE_BUTTON_HOVERED
+            col = imgui.get_color_u32(col)
+            icon = TexturePool.get_tex_id("close")
+            dl = imgui.get_window_draw_list()
+            dl.add_image(icon, imgui.get_item_rect_min(), imgui.get_item_rect_max(), col=col)
+        imgui.same_line()
+        imgui.dummy((isx, 0))
         imgui.end_group()
 
 
@@ -126,6 +149,7 @@ class StudioClient(BaseAdapter):
 
     def __init__(self) -> None:
         self._name = self.VENDOR
+        self.help_url = ""
 
     def get_ctxt(self) -> str:
         return PROP_TCTX
@@ -154,6 +178,7 @@ class NanoBanana(StudioClient):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self.help_url = "https://ai.google.dev/gemini-api/docs/image-generation?hl=zh-cn"
         self.input_image = "CameraRender"
         self.prompt = ""
         self.reference_images: list[str] = []
@@ -559,9 +584,65 @@ class AIStudio(AppHud):
         # 生成面板
         if True:
             imgui.dummy(dummy_size)
+            imgui.begin_table("#Engine", 4)
+            imgui.table_setup_column("#EngineEle1", imgui.TableColumnFlags.WIDTH_FIXED, 0, 0)
+            imgui.table_setup_column("#EngineEle2", imgui.TableColumnFlags.WIDTH_FIXED, 0, 1)
+            imgui.table_setup_column("#EngineEle3", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 2)
+            imgui.table_setup_column("#EngineEle4", imgui.TableColumnFlags.WIDTH_FIXED, 0, 3)
+            imgui.table_next_column()
             self.font_manager.push_h2_font()
             imgui.text("引擎")
             self.font_manager.pop_font()
+
+            # 小字
+            imgui.table_next_column()
+            imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+            imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
+            imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
+            imgui.push_style_var_y(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0)
+            imgui.push_font(None, 12 * Const.SCALE)
+            imgui.button("Engine")
+            imgui.pop_font()
+            imgui.pop_style_var()
+            imgui.pop_style_color(3)
+
+            imgui.table_next_column()
+            imgui.text("")
+
+            imgui.table_next_column()
+            imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0.75)
+            imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R)
+            imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)
+            imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
+            imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
+            self.font_manager.push_h1_font(24)
+            label = " 帮助"
+            label_size = imgui.calc_text_size(label)
+            if imgui.button(f"##{label}", (112, 44)):
+                help_url = self.clients.get(self.active_client, StudioClient()).help_url
+                if help_url:
+                    webbrowser.open(help_url)
+
+            pmin = imgui.get_item_rect_min()
+            pmax = imgui.get_item_rect_max()
+            icon_size = imgui.get_text_line_height()
+            inner_width = icon_size + label_size[0]
+            inner_height = label_size[1]
+            offset_x = (pmax[0] - pmin[0] - inner_width) * 0.5
+            offset_y = (pmax[1] - pmin[1] - inner_height) * 0.5
+            pmin = pmin[0] + offset_x, pmin[1] + offset_y
+            pmax = pmax[0] - offset_x, pmax[1] - offset_y
+            icon = TexturePool.get_tex_id("help")
+            dl = imgui.get_window_draw_list()
+            dl.add_image(icon, pmin, (pmin[0] + icon_size, pmax[1]))
+            col = imgui.get_color_u32(Const.BUTTON_SELECTED)
+            dl.add_text((pmin[0] + icon_size, pmin[1]), col, label)
+
+            self.font_manager.pop_font()
+            imgui.pop_style_color(3)
+            imgui.pop_style_var(2)
+
+            imgui.end_table()
             imgui.dummy((dummy_size[0], dummy_size[1] - 8))
 
             imgui.push_style_var_y(imgui.StyleVar.WINDOW_PADDING, 24)

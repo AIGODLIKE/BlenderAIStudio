@@ -39,7 +39,7 @@ class Const:
     SLIDER_ACTIVE = (0 / 255, 200 / 255, 255 / 255, 1)
 
     BUTTON = (56 / 255, 56 / 255, 56 / 255, 1)
-    BUTTON_ACTIVE = (255 / 255, 195 / 255, 0 / 255, 1)
+    BUTTON_ACTIVE = (67 / 255, 207 / 255, 124 / 255, 1)
     BUTTON_HOVERED = (75 / 255, 75 / 255, 75 / 255, 1)
     BUTTON_SELECTED = BUTTON_ACTIVE
     TEXT = (1, 1, 1, 1)
