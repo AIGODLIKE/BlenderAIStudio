@@ -8,6 +8,7 @@ from .gui.app.renderer import imgui
 from .gui.app.style import Const
 from .wrapper import with_child, BaseAdapter, WidgetDescriptor, DescriptorFactory
 from ..i18n import PROP_TCTX
+from ..preferences import get_pref
 
 
 def get_tool_panel_width():
@@ -184,7 +185,6 @@ class NanoBanana(StudioClient):
         self.reference_images: list[str] = []
         self.size_config = "Auto"
         self.resolution = "1K"
-        self.api_key = ""
         self.meta = {
             "input_image": {
                 "display_name": "Input Image",
@@ -250,6 +250,14 @@ class NanoBanana(StudioClient):
                 "default": "",
             },
         }
+
+    @property
+    def api_key(self) -> str:
+        return get_pref().nano_banana_api
+
+    @api_key.setter
+    def api_key(self, value: str) -> None:
+        get_pref().nano_banana_api = value
 
     def get_properties(self) -> Iterable[str]:
         return self.meta.keys()
