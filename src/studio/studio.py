@@ -568,17 +568,23 @@ class AIStudio(AppHud):
             return
         dummy_size = 0, 26 / 2
         imgui.push_style_var_x(imgui.StyleVar.CELL_PADDING, Const.LP_CELL_P[0])
+        imgui.push_style_var_y(imgui.StyleVar.ITEM_SPACING, 0)
 
         if True:
             self.font_manager.push_h1_font()
-            imgui.text("无限之心")
+            imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+            imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
+            imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
+            imgui.button("无限之心")
             imgui.same_line()
-            imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
-            imgui.text(" BETA ")
-            imgui.pop_style_color()
-            self.font_manager.pop_font()
+            icon = TexturePool.get_tex_id("beta_header")
+            tex = TexturePool.get_tex(icon)
+            scale = imgui.get_text_line_height() / tex.height
+            imgui.image_button("", icon, (tex.width * scale, tex.height * scale), tint_col=Const.BUTTON_SELECTED)
+            imgui.pop_style_color(3)
             imgui.same_line()
             self.draw_panel_close_button()
+            self.font_manager.pop_font()
             imgui.dummy(dummy_size)
 
         # 生成面板
@@ -716,7 +722,7 @@ class AIStudio(AppHud):
             imgui.pop_style_var(6)
             imgui.pop_style_color(5)
 
-        imgui.pop_style_var(1)
+        imgui.pop_style_var(2)
 
     def draw_clients(self):
         flags = 0
@@ -749,25 +755,33 @@ class AIStudio(AppHud):
             return
         dummy_size = 0, 26 / 2
         imgui.push_style_var_x(imgui.StyleVar.CELL_PADDING, Const.LP_CELL_P[0])
+        imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, (0, 0))
 
         if True:
             self.font_manager.push_h1_font()
-            imgui.text("设置")
+            imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+            imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
+            imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
+            imgui.button("设置")
             imgui.same_line()
-            imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
-            imgui.text(" SETTINGS ")
-            imgui.pop_style_color()
-            self.font_manager.pop_font()
+            icon = TexturePool.get_tex_id("settings_header")
+            tex = TexturePool.get_tex(icon)
+            scale = imgui.get_text_line_height() / tex.height
+            imgui.image_button("", icon, (tex.width * scale, tex.height * scale), tint_col=Const.BUTTON_SELECTED)
+            imgui.pop_style_color(3)
             imgui.same_line()
             self.draw_panel_close_button()
+            self.font_manager.pop_font()
             imgui.dummy(dummy_size)
-        imgui.pop_style_var(1)
+        imgui.pop_style_var(2)
 
     def draw_panel_close_button(self):
         # 关闭按钮
-        h = imgui.get_text_line_height_with_spacing()
+        style = imgui.get_style()
+        fp = style.frame_padding
+        h = imgui.get_frame_height_with_spacing()
         aw = imgui.get_content_region_avail()[0]
-        imgui.dummy((aw - Const.LP_WINDOW_P[0] - h * 0.5, h))
+        imgui.dummy((aw - style.item_spacing[0] - h, 0))
         imgui.same_line()
         imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
         imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
@@ -786,7 +800,9 @@ class AIStudio(AppHud):
         icon = TexturePool.get_tex_id("close")
         dl = imgui.get_window_draw_list()
         pmin = imgui.get_item_rect_min()
+        pmin = (pmin[0] + fp[1] * 2 + 2, pmin[1] + fp[1] + 1)
         pmax = imgui.get_item_rect_max()
+        pmax = (pmax[0], pmax[1] - fp[1] - 1)
         dl.add_image(icon, pmin, pmax, col=col)
 
 
