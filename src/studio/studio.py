@@ -258,6 +258,7 @@ class NanoBanana(StudioClient):
     @api_key.setter
     def api_key(self, value: str) -> None:
         get_pref().nano_banana_api = value
+        bpy.context.preferences.use_preferences_save = True
 
     def get_properties(self) -> Iterable[str]:
         return self.meta.keys()
