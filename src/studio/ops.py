@@ -1,7 +1,8 @@
-import bpy
-from uuid import uuid4
-from bpy_extras.io_utils import ImportHelper
 from pathlib import Path
+from uuid import uuid4
+
+import bpy
+from bpy_extras.io_utils import ImportHelper
 
 from .studio import AIStudio
 from ..i18n import OPS_TCTX
@@ -153,12 +154,95 @@ class GenerateImage(bpy.types.Operator):
         return {"FINISHED"}
 
 
+def add_reference_image(context, image):
+    ai = context.scene.blender_ai_studio_property
+    ri = ai.reference_images.add()
+    ri.image = image
+    image.name = ri.name = f"{image.name}_REFERENCE"
+    image.preview_ensure()
+
+
+class SelectReferenceImageByFile(bpy.types.Operator, ImportHelper):
+    bl_idname = "bas.select_reference_image_by_file"
+    bl_label = "Select References By File"
+    # File browser properties
+    filename_ext = ""
+    filter_glob: bpy.props.StringProperty(
+        default="*.jpg;*.jpeg;*.png;*.bmp;*.tif;*.tiff;*.tga;*.exr;*.hdr",
+        options={'HIDDEN'}
+    )
+
+    def execute(self, context):
+        print(self.bl_idname, self.filepath)
+
+        image = bpy.data.images.load(self.filepath)
+        add_reference_image(context, image)
+        return {"FINISHED"}
+
+
+class SelectReferenceImageByImage(bpy.types.Operator):
+    bl_idname = "bas.select_reference_image_by_image"
+    bl_label = "Select References By Bl Image"
+    icon_scale: bpy.props.FloatProperty(default=4, min=0.2, max=10, name="Icon Scale")
+
+    def invoke(self, context, event):
+        for i in bpy.data.images:
+            if not i.preview:
+                i.preview_ensure()
+        wm = context.window_manager
+        return wm.invoke_props_dialog(**{'operator': self, 'width': 300})
+
+    def execute(self, context):
+        image = getattr(context, "image", None)
+        if image:
+            print(self.bl_idname)
+            add_reference_image(context, image)
+            return {"FINISHED"}
+        return {"CANCELLED"}
+
+    def draw(self, context):
+        ai = context.scene.blender_ai_studio_property
+        layout = self.layout
+        layout.prop(self, "icon_scale")
+        for i in bpy.data.images:
+            if i not in ai.all_references_images:
+                if i.preview:
+                    box = layout.box()
+                    row = box.row()
+                    row.operator_context = "EXEC_DEFAULT"
+                    row.context_pointer_set("image", i)
+                    row.template_icon(i.preview.icon_id, scale=self.icon_scale)
+                    col = row.column(align=True)
+                    col.operator(self.bl_idname, text=i.name, translate=False, emboss=False)
+                    col.operator(self.bl_idname, icon="RESTRICT_SELECT_OFF",
+                                 text=bpy.app.translations.pgettext_iface("Select Reference"),
+                                 )
+                else:
+                    i.preview_ensure()
+
+
+class RemoveReferenceImage(bpy.types.Operator):
+    bl_idname = "bas.remove_reference_image"
+    bl_label = "Remove References"
+
+    index: bpy.props.IntProperty()
+
+    def execute(self, context):
+        ai = context.scene.blender_ai_studio_property
+        ai.reference_images.remove(self.index)
+        return {"FINISHED"}
+
+
 clss = [
     AIStudioEntry,
     FileImporter,
     EditImage,
     ApplyEditImage,
     GenerateImage,
+
+    RemoveReferenceImage,
+    SelectReferenceImageByFile,
+    SelectReferenceImageByImage,
 ]
 
 reg, unreg = bpy.utils.register_classes_factory(clss)

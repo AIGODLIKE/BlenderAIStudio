@@ -46,6 +46,8 @@ class AIStudioImagePanel(bpy.types.Panel):
         box.label(text="Prompt", icon='TEXT')
         box.prop(ai, "prompt", text="")
 
+        ai.draw_reference_images(context, layout)
+
         layout.operator("bas.edit_image")
         layout.operator("bas.apply_edit_image")
         layout.operator("bas.generate_image")

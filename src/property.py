@@ -12,9 +12,11 @@ class GenerateProperty(bpy.types.PropertyGroup):
     生成的属性
     """
     origin_image: bpy.props.PointerProperty(type=bpy.types.Image, name="原图图片")
-    edit_image: bpy.props.PointerProperty(type=bpy.types.Image, name="编辑的图片")
-    generate_image: bpy.props.PointerProperty(type=bpy.types.Image, name="生成图片")
+    mask_image: bpy.props.PointerProperty(type=bpy.types.Image, name="编辑的图片")
     reference_images: bpy.props.CollectionProperty(type=ImageItem, name="多张参考图")
+    reference_image: bpy.props.PointerProperty(type=ImageItem, name="单张参考图")
+    hide_reference_images: bpy.props.BoolProperty(name="Hide Reference Images", default=True)
+
     prompt: bpy.props.StringProperty(
         name="Prompt",
         maxlen=1000,
@@ -32,14 +34,58 @@ class GenerateProperty(bpy.types.PropertyGroup):
 
     history: bpy.props.CollectionProperty(type=GenerateProperty)
 
-    def draw_reference_images(self, layout: bpy.types.UILayout):
+    @property
+    def all_references_images(self) -> list[bpy.types.Image]:
+        return [i.image for i in self.reference_images if i.image]
+
+    def draw_reference_images(self, context, layout: bpy.types.UILayout):
         box = layout.box()
-        box.label(text="Reference Images")
+
+        # 参考图头
+        row = box.row()
+        row.alignment = "EXPAND"
+        rr = row.row()
+        rr.alignment = "LEFT"
+        text = bpy.app.translations.pgettext_iface("Reference Images")
+        rl = len(self.reference_images)
+        count = f" ({rl})" if rl else ""
+        rr.prop(self, "hide_reference_images", text=f"{text}{count}",
+                icon="RIGHTARROW" if self.hide_reference_images else "DOWNARROW_HLT",
+                emboss=False,
+                )
+        row.separator()
+        rr = row.row()
+        rr.alignment = "RIGHT"
+        rr.operator("bas.select_reference_image_by_image", text="", icon="IMAGE_REFERENCE", emboss=False)
+        rr.operator("bas.select_reference_image_by_file", text="", icon="ADD", emboss=False)
+        if self.hide_reference_images:
+            return
+
+        column = box.column()
+        """
+        # row.template_ID(item, "image", open="image.open")
+        # row.template_ID_preview(item, "image", hide_buttons=True)
+        # row.template_preview(item.image)
+        # row.template_icon_view(item, "image")
+        # row.template_image(item, "image")
+        # column.label(text=f"{context.region.width}")
+        ly.template_search_preview(self, "reference_image", bpy.data, "images")
+        """
+
+        is_small_width = context.region.width < 300
         for i, item in enumerate(self.reference_images):
-            box.template_ID(item, "image", open="image.open")
-            box.operator("bas.remove_reference_image", text="", icon="X", depress=True).index = i
-            box.separator()
-        box.operator("bas.add_reference_image", text="", icon="ADD")
+            if item.image:
+                if is_small_width:
+                    ly = column.column(align=True)
+                else:
+                    ly = column.row(align=True)
+                ly.template_icon(item.image.preview.icon_id, scale=5)
+                col = ly.column(align=True)
+                if not is_small_width:
+                    col.label(text=item.image.name)
+                col.operator("bas.remove_reference_image", text="", icon="X", emboss=False).index = i
+        if rl == 0:
+            box.label(text="Click top right ops to reference")
 
     def draw_history(self, layout: bpy.types.UILayout):
         ...

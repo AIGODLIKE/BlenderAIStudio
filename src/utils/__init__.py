@@ -13,7 +13,7 @@ def get_pref():
 
 def get_api():
     pref = get_pref()
-    return pref.api
+    return pref.nano_banana_api
 
 
 def register():
