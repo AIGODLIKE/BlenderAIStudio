@@ -83,35 +83,56 @@ class FileImporter(bpy.types.Operator, ImportHelper):
         return {"FINISHED"}
 
 
-class EditImage(bpy.types.Operator):
-    bl_idname = "bas.edit_image"
-    bl_description = "Edit Image"
-    bl_translation_context = OPS_TCTX
-    bl_label = "Edit Image"
+class DrawMask(bpy.types.Operator):
+    bl_idname = "bas.draw_mask"
+    bl_label = "Draw Mask"
+    bl_options = {"REGISTER"}
 
     @classmethod
     def poll(cls, context):
         space = context.space_data
-        return getattr(space, "image", None)
+        image = getattr(space, "image", None)
+        return image and not image.blender_ai_studio_property.is_mask_image
 
     def execute(self, context):
+        from bl_ui.properties_paint_common import UnifiedPaintPanel
         space = context.space_data
-        origin = getattr(space, "image")
-        origin.use_fake_user = True
-        edit_image = origin.copy()
+        print(self.bl_idname)
 
-        edit_image.name = f"{origin.name}_edit"
-        edit_image.use_fake_user = True
-        aip = edit_image.blender_ai_studio_image_property
-        aip.is_edit_image = True
-        print(self.bl_idname, origin)
+        image = getattr(space, "image")
+        image.use_fake_user = True
+        scene_prop = context.scene.blender_ai_studio_property
 
-        space.image = edit_image
+        name = f"{image.name}_mask"
+
+        mask_image = image.copy()
+        mask_image.use_fake_user = True
+        mask_image.pack()
+        mask_image.preview_ensure()
+        mask_image.filepath = ""
+        mask_image.name = name
+
+        mi = scene_prop.mask_images.add()  # 新创建一个mask图
+        mi.name = name
+        mi.image = mask_image
+
+        aip = mask_image.blender_ai_studio_property
+        aip.is_mask_image = True
+        aip.origin_image = image
+
+        space.image = mask_image
         space.ui_mode = "PAINT"
         bpy.ops.brush.asset_activate(
+            "EXEC_DEFAULT",
+            False,
             asset_library_type='ESSENTIALS',
             asset_library_identifier="",
-            relative_asset_identifier="brushes\\essentials_brushes-mesh_texture.blend\\Brush\\Erase Hard")
+            relative_asset_identifier="brushes\\essentials_brushes-mesh_texture.blend\\Brush\\Paint Hard Pressure")
+        paint_settings = UnifiedPaintPanel.paint_settings(context).unified_paint_settings
+        paint_settings.size = 4
+        paint_settings.color = [1, 0, 0]
+        if space.ui_mode == "PAINT":
+            space.uv_editor.show_uv = False
         return {"FINISHED"}
 
 
@@ -120,26 +141,27 @@ class ApplyEditImage(bpy.types.Operator):
     bl_description = "Apply Edit Image"
     bl_translation_context = OPS_TCTX
     bl_label = "Apply Edit Image"
+    bl_options = {"REGISTER"}
 
     @classmethod
     def poll(cls, context):
         space = context.space_data
         image = getattr(space, "image", None)
-        return image
+        return image and image.blender_ai_studio_property.origin_image
 
     def execute(self, context):
         space = context.space_data
-        origin = getattr(space, "image")
-        print(self.bl_idname, origin)
-        origin.use_fake_user = True
-        origin.save()
+        image = getattr(space, "image")
+        print(self.bl_idname, image)
+        image.preview_ensure()
+        bpy.ops.image.save("EXEC_DEFAULT", False)
+        image.use_fake_user = True
+        # image.pack()
+        # image.filepath = ""
 
-        edit_image = origin.copy()
-        edit_image.use_fake_user = True
-        edit_image.name = f"{origin.name}_apply"
-        aip = edit_image.blender_ai_studio_image_property
-        aip.is_edit_image = False
-        space.image = edit_image
+        ai = image.blender_ai_studio_property
+
+        space.image = ai.origin_image
         space.ui_mode = "VIEW"
         return {"FINISHED"}
 
@@ -149,22 +171,28 @@ class GenerateImage(bpy.types.Operator):
     bl_description = "Generate Image"
     bl_translation_context = OPS_TCTX
     bl_label = "Generate Image"
+    bl_options = {"REGISTER"}
 
     def execute(self, context):
         return {"FINISHED"}
 
 
-def add_reference_image(context, image):
+def add_reference_image(context, image, image_name=False):
     ai = context.scene.blender_ai_studio_property
     ri = ai.reference_images.add()
     ri.image = image
-    image.name = ri.name = f"{image.name}_REFERENCE"
+    ri.name = f"{image.name}_REFERENCE"
+    if image_name:
+        image.name = ri.name
     image.preview_ensure()
 
 
 class SelectReferenceImageByFile(bpy.types.Operator, ImportHelper):
     bl_idname = "bas.select_reference_image_by_file"
     bl_label = "Select References By File"
+    bl_translation_context = OPS_TCTX
+    bl_options = {"REGISTER"}
+
     # File browser properties
     filename_ext = ""
     filter_glob: bpy.props.StringProperty(
@@ -183,6 +211,9 @@ class SelectReferenceImageByFile(bpy.types.Operator, ImportHelper):
 class SelectReferenceImageByImage(bpy.types.Operator):
     bl_idname = "bas.select_reference_image_by_image"
     bl_label = "Select References By Bl Image"
+    bl_translation_context = OPS_TCTX
+    bl_options = {"REGISTER"}
+
     icon_scale: bpy.props.FloatProperty(default=4, min=0.2, max=10, name="Icon Scale")
 
     def invoke(self, context, event):
@@ -224,6 +255,7 @@ class SelectReferenceImageByImage(bpy.types.Operator):
 class RemoveReferenceImage(bpy.types.Operator):
     bl_idname = "bas.remove_reference_image"
     bl_label = "Remove References"
+    bl_options = {"REGISTER"}
 
     index: bpy.props.IntProperty()
 
@@ -236,7 +268,7 @@ class RemoveReferenceImage(bpy.types.Operator):
 clss = [
     AIStudioEntry,
     FileImporter,
-    EditImage,
+    DrawMask,
     ApplyEditImage,
     GenerateImage,
 

@@ -12,10 +12,12 @@ class GenerateProperty(bpy.types.PropertyGroup):
     生成的属性
     """
     origin_image: bpy.props.PointerProperty(type=bpy.types.Image, name="原图图片")
-    mask_image: bpy.props.PointerProperty(type=bpy.types.Image, name="编辑的图片")
     reference_images: bpy.props.CollectionProperty(type=ImageItem, name="多张参考图")
+    mask_images: bpy.props.CollectionProperty(type=ImageItem, name="编辑的图片")
     reference_image: bpy.props.PointerProperty(type=ImageItem, name="单张参考图")
     hide_reference_images: bpy.props.BoolProperty(name="Hide Reference Images", default=True)
+
+    mask_index: bpy.props.IntProperty(name="Mask Image Index", default=0)
 
     prompt: bpy.props.StringProperty(
         name="Prompt",
@@ -34,9 +36,18 @@ class GenerateProperty(bpy.types.PropertyGroup):
 
     history: bpy.props.CollectionProperty(type=GenerateProperty)
 
+    is_mask_image: bpy.props.BoolProperty(name="Is Mask Image", default=False)
+
     @property
     def all_references_images(self) -> list[bpy.types.Image]:
         return [i.image for i in self.reference_images if i.image]
+
+    @property
+    def active_mask(self) -> bpy.types.Image | None:
+        """
+        获取当前使用的蒙版图片
+        """
+        return self.mask_images[self.mask_index].image if self.mask_images else None
 
     def draw_reference_images(self, context, layout: bpy.types.UILayout):
         box = layout.box()
@@ -63,13 +74,14 @@ class GenerateProperty(bpy.types.PropertyGroup):
 
         column = box.column()
         """
-        # row.template_ID(item, "image", open="image.open")
-        # row.template_ID_preview(item, "image", hide_buttons=True)
-        # row.template_preview(item.image)
-        # row.template_icon_view(item, "image")
-        # row.template_image(item, "image")
+        # row.template_ID(item, "icons", open="icons.open")
+        # row.template_ID_preview(item, "icons", hide_buttons=True)
+        # row.template_preview(item.icons)
+        # row.template_icon_view(item, "icons")
+        # row.template_image(item, "icons")
         # column.label(text=f"{context.region.width}")
         ly.template_search_preview(self, "reference_image", bpy.data, "images")
+        for i in bpy.context.scene.blender_ai_studio_property.mask_images:print(i)
         """
 
         is_small_width = context.region.width < 300

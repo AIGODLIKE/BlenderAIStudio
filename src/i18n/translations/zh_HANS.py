@@ -22,7 +22,7 @@ translations = (
     ("Image size", "图像尺寸", None),
     ("Icon Scale", "图标尺寸", None),
     ("Select Reference", "选择参考", "Opterator"),
-    ("Select References By Bl Image", "选择参考从Blender图片", "Opterator"),
-    ("Select References By File", "选择参考从文件", "Opterator"),
+    ("Select References By Bl Image", "选择参考从Blender图片", OPS_TCTX),
+    ("Select References By File", "选择参考从文件", OPS_TCTX),
     ("Click top right ops to reference", "点击右上角导入参考图", None),
 )

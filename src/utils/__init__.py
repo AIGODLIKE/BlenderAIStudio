@@ -6,6 +6,17 @@ __all__ = [
 ]
 
 
+
+def get_custom_icon(name="None"):
+    """
+    获取自定义图标
+    load icon
+    :param name:
+    :return: int icon_id
+    """
+    from ..icons import previews_icons
+    return previews_icons[name.lower()].icon_id
+
 def get_pref():
     from ... import __package__ as base_name
     return bpy.context.preferences.addons[base_name].preferences

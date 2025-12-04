@@ -14,7 +14,7 @@ curl -s -X POST \
   }' \
   | grep -o '"data": "[^"]*"' \
   | cut -d'"' -f4 \
-  | base64 --decode > gemini-native-image.png
+  | base64 --decode > gemini-native-icons.png
 """
 import os
 
