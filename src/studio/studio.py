@@ -27,8 +27,12 @@ class StudioImagesDescriptor(WidgetDescriptor):
             imgui.push_style_color(imgui.Col.FRAME_BG, self.col_widget)
 
             with with_child("##Inner", (0, 0), child_flags=self.flags):
-                imgui.push_style_var_x(imgui.StyleVar.CELL_PADDING, 0)
-                imgui.begin_table("##Table", 3)
+                imgui.push_style_var(imgui.StyleVar.CELL_PADDING, imgui.get_style().item_spacing)
+                imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, (0, 0))
+                imgui.push_style_color(imgui.Col.TABLE_BORDER_STRONG, Const.TRANSPARENT)
+                imgui.begin_table("##Table", 3, imgui.TableFlags.BORDERS)
+                for i in range(3):
+                    imgui.table_setup_column(f"##Column{i}", imgui.TableColumnFlags.WIDTH_STRETCH, 0, i)
                 for i, img in enumerate(self.value):
                     imgui.table_next_column()
                     imgui.push_id(f"##Image{i}")
@@ -42,13 +46,14 @@ class StudioImagesDescriptor(WidgetDescriptor):
                     imgui.pop_id()
                 imgui.end_table()
 
-                imgui.pop_style_var(1)
+                imgui.pop_style_var(2)
+                imgui.pop_style_color(1)
             imgui.same_line()
             imgui.pop_style_color()
         imgui.pop_style_color(1)
 
     def display_upload_image(self):
-        bw, bh = 102, 102
+        bw = bh = imgui.get_content_region_avail()[0]
         icon = TexturePool.get_tex_id("image_new")
         tex = TexturePool.get_tex(icon)
         fbw = tex.width / max(tex.width, tex.height) if tex else 1
@@ -58,11 +63,14 @@ class StudioImagesDescriptor(WidgetDescriptor):
         imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
         imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
         imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
-        clicked = imgui.button(f"##{self.title}_{self.widget_name}1", (bw * fbw, bh * fbh))
+        clicked = imgui.button(f"##{self.title}_{self.widget_name}1", (bw, bh))
+        iw, ih = (bw * fbw, bh * fbh)
         pmin = imgui.get_item_rect_min()
+        pmini = (pmin[0] + (bw - iw) / 2, pmin[1] + (bh - ih) / 2)
         pmax = imgui.get_item_rect_max()
+        pmaxi = (pmax[0] - (bw - iw) / 2, pmax[1] - (bh - ih) / 2)
         dl = imgui.get_window_draw_list()
-        dl.add_image(icon, pmin, pmax)
+        dl.add_image_rounded(icon, pmini, pmaxi, (0, 0), (1, 1), 0xFFFFFFFF, 15)
         imgui.pop_style_color(3)
         if clicked:
             pos = imgui.get_mouse_pos()
@@ -73,7 +81,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
     def display_image_with_close(self, img_path: str = "", index=-1):
         if not img_path:
             return
-        bw, bh = 102, 102
+        bw = bh = imgui.get_content_region_avail()[0]
         icon = TexturePool.get_tex_id(img_path)
         tex = TexturePool.get_tex(icon)
         fbw = tex.width / max(tex.width, tex.height) if tex else 1
@@ -83,11 +91,23 @@ class StudioImagesDescriptor(WidgetDescriptor):
         imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
         imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
         imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
-        clicked = imgui.button(f"##{self.title}_{self.widget_name}1", (bw * fbw, bh * fbh))
+        clicked = imgui.button(f"##{self.title}_{self.widget_name}1", (bw, bh))
+        iw, ih = (bw * fbw, bh * fbh)
         pmin = imgui.get_item_rect_min()
+        pmini = (pmin[0] + (bw - iw) / 2, pmin[1] + (bh - ih) / 2)
         pmax = imgui.get_item_rect_max()
+        pmaxi = (pmax[0] - (bw - iw) / 2, pmax[1] - (bh - ih) / 2)
         dl = imgui.get_window_draw_list()
-        dl.add_image(icon, pmin, pmax)
+        dl.add_image_rounded(icon, pmini, pmaxi, (0, 0), (1, 1), 0xFFFFFFFF, 15)
+        col = (84 / 255, 84 / 255, 84 / 255, 1)
+        is_hovered = False
+        if imgui.is_item_active():
+            col = (67 / 255, 207 / 255, 124 / 255, 1)
+        elif imgui.is_mouse_hovering_rect(pmin, pmax):
+            col = (67 / 255, 207 / 255, 124 / 255, 1)
+            is_hovered = True
+        col = imgui.get_color_u32(col)
+        dl.add_rect((pmin[0] + 1, pmin[1] + 1), (pmax[0] - 1, pmax[1] - 1), col, 15, thickness=4)
         imgui.pop_style_color(3)
         if clicked:
             pos = imgui.get_mouse_pos()
@@ -97,8 +117,8 @@ class StudioImagesDescriptor(WidgetDescriptor):
         imgui.same_line()
         pos = imgui.get_cursor_pos()
         bw2, bh2 = 30, 30
-        isx = imgui.get_style().item_spacing[0]
-        imgui.set_cursor_pos((pos[0] - isx - bw2 / 2, pos[1] - bh2 / 2 + 9))
+        isx = imgui.get_style().cell_padding[0]
+        imgui.set_cursor_pos((pos[0] - bw2, pos[1]))
 
         imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
         imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
@@ -107,17 +127,19 @@ class StudioImagesDescriptor(WidgetDescriptor):
         if imgui.button(f"##{self.title}_{self.widget_name}x", (bw2, bh2)):
             self.adapter.on_image_action(self.widget_name, "delete_image", index)
         imgui.pop_style_color(3)
-        imgui.set_cursor_pos(pos)
-        col = Const.SLIDER_NORMAL
-        if imgui.is_item_active():
-            col = Const.CLOSE_BUTTON_ACTIVE
-        elif imgui.is_item_hovered():
-            col = Const.CLOSE_BUTTON_HOVERED
-        col = imgui.get_color_u32(col)
-        icon = TexturePool.get_tex_id("close")
-        dl = imgui.get_window_draw_list()
-        dl.add_image(icon, imgui.get_item_rect_min(), imgui.get_item_rect_max(), col=col)
-        imgui.set_cursor_pos(pos)
+        if is_hovered:
+            imgui.set_cursor_pos(pos)
+            col = (67 / 255, 207 / 255, 124 / 255, 1)
+            if imgui.is_item_active():
+                col = Const.CLOSE_BUTTON_ACTIVE
+            elif imgui.is_item_hovered():
+                col = Const.CLOSE_BUTTON_HOVERED
+            col = imgui.get_color_u32(col)
+            icon = TexturePool.get_tex_id("close")
+            dl = imgui.get_window_draw_list()
+            dl.add_image(icon, imgui.get_item_rect_min(), imgui.get_item_rect_max(), col=col)
+        imgui.same_line()
+        imgui.dummy((isx, 0))
         imgui.end_group()
 
 
