@@ -36,7 +36,6 @@ class AIStudioImagePanel(bpy.types.Panel):
     bl_idname = "SDN_PT_BLENDER_AI_STUDIO_PT_Image"
     bl_translation_context = PANEL_TCTX
     bl_label = "Blender AI Studio"
-    bl_description = ""
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'UI'
     bl_category = "AIStudio"
@@ -47,6 +46,8 @@ class AIStudioImagePanel(bpy.types.Panel):
         return space_data and space_data.image is not None
 
     def draw(self, context):
+        from ..i18n import PROP_TCTX
+
         ai = context.scene.blender_ai_studio_property
         layout = self.layout
         if check_is_draw_mask(context):
@@ -56,7 +57,7 @@ class AIStudioImagePanel(bpy.types.Panel):
         self.draw_image_info(context, layout)
 
         box = layout.box()
-        box.label(text="Prompt", icon='TEXT')
+        box.label(text="Prompt", icon='TEXT',text_ctxt=PROP_TCTX)
         box.prop(ai, "prompt", text="")
 
         ai.draw_reference_images(context, layout)
@@ -68,35 +69,45 @@ class AIStudioImagePanel(bpy.types.Panel):
     def draw_mask(context, layout: bpy.types.UILayout):
         from bl_ui.properties_paint_common import UnifiedPaintPanel
         from ..utils import get_custom_icon
-        image = context.space_data.image
-        ip = image.blender_ai_studio_property
         mode = UnifiedPaintPanel.get_brush_mode(context)
         is_draw_mask = check_is_draw_mask(context)
         is_paint_2d = check_is_paint_2d(context)
 
-        layout.prop(ip, "is_mask_image")
-        layout.label(text=mode)
+        oii = context.scene.blender_ai_studio_property
+
+        box = layout.box()
+
+        # image = context.space_data.image
+        # ip = image.blender_ai_studio_property
+        # box.prop(ip, "is_mask_image")
+        # box.label(text=mode)
+        def draw_row(r):
+            if oii and oii.active_mask:
+                r.operator("bas.select_mask", text="", icon="X").index = -1
+            if oii and oii.mask_images:
+                r.operator("wm.call_menu", text="", icon="COLLAPSEMENU").name = "BAS_MT_select_mask_menu"
+
         if is_draw_mask:
             if is_paint_2d:  # 绘制笔刷大小和颜色
                 paint_settings = UnifiedPaintPanel.paint_settings(context).unified_paint_settings
                 if paint_settings:
-                    layout.prop(paint_settings, "size")
-                    layout.prop(paint_settings, "color")
-            img = get_custom_icon("img")
-            layout.template_icon(img, scale=5)
-            layout.operator("bas.apply_edit_image")
+                    box.prop(paint_settings, "size")
+                    box.prop(paint_settings, "color")
+            box.template_icon(get_custom_icon("img"), scale=6)
             if not is_paint_2d:
-                ops = layout.operator("wm.context_set_string", text="Paint 2D")
+                ops = box.operator("wm.context_set_string", text="Paint 2D")
                 ops.data_path = "space_data.ui_mode"
                 ops.value = "PAINT"
+            row = box.row(align=True)
+            row.operator("bas.apply_image_mask")
+            draw_row(row)
         else:
-            layout.operator("bas.draw_mask")
+            row = box.row(align=True)
+            row.operator("bas.draw_mask")
 
-        oii = context.scene.blender_ai_studio_property
-        for m in oii.mask_images:
-            if m.image:
-                layout.template_icon(m.image.preview.icon_id, scale=5)
-                layout.label(text=m.name)
+            draw_row(row)
+            if oii and oii.active_mask and oii.active_mask.preview:
+                box.template_icon(oii.active_mask.preview.icon_id, scale=5)
         return is_draw_mask
 
     @staticmethod

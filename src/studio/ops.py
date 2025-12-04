@@ -83,10 +83,11 @@ class FileImporter(bpy.types.Operator, ImportHelper):
         return {"FINISHED"}
 
 
-class DrawMask(bpy.types.Operator):
+class DrawImageMask(bpy.types.Operator):
     bl_idname = "bas.draw_mask"
     bl_label = "Draw Mask"
     bl_options = {"REGISTER"}
+    bl_translation_context = OPS_TCTX
 
     @classmethod
     def poll(cls, context):
@@ -95,6 +96,7 @@ class DrawMask(bpy.types.Operator):
         return image and not image.blender_ai_studio_property.is_mask_image
 
     def execute(self, context):
+        bpy.ops.ed.undo_push(message="Push Undo")
         from bl_ui.properties_paint_common import UnifiedPaintPanel
         space = context.space_data
         print(self.bl_idname)
@@ -108,7 +110,7 @@ class DrawMask(bpy.types.Operator):
         mask_image = image.copy()
         mask_image.use_fake_user = True
         mask_image.pack()
-        mask_image.preview_ensure()
+        # mask_image.preview_ensure()
         mask_image.filepath = ""
         mask_image.name = name
 
@@ -133,14 +135,14 @@ class DrawMask(bpy.types.Operator):
         paint_settings.color = [1, 0, 0]
         if space.ui_mode == "PAINT":
             space.uv_editor.show_uv = False
+        bpy.ops.ed.undo_push(message="Push Undo")
         return {"FINISHED"}
 
 
-class ApplyEditImage(bpy.types.Operator):
-    bl_idname = "bas.apply_edit_image"
-    bl_description = "Apply Edit Image"
+class ApplyImageMask(bpy.types.Operator):
+    bl_idname = "bas.apply_image_mask"
     bl_translation_context = OPS_TCTX
-    bl_label = "Apply Edit Image"
+    bl_label = "Apply Image Mask"
     bl_options = {"REGISTER"}
 
     @classmethod
@@ -153,16 +155,56 @@ class ApplyEditImage(bpy.types.Operator):
         space = context.space_data
         image = getattr(space, "image")
         print(self.bl_idname, image)
-        image.preview_ensure()
         bpy.ops.image.save("EXEC_DEFAULT", False)
+        image.preview_ensure()
         image.use_fake_user = True
         # image.pack()
         # image.filepath = ""
 
         ai = image.blender_ai_studio_property
+        oii = context.scene.blender_ai_studio_property
 
         space.image = ai.origin_image
         space.ui_mode = "VIEW"
+        for index, m in enumerate(oii.mask_images):
+            if m.image == image:
+                oii.mask_index = index
+                continue
+        return {"FINISHED"}
+
+
+class SelectMask(bpy.types.Operator):
+    bl_idname = "bas.select_mask"
+    bl_translation_context = OPS_TCTX
+    bl_label = "Select Mask"
+    bl_options = {"REGISTER"}
+    index: bpy.props.IntProperty()
+    remove: bpy.props.BoolProperty(default=False)
+
+    @classmethod
+    def description(cls, context, properties):
+        if properties.index == -1:
+            return "Not using mask"
+        return cls.bl_label
+
+    @classmethod
+    def poll(cls, context):
+        space = context.space_data
+        image = getattr(space, "image", None)
+        return image
+
+    def execute(self, context):
+        space = context.space_data
+        image = getattr(space, "image", None)
+        oii = context.scene.blender_ai_studio_property
+        print(self.bl_idname, self.index, image)
+
+        if self.remove:
+            oii.mask_images.remove(self.index)
+        else:
+            oii.mask_index = self.index
+            if space.ui_mode == "PAINT":
+                space.image = oii.active_mask
         return {"FINISHED"}
 
 
@@ -236,7 +278,7 @@ class SelectReferenceImageByImage(bpy.types.Operator):
         layout = self.layout
         layout.prop(self, "icon_scale")
         for i in bpy.data.images:
-            if i not in ai.all_references_images:
+            if i not in ai.all_references_images and not i.blender_ai_studio_property.is_mask_image:
                 if i.preview:
                     box = layout.box()
                     row = box.row()
@@ -268,8 +310,10 @@ class RemoveReferenceImage(bpy.types.Operator):
 clss = [
     AIStudioEntry,
     FileImporter,
-    DrawMask,
-    ApplyEditImage,
+
+    SelectMask,
+    DrawImageMask,
+    ApplyImageMask,
     GenerateImage,
 
     RemoveReferenceImage,

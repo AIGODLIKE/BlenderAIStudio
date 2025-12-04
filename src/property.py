@@ -7,16 +7,24 @@ class ImageItem(bpy.types.PropertyGroup):
     image: bpy.props.PointerProperty(type=bpy.types.Image, name="图片")
 
 
-class GenerateProperty(bpy.types.PropertyGroup):
+class ImageProperty(bpy.types.PropertyGroup):
+    """
+    图片属性
+    """
+    origin_image: bpy.props.PointerProperty(type=bpy.types.Image, name="原图图片")
+    is_mask_image: bpy.props.BoolProperty(name="Is Mask Image", default=False)
+
+
+class SceneProperty(bpy.types.PropertyGroup):
     """
     生成的属性
     """
     origin_image: bpy.props.PointerProperty(type=bpy.types.Image, name="原图图片")
-    reference_images: bpy.props.CollectionProperty(type=ImageItem, name="多张参考图")
+    generated_image: bpy.props.PointerProperty(type=bpy.types.Image, name="生成的图片")
+    reference_images: bpy.props.CollectionProperty(type=ImageItem, name="多张参考图", description="最大14张输入图片")
     mask_images: bpy.props.CollectionProperty(type=ImageItem, name="编辑的图片")
-    reference_image: bpy.props.PointerProperty(type=ImageItem, name="单张参考图")
-    hide_reference_images: bpy.props.BoolProperty(name="Hide Reference Images", default=True)
 
+    hide_reference: bpy.props.BoolProperty(name="Hide Reference Images", default=True)
     mask_index: bpy.props.IntProperty(name="Mask Image Index", default=0)
 
     prompt: bpy.props.StringProperty(
@@ -34,9 +42,7 @@ class GenerateProperty(bpy.types.PropertyGroup):
         default="INPUT",
     )
 
-    history: bpy.props.CollectionProperty(type=GenerateProperty)
-
-    is_mask_image: bpy.props.BoolProperty(name="Is Mask Image", default=False)
+    history: bpy.props.CollectionProperty(type=SceneProperty)
 
     @property
     def all_references_images(self) -> list[bpy.types.Image]:
@@ -47,7 +53,10 @@ class GenerateProperty(bpy.types.PropertyGroup):
         """
         获取当前使用的蒙版图片
         """
-        return self.mask_images[self.mask_index].image if self.mask_images else None
+        index = self.mask_index
+        if 0 <= index <= len(self.mask_images) - 1:
+            return self.mask_images[index].image
+        return None
 
     def draw_reference_images(self, context, layout: bpy.types.UILayout):
         box = layout.box()
@@ -60,8 +69,8 @@ class GenerateProperty(bpy.types.PropertyGroup):
         text = bpy.app.translations.pgettext_iface("Reference Images")
         rl = len(self.reference_images)
         count = f" ({rl})" if rl else ""
-        rr.prop(self, "hide_reference_images", text=f"{text}{count}",
-                icon="RIGHTARROW" if self.hide_reference_images else "DOWNARROW_HLT",
+        rr.prop(self, "hide_reference", text=f"{text}{count}",
+                icon="RIGHTARROW" if self.hide_reference else "DOWNARROW_HLT",
                 emboss=False,
                 )
         row.separator()
@@ -69,7 +78,7 @@ class GenerateProperty(bpy.types.PropertyGroup):
         rr.alignment = "RIGHT"
         rr.operator("bas.select_reference_image_by_image", text="", icon="IMAGE_REFERENCE", emboss=False)
         rr.operator("bas.select_reference_image_by_file", text="", icon="ADD", emboss=False)
-        if self.hide_reference_images:
+        if self.hide_reference:
             return
 
         column = box.column()
@@ -105,15 +114,16 @@ class GenerateProperty(bpy.types.PropertyGroup):
 
 class_list = [
     ImageItem,
-    GenerateProperty,
+    SceneProperty,
+    ImageProperty,
 ]
 register_class, unregister_class = bpy.utils.register_classes_factory(class_list)
 
 
 def register():
     register_class()
-    bpy.types.Scene.blender_ai_studio_property = bpy.props.PointerProperty(type=GenerateProperty)
-    bpy.types.Image.blender_ai_studio_property = bpy.props.PointerProperty(type=GenerateProperty)
+    bpy.types.Scene.blender_ai_studio_property = bpy.props.PointerProperty(type=SceneProperty)
+    bpy.types.Image.blender_ai_studio_property = bpy.props.PointerProperty(type=ImageProperty)
 
 
 def unregister():
