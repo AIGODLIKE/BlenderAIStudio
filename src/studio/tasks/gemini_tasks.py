@@ -104,6 +104,7 @@ class GeminiImageGenerationTask(GeminiTaskBase):
         is_color_render: bool = False,
         width: int = 1024,
         height: int = 1024,
+        aspect_ratio: str = "1:1",
         max_retries: int = 3,
     ):
         """
@@ -127,6 +128,7 @@ class GeminiImageGenerationTask(GeminiTaskBase):
         self.is_color_render = is_color_render
         self.width = width
         self.height = height
+        self.aspect_ratio = aspect_ratio
 
         # 设置总步骤数
         self.progress.total_steps = 4
@@ -165,6 +167,7 @@ class GeminiImageGenerationTask(GeminiTaskBase):
                 is_color_render=self.is_color_render,
                 width=self.width,
                 height=self.height,
+                aspect_ratio=self.aspect_ratio,
             )
             time.sleep(1)
 
@@ -537,7 +540,7 @@ class GeminiAPI:
             return f"{base_prompt}\n\nUSER PROMPT (EXECUTE THIS): {user_prompt.strip()}"
         return base_prompt
 
-    def generate_image(self, depth_image_path: str, user_prompt: str, reference_image_path: str = None, is_color_render: bool = False, width: int = 1024, height: int = 1024) -> Tuple[bytes, str]:
+    def generate_image(self, depth_image_path: str, user_prompt: str, reference_image_path: str = None, is_color_render: bool = False, width: int = 1024, height: int = 1024, aspect_ratio: str = "1:1") -> Tuple[bytes, str]:
         """
         由深度图和提示词生成图像(可选使用参考图作为 风格化/材质)
         Args:
@@ -589,7 +592,7 @@ class GeminiAPI:
                     "responseModalities": ["IMAGE"],
                     "imageConfig": {
                         "imageSize": resolution_str,
-                        "aspectRatio": "1:1",
+                        "aspectRatio": aspect_ratio,
                     },
                 },
             }

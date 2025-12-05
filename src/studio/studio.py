@@ -342,13 +342,21 @@ class NanoBanana(StudioClient):
         elif self.input_image_type == "CameraDepth":
             render_scene_depth_to_png(scene, _temp_image_path)
         reference_image = self.reference_images[0] if self.reference_images else None
+        resolution = (1024, 1024)
+        if self.resolution == "1K":
+            resolution = (1024, 1024)
+        elif self.resolution == "2K":
+            resolution = (2048, 2048)
+        elif self.resolution == "4K":
+            resolution = (4096, 4096)
         task = GeminiImageGenerationTask(
             api_key=self.api_key,
             image_path=_temp_image_path,
             reference_image_path=reference_image,
             user_prompt=self.prompt,
-            width=1024,
-            height=1024,
+            width=resolution[0],
+            height=resolution[1],
+            aspect_ratio=self.size_config,
         )
         print("渲染到：", _temp_image_path)
         # temp_image_path.close()
