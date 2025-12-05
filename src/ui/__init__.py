@@ -18,7 +18,6 @@ def draw_ai_studio_button(self, context):
 
     layout = self.layout
     col = layout.column()
-    col.alert = True
     col.operator(AIStudioEntry.bl_idname, text="", icon="LIGHT")
 
 
