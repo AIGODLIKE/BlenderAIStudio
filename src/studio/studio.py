@@ -180,13 +180,13 @@ class NanoBanana(StudioClient):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.help_url = "https://ai.google.dev/gemini-api/docs/image-generation?hl=zh-cn"
-        self.input_image = "CameraRender"
+        self.input_image_type = "CameraRender"
         self.prompt = ""
         self.reference_images: list[str] = []
         self.size_config = "Auto"
         self.resolution = "1K"
         self.meta = {
-            "input_image": {
+            "input_image_type": {
                 "display_name": "Input Image",
                 "category": "Input",
                 "type": "ENUM",
@@ -782,6 +782,48 @@ class AIStudio(AppHud):
             self.draw_panel_close_button()
             self.font_manager.pop_font()
             imgui.dummy(dummy_size)
+
+        # 设置面板
+        if True:
+            imgui.dummy(dummy_size)
+            self.font_manager.push_h2_font()
+            imgui.text("服务")
+            self.font_manager.pop_font()
+            imgui.dummy((dummy_size[0], dummy_size[1] - 8))
+
+            imgui.push_style_var_y(imgui.StyleVar.WINDOW_PADDING, 24)
+            imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R)
+            imgui.push_style_var(imgui.StyleVar.FRAME_PADDING, Const.CHILD_P)
+            imgui.push_style_var(imgui.StyleVar.FRAME_BORDER_SIZE, Const.CHILD_BS)
+            imgui.push_style_var(imgui.StyleVar.POPUP_ROUNDING, 24)
+            imgui.push_style_var_y(imgui.StyleVar.ITEM_SPACING, 15)
+
+            imgui.push_style_color(imgui.Col.FRAME_BG, Const.WINDOW_BG)
+            imgui.push_style_color(imgui.Col.POPUP_BG, Const.POPUP_BG)
+            imgui.push_style_color(imgui.Col.HEADER, Const.BUTTON)
+            imgui.push_style_color(imgui.Col.HEADER_ACTIVE, Const.BUTTON_ACTIVE)
+            imgui.push_style_color(imgui.Col.HEADER_HOVERED, Const.BUTTON_HOVERED)
+
+            for wrapper in self.clients_wrappers.values():
+                imgui.text(wrapper.display_name)
+                for widget in wrapper.get_widgets_by_category("Settings"):
+                    widget.col_bg = Const.WINDOW_BG
+                    widget.col_widget = Const.WINDOW_BG
+                    widget.display_begin(widget, self)
+                    widget.display(widget, self)
+                    widget.display_end(widget, self)
+
+            imgui.pop_style_var(6)
+            imgui.pop_style_color(5)
+
+            imgui.push_style_var_y(imgui.StyleVar.ITEM_SPACING, 26)
+            self.font_manager.push_h1_font()
+            imgui.text("免责声明")
+            imgui.text("反馈问题")
+            imgui.text("交流群")
+            self.font_manager.pop_font()
+            imgui.pop_style_var()
+
         imgui.pop_style_var(2)
 
     def draw_panel_close_button(self):
