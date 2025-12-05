@@ -4,7 +4,6 @@ from uuid import uuid4
 import bpy
 from bpy_extras.io_utils import ImportHelper
 
-from .studio import AIStudio
 from ..i18n import OPS_TCTX
 from ..utils import get_text_generic_keymap, get_text_window, get_pref
 
@@ -16,6 +15,7 @@ class AIStudioEntry(bpy.types.Operator):
     bl_label = "AI Studio Entry"
 
     def invoke(self, context, event):
+        from .studio import AIStudio
         self.area = bpy.context.area
         self.app = AIStudio()
         self.app.draw_call_add(self.app.handler_draw)
