@@ -7,6 +7,7 @@ modules = [
     "i18n",
     "studio",
     "utils",
+    "timer",
     "ui",
     "property",
     "preferences",
