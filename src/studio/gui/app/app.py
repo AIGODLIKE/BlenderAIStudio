@@ -342,9 +342,8 @@ class App:
                 self.io.add_key_event(key, is_press)
 
         # 输入
-        if system() == "Windows":
-            if IME_BUFFER.qsize() > 0:
-                self.io.add_input_characters_utf8(IME_BUFFER.get())
+        if system() == "Windows" and IME_BUFFER.qsize() > 0:
+            self.io.add_input_characters_utf8(IME_BUFFER.get())
         elif event.unicode and 0 < (char := ord(event.unicode)) < 0x10000:
             self.io.add_input_character(char)
 
