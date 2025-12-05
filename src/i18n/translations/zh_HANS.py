@@ -12,6 +12,7 @@ translations = (
     ("Size Config", "尺寸设置", PROP_TCTX),
     ("Auto", "自适应", PROP_TCTX),
     ("Resolution", "分辨率", PROP_TCTX),
+    ("UI Pre Scale Factor", "UI 预缩放倍数", PROP_TCTX),
     ("Open AI Studio", "打开 AI Studio", None),
     ("History", "历史", None),
     ("Out Resolution", "输出分辨率", None),

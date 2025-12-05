@@ -292,7 +292,7 @@ class App:
         if not DEBUG:
             return
         draw_list = imgui.get_foreground_draw_list()
-        draw_list.add_circle_filled(self.io.mouse_pos, 12, imgui.get_color_u32((0, 1, 0, 1)))
+        draw_list.add_circle_filled(self.io.mouse_pos, 2, imgui.get_color_u32((0, 1, 0, 1)))
 
     def push_event(self, event: "bpy.types.Event"):
         self.event_queue.put(Event(event))
@@ -456,11 +456,13 @@ class AppHud(App):
 
     @property
     def screen_scale(self):
-        return bpy.context.preferences.view.ui_scale
+        from ....preferences import get_pref
+
+        return bpy.context.preferences.view.ui_scale * get_pref().ui_pre_scale
 
     def update_mouse_pos(self, mpos: tuple[float, float]):
         mx = mpos[0] / self.screen_scale
-        my = (self.screen_height - 1 - mpos[1]) / self.screen_scale
+        my = self.screen_height - 1 - mpos[1] / self.screen_scale
         self.io.add_mouse_pos_event(mx, my)
 
     def update_gpu_matrix(self):
@@ -470,8 +472,11 @@ class AppHud(App):
         """
         area = bpy.context.area
         region = bpy.context.region
-        self.screen_width = region.width
-        self.screen_height = region.height
+        self.screen_width = region.width / self.screen_scale
+        self.screen_height = region.height / self.screen_scale
+        # Keep HD displaying
+        dfs = max(1, round(self.screen_scale))
+        self.io.display_framebuffer_scale = dfs, dfs
 
         w, h = area.width, area.height
         self.P = Matrix(
