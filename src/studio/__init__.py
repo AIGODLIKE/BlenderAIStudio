@@ -1,13 +1,8 @@
 import bpy
-from .ops import AIStudioEntry
-
-__all__ = [
-    "AIStudioEntry",
-]
 
 modules = [
-    "ops",
     "gui",
+    "ops",
     "ime",
 ]
 

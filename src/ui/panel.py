@@ -1,7 +1,7 @@
 import bpy
 
 from ..i18n import PANEL_TCTX
-from ..studio import AIStudioEntry
+from ..studio.ops import AIStudioEntry
 
 
 class AIStudioPanel(bpy.types.Panel):
