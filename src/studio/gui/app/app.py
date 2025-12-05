@@ -173,10 +173,10 @@ class App:
 
     def draw_call_remove(self, cb):
         self.callbacks.pop(cb, None)
-    
+
     def should_exit(self):
         return self._should_exit
-    
+
     def is_closed(self):
         return self._is_closed
 
@@ -454,8 +454,14 @@ class AppHud(App):
         super().__init__(*args, **kwargs)
         self.io.display_framebuffer_scale = 1, 1
 
+    @property
+    def screen_scale(self):
+        return bpy.context.preferences.view.ui_scale
+
     def update_mouse_pos(self, mpos: tuple[float, float]):
-        self.io.add_mouse_pos_event(mpos[0], self.screen_height - 1 - mpos[1])
+        mx = mpos[0] / self.screen_scale
+        my = (self.screen_height - 1 - mpos[1]) / self.screen_scale
+        self.io.add_mouse_pos_event(mx, my)
 
     def update_gpu_matrix(self):
         """
@@ -482,8 +488,8 @@ class AppHud(App):
         # self.P = rv3d.window_matrix
         self.M = Matrix(
             (
-                (1, 0, 0, 0),
-                (0, -1, 0, region.height),
+                (1 * self.screen_scale, 0, 0, 0),
+                (0, -1 * self.screen_scale, 0, region.height),
                 (0, 0, 1, 0),
                 (0, 0, 0, 1),
             )
