@@ -1,14 +1,25 @@
 import bpy
 import webbrowser
+import tempfile
 from enum import Enum
+from pathlib import Path
 from typing import Iterable
 from .gui.texture import TexturePool
 from .gui.app.app import AppHud
 from .gui.app.renderer import imgui
 from .gui.app.style import Const
+from .tasks import (
+    Task,
+    TaskResult,
+    TaskState,
+    TaskManager,
+    GeminiImageGenerationTask,
+)
 from .wrapper import with_child, BaseAdapter, WidgetDescriptor, DescriptorFactory
 from ..i18n import PROP_TCTX
 from ..preferences import get_pref
+from ..utils.render import render_scene_to_png, render_scene_depth_to_png
+from ..timer import Timer
 
 
 def get_tool_panel_width():
@@ -151,6 +162,9 @@ class StudioClient(BaseAdapter):
     def __init__(self) -> None:
         self._name = self.VENDOR
         self.help_url = ""
+        self.task_manager = TaskManager.get_instance()
+        self.task_id: str = ""
+        self.is_task_submitting = False
 
     def get_ctxt(self) -> str:
         return PROP_TCTX
@@ -172,6 +186,37 @@ class StudioClient(BaseAdapter):
 
     def draw_history_panel(self):
         pass
+
+    def new_generate_task(self):
+        pass
+
+    def query_task_status(self) -> dict:
+        if not self.task_id:
+            return {}
+        if not (task := self.task_manager.get_task(self.task_id)):
+            return {}
+        return task.get_info()
+
+    def query_task_result(self):
+        if not self.task_id:
+            return None
+        # 无任务
+        if not (task := self.task_manager.get_task(self.task_id)):
+            return None
+        # 未完成
+        if not task.is_finished():
+            return
+        # 无结果
+        if not (result := task.result):
+            return None
+        # 执行失败
+        if not result.is_success():
+            error_msg = result.error_message
+            print(f"任务失败: {error_msg}")
+            return None
+        image_data = result.get_data()
+        print("任务完成！")
+        return image_data
 
 
 class NanoBanana(StudioClient):
@@ -273,6 +318,94 @@ class NanoBanana(StudioClient):
             replace_image(self, prop, index)
         elif action == "delete_image":
             delete_image(self, prop, index)
+
+    def new_generate_task(self):
+        if self.is_task_submitting:
+            print("有任务正在提交，请稍后")
+            return
+        self.is_task_submitting = True
+        Timer.put(self.job)
+
+    def job(self):
+        self.is_task_submitting = False
+        # 1. 创建任务
+        path_dir = Path.home().joinpath("Desktop/OutputImage/AIStudio")
+        path_dir.mkdir(parents=True, exist_ok=True)
+        temp_image_path = path_dir.joinpath("Depth.png")
+        _temp_image_path = temp_image_path.as_posix()
+        # temp_image_path = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+        # _temp_image_path = temp_image_path.name
+        # 渲染图片
+        scene = bpy.context.scene
+        if self.input_image_type == "CameraRender":
+            render_scene_to_png(scene, _temp_image_path)
+        elif self.input_image_type == "CameraDepth":
+            render_scene_depth_to_png(scene, _temp_image_path)
+        reference_image = self.reference_images[0] if self.reference_images else None
+        task = GeminiImageGenerationTask(
+            api_key=self.api_key,
+            image_path=_temp_image_path,
+            reference_image_path=reference_image,
+            user_prompt=self.prompt,
+            width=1024,
+            height=1024,
+        )
+        print("渲染到：", _temp_image_path)
+        # temp_image_path.close()
+        # if Path(_temp_image_path).exists():
+        #     Path(_temp_image_path).unlink()
+
+        # 2. 注册回调
+        def on_state_changed(event_data):
+            _task: Task = event_data["task"]
+            old_state: TaskState = event_data["old_state"]
+            new_state: TaskState = event_data["new_state"]
+            print(f"状态改变: {old_state.value} -> {new_state.value}")
+
+        def on_progress(event_data):
+            {
+                "current_step": 2,
+                "total_steps": 4,
+                "percentage": 0.5,
+                "message": "正在调用 API...",
+                "details": {},
+            }
+            _task: Task = event_data["task"]
+            progress: dict = event_data["progress"]
+            percent = progress["percentage"]
+            message = progress["message"]
+            print(f"进度: {percent * 100}% - {message}")
+
+        def on_completed(event_data):
+            # result_data = {
+            #     "image_data": b"",
+            #     "mime_type": "image/png",
+            #     "width": 1024,
+            #     "height": 1024,
+            # }
+            _task: Task = event_data["task"]
+            result: TaskResult = event_data["result"]
+            result_data: dict = result.data
+            # 存储结果
+            save_file = path_dir.joinpath("Output.png")
+            save_file.write_bytes(result_data["image_data"])
+            print(f"任务完成: {_task.task_id}")
+            # TODO 存储历史记录
+
+        def on_failed(event_data):
+            _task: Task = event_data["task"]
+            result: TaskResult = event_data["result"]
+            if not result.success:
+                print(result.error)
+
+        task.register_callback("state_changed", on_state_changed)
+        task.register_callback("progress_updated", on_progress)
+        task.register_callback("completed", on_completed)
+        task.register_callback("failed", on_failed)
+        print(f"任务提交: {task.task_id}")
+
+        # 3. 提交到管理器
+        self.task_id = self.task_manager.submit_task(task)
 
 
 def upload_image(client: StudioClient, prop: str):
@@ -706,10 +839,27 @@ class AIStudio(AppHud):
                 imgui.push_style_color(imgui.Col.BUTTON, Const.SLIDER_NORMAL)
 
                 self.font_manager.push_h1_font()
+                client = self.clients.get(self.active_client, StudioClient())
+                is_rendering = False
                 label = "  开始AI渲染"
+                if client.is_task_submitting:
+                    label = "  任务提交中"
+                status = client.query_task_status()
+                # "running", "processing"
+                task_state: TaskState = status.get("state", "")
+                if task_state == "running":
+                    is_rendering = True
+                    label = "  正在AI渲染"
+                if is_rendering:
+                    imgui.push_style_color(imgui.Col.BUTTON, (255 / 255, 141 / 255, 26 / 255, 1))
+                    imgui.push_style_color(imgui.Col.BUTTON_HOVERED, (255 / 255, 87 / 255, 51 / 255, 1))
+
                 label_size = imgui.calc_text_size(label)
                 if imgui.button("##开始AI渲染", (full_width, gen_btn_height)):
                     print("开始AI渲染")
+                    client.new_generate_task()
+                if is_rendering:
+                    imgui.pop_style_color(2)
                 pmin = imgui.get_item_rect_min()
                 pmax = imgui.get_item_rect_max()
                 inner_width = 30 + label_size[0]
