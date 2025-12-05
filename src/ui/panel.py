@@ -113,6 +113,7 @@ class AIStudioImagePanel(bpy.types.Panel):
             SelectMask.draw_select_mask(context, box)
         else:
             row = box.row(align=True)
+            row.scale_y = 2
             row.operator("bas.draw_mask")
 
             draw_row(row)
