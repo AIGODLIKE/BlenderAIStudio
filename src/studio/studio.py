@@ -319,6 +319,22 @@ class NanoBanana(StudioClient):
         elif action == "delete_image":
             delete_image(self, prop, index)
 
+    @staticmethod
+    def calc_appropriate_aspect_ratio(width: int, height: int) -> str:
+        aspect_ratio_presets = {
+            "1:1": 1 / 1,
+            "9:16": 9 / 16,
+            "16:9": 16 / 9,
+            "3:4": 3 / 4,
+            "4:3": 4 / 3,
+            "3:2": 3 / 2,
+            "2:3": 2 / 3,
+            "5:4": 5 / 4,
+            "4:5": 4 / 5,
+            "21:9": 21 / 9,
+        }
+        return min(aspect_ratio_presets, key=lambda k: abs(aspect_ratio_presets[k] - width / height))
+
     def new_generate_task(self):
         if self.is_task_submitting:
             print("有任务正在提交，请稍后")
@@ -349,6 +365,11 @@ class NanoBanana(StudioClient):
             resolution = (2048, 2048)
         elif self.resolution == "4K":
             resolution = (4096, 4096)
+        size_config = self.size_config
+        if size_config == "Auto":
+            width = bpy.context.scene.render.resolution_x
+            height = bpy.context.scene.render.resolution_y
+            size_config = self.calc_appropriate_aspect_ratio(width, height)
         task = GeminiImageGenerationTask(
             api_key=self.api_key,
             image_path=_temp_image_path,
