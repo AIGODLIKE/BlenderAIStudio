@@ -57,18 +57,23 @@ class AIStudioImagePanel(bpy.types.Panel):
         self.draw_image_info(context, layout)
 
         box = layout.box()
-        box.label(text="Prompt", icon='TEXT',text_ctxt=PROP_TCTX)
-        box.prop(ai, "prompt", text="")
+        box.label(text="Prompt", icon='TEXT', text_ctxt=PROP_TCTX)
+        row = box.row(align=True)
+        row.prop(ai, "prompt", text="")
+        row.operator("bas.prompt_edit", text="", icon="FILE_TEXT")
 
         ai.draw_reference_images(context, layout)
         self.draw_mask(context, layout)
 
         layout.operator("bas.generate_image")
+        layout.operator("bas.rerender_image")
+        layout.operator("bas.finalize_composite")
 
     @staticmethod
     def draw_mask(context, layout: bpy.types.UILayout):
         from bl_ui.properties_paint_common import UnifiedPaintPanel
         from ..utils import get_custom_icon
+        from ..studio.ops import SelectMask
         mode = UnifiedPaintPanel.get_brush_mode(context)
         is_draw_mask = check_is_draw_mask(context)
         is_paint_2d = check_is_paint_2d(context)
@@ -83,8 +88,12 @@ class AIStudioImagePanel(bpy.types.Panel):
         # box.label(text=mode)
         def draw_row(r):
             if oii and oii.active_mask:
-                r.operator("bas.select_mask", text="", icon="X").index = -1
+                rr = r.row(align=True)
+                rr.operator_context = "EXEC_DEFAULT"
+                rr.operator("bas.select_mask", text="", icon="X").index = -1
             if oii and oii.mask_images:
+                r.operator_context = "INVOKE_DEFAULT"
+                # r.operator("bas.select_mask", text="", icon="COLLAPSEMENU")
                 r.operator("wm.call_menu", text="", icon="COLLAPSEMENU").name = "BAS_MT_select_mask_menu"
 
         if is_draw_mask:
@@ -101,6 +110,7 @@ class AIStudioImagePanel(bpy.types.Panel):
             row = box.row(align=True)
             row.operator("bas.apply_image_mask")
             draw_row(row)
+            SelectMask.draw_select_mask(context, box)
         else:
             row = box.row(align=True)
             row.operator("bas.draw_mask")

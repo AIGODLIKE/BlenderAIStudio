@@ -6,6 +6,7 @@ from bpy_extras.io_utils import ImportHelper
 
 from .studio import AIStudio
 from ..i18n import OPS_TCTX
+from ..utils import get_text_generic_keymap, get_text_window, get_pref
 
 
 class AIStudioEntry(bpy.types.Operator):
@@ -158,6 +159,8 @@ class ApplyImageMask(bpy.types.Operator):
         bpy.ops.image.save("EXEC_DEFAULT", False)
         image.preview_ensure()
         image.use_fake_user = True
+        if image.preview:
+            image.preview.reload()
         # image.pack()
         # image.filepath = ""
 
@@ -193,6 +196,9 @@ class SelectMask(bpy.types.Operator):
         image = getattr(space, "image", None)
         return image
 
+    def invoke(self, context, event):
+        return context.window_manager.invoke_popup(self)
+
     def execute(self, context):
         space = context.space_data
         image = getattr(space, "image", None)
@@ -207,16 +213,29 @@ class SelectMask(bpy.types.Operator):
                 space.image = oii.active_mask
         return {"FINISHED"}
 
+    def draw(self, context):
+        layout = self.layout
+        self.draw_select_mask(context, layout)
 
-class GenerateImage(bpy.types.Operator):
-    bl_idname = "bas.generate_image"
-    bl_description = "Generate Image"
-    bl_translation_context = OPS_TCTX
-    bl_label = "Generate Image"
-    bl_options = {"REGISTER"}
-
-    def execute(self, context):
-        return {"FINISHED"}
+    @staticmethod
+    def draw_select_mask(context, layout, use_box=False):
+        column = layout.column(align=True)
+        column.operator_context = "EXEC_DEFAULT"
+        # column.label(text=SelectMask.bl_label)
+        oii = context.scene.blender_ai_studio_property
+        for index, m in enumerate(oii.mask_images):
+            if m.image and m.image.preview:
+                box = column.box() if use_box else column.column(align=True)
+                box.template_icon(m.image.preview.icon_id, scale=6)
+                row = box.row(align=True)
+                ops = row.operator("bas.select_mask", text=m.image.name, icon="RESTRICT_SELECT_OFF", translate=False)
+                ops.index = index
+                ops.remove = False
+                ops = row.operator("bas.select_mask", text="", icon="TRASH")
+                ops.index = index
+                ops.remove = True
+        if len(oii.mask_images) == 0:
+            column.label(text="No mask available, please draw")
 
 
 def add_reference_image(context, image, image_name=False):
@@ -285,11 +304,57 @@ class SelectReferenceImageByImage(bpy.types.Operator):
                     row.operator_context = "EXEC_DEFAULT"
                     row.context_pointer_set("image", i)
                     row.template_icon(i.preview.icon_id, scale=self.icon_scale)
-                    col = row.column(align=True)
+                    col = row.column()
                     col.operator(self.bl_idname, text=i.name, translate=False, emboss=False)
                     col.operator(self.bl_idname, icon="RESTRICT_SELECT_OFF",
                                  text=bpy.app.translations.pgettext_iface("Select Reference"),
                                  )
+                else:
+                    i.preview_ensure()
+
+
+class ReplaceReferenceImage(bpy.types.Operator):
+    bl_idname = "bas.replace_reference_image"
+    bl_label = "Replace References"
+    bl_translation_context = OPS_TCTX
+    bl_options = {"REGISTER"}
+
+    icon_scale: bpy.props.FloatProperty(default=4, min=0.2, max=10, name="Icon Scale")
+    index: bpy.props.IntProperty()
+
+    def invoke(self, context, event):
+        for i in bpy.data.images:
+            if not i.preview:
+                i.preview_ensure()
+        wm = context.window_manager
+        return wm.invoke_props_dialog(**{'operator': self, 'width': 300})
+
+    def execute(self, context):
+        image = getattr(context, "image", None)
+        if image:
+            oii = context.scene.blender_ai_studio_property
+            oii.reference_images[self.index].image = image
+            print(self.bl_idname, image, self.index)
+            return {"FINISHED"}
+        return {"CANCELLED"}
+
+    def draw(self, context):
+        ai = context.scene.blender_ai_studio_property
+        layout = self.layout
+        layout.prop(self, "icon_scale")
+        for i in bpy.data.images:
+            if i not in ai.all_references_images and not i.blender_ai_studio_property.is_mask_image:
+                if i.preview:
+                    box = layout.box()
+                    row = box.row()
+                    row.operator_context = "EXEC_DEFAULT"
+                    row.context_pointer_set("image", i)
+                    row.template_icon(i.preview.icon_id, scale=self.icon_scale)
+                    col = row.column()
+                    col.operator(self.bl_idname, text=i.name, translate=False, emboss=False).index = self.index
+                    col.operator(self.bl_idname, icon="RESTRICT_SELECT_OFF",
+                                 text=bpy.app.translations.pgettext_iface("Replace References"),
+                                 ).index = self.index
                 else:
                     i.preview_ensure()
 
@@ -307,6 +372,130 @@ class RemoveReferenceImage(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class GenerateImage(bpy.types.Operator):
+    bl_idname = "bas.generate_image"
+    bl_description = "Generate Image"
+    bl_translation_context = OPS_TCTX
+    bl_label = "Generate Image"
+    bl_options = {"REGISTER"}
+
+    def execute(self, context):
+        print(self.bl_idname)
+        return {"FINISHED"}
+
+
+class ReRenderImage(bpy.types.Operator):
+    bl_idname = "bas.rerender_image"
+    bl_description = "ReRender Image"
+    bl_translation_context = OPS_TCTX
+    bl_label = "ReRender Image"
+    bl_options = {"REGISTER"}
+
+    def execute(self, context):
+        print(self.bl_idname)
+        return {"FINISHED"}
+
+
+class FinalizeCompositeImage(bpy.types.Operator):
+    bl_idname = "bas.finalize_composite"
+    bl_description = "Finalize Composite"
+    bl_translation_context = OPS_TCTX
+    bl_label = "Finalize Composite"
+    bl_options = {"REGISTER"}
+
+    def execute(self, context):
+        print(self.bl_idname)
+        return {"FINISHED"}
+
+
+def get_text_data(context) -> bpy.types.Text:
+    """
+    获取脚本数据块
+
+    :param context:
+    :return:
+    """
+    prompt = context.scene.blender_ai_studio_property.prompt
+
+    name = "Prompt"
+    text = bpy.data.texts.get(name)
+    if text is None:
+        text = bpy.data.texts.new(name)
+    text.clear()
+    text.write(prompt)
+    text.blender_ai_studio_prompt_hash = str(hash(prompt))
+    return text
+
+
+class PromptEdit(bpy.types.Operator):
+    bl_idname = 'bas.prompt_edit'
+    bl_label = 'Prompt Edit'
+
+    @staticmethod
+    def add_save_key(context):
+        keymap = get_text_generic_keymap(context)
+        if keymap is not None:
+            keymap.keymap_items.new(PromptSave.bl_idname, type="S", value="PRESS", ctrl=True)
+
+    def execute(self, context):
+        get_text_window(context, get_text_data(context))
+        self.add_save_key(context)
+        return {'FINISHED'}
+
+
+def draw_save_script_button(self, context):
+    layout = self.layout
+
+    text = context.space_data.text
+    prompt = context.scene.blender_ai_studio_property.prompt
+
+    # layout.prop(text, "blender_ai_studio_prompt_hash")
+    # layout.label(text=str(hash(prompt)))
+    if getattr(text, "blender_ai_studio_prompt_hash", False) == str(hash(prompt)):
+        row = layout.row()
+        row.alert = True
+        text = bpy.app.translations.pgettext("Save Prompt Ctrl + S")
+        row.operator(PromptSave.bl_idname, text=text)
+
+
+class PromptSave(bpy.types.Operator):
+    bl_label = 'Save script'
+    bl_idname = 'bas.prompt_save'
+
+    @classmethod
+    def poll(cls, context):
+        pref = get_pref()
+        prompt = context.scene.blender_ai_studio_property.prompt
+        h = context.space_data.text.blender_ai_studio_prompt_hash
+        hash_ok = h == str(hash(prompt))
+        return hash_ok
+
+    @staticmethod
+    def register_ui():
+        bpy.types.TEXT_HT_header.append(draw_save_script_button)
+
+    @staticmethod
+    def unregister_ui():
+        bpy.types.TEXT_HT_header.remove(draw_save_script_button)
+
+    def remove_save_key(self, context):
+        keymap = get_text_generic_keymap(context)
+        if keymap is not None:
+            while True:
+                ops = keymap.keymap_items.find_from_operator(self.bl_idname)
+                if ops is None:
+                    break
+                keymap.keymap_items.remove(ops)
+
+    def execute(self, context):
+        text = context.space_data.text
+        context.scene.blender_ai_studio_property.prompt = text.as_string()
+        bpy.data.texts.remove(text)
+        self.remove_save_key(context)
+        bpy.ops.wm.window_close()
+        return {'FINISHED'}
+
+
 clss = [
     AIStudioEntry,
     FileImporter,
@@ -314,11 +503,18 @@ clss = [
     SelectMask,
     DrawImageMask,
     ApplyImageMask,
-    GenerateImage,
 
     RemoveReferenceImage,
     SelectReferenceImageByFile,
     SelectReferenceImageByImage,
+    ReplaceReferenceImage,
+
+    GenerateImage,
+    ReRenderImage,
+    FinalizeCompositeImage,
+
+    PromptEdit,
+    PromptSave,
 ]
 
 reg, unreg = bpy.utils.register_classes_factory(clss)
@@ -326,7 +522,9 @@ reg, unreg = bpy.utils.register_classes_factory(clss)
 
 def register():
     reg()
+    PromptSave.register_ui()
 
 
 def unregister():
     unreg()
+    PromptSave.unregister_ui()

@@ -68,12 +68,15 @@ class SceneProperty(bpy.types.PropertyGroup):
         rr.alignment = "LEFT"
         text = bpy.app.translations.pgettext_iface("Reference Images")
         rl = len(self.reference_images)
+        alert = rl > 12
         count = f" ({rl})" if rl else ""
+        rr.alert = alert
         rr.prop(self, "hide_reference", text=f"{text}{count}",
                 icon="RIGHTARROW" if self.hide_reference else "DOWNARROW_HLT",
                 emboss=False,
                 )
-        row.separator()
+        if alert:
+            rr.label(text="", icon="ERROR")
         rr = row.row()
         rr.alignment = "RIGHT"
         rr.operator("bas.select_reference_image_by_image", text="", icon="IMAGE_REFERENCE", emboss=False)
@@ -92,22 +95,38 @@ class SceneProperty(bpy.types.PropertyGroup):
         for i in bpy.context.scene.blender_ai_studio_property.mask_images:print(i)
         """
 
-        column = box.column(align=True)
+        column = box.column()
         is_small_width = context.region.width < 200
+        if alert:
+            col = column.column()
+            col.alert = True
+            col.label(text="Too many reference images, please remove some")
+            col.label(text="Up to 12 images can be selected")
+        # column.prop(self, "scale")
         for i, item in enumerate(self.reference_images):
             if item.image:
-                ib = column.box()
                 if is_small_width:
-                    ly = ib.column(align=True)
+                    ly = column.column(align=True)
                 else:
-                    ly = ib.split(align=True, factor=0.7)
-                ly.template_icon(item.image.preview.icon_id, scale=5)
-                col = ly.column(align=True)
-                if not is_small_width:
-                    col.label(text=item.image.name)
-                col.operator("bas.remove_reference_image", text="", icon="X", emboss=False).index = i
+                    ly = column.row(align=True)
+                ly.box().template_icon(item.image.preview.icon_id, scale=5)
+
+                if is_small_width:
+                    lay = ly.row(align=True)
+                    # lay.scale_x = self.scale
+                else:
+                    lay = ly.column(align=True)
+                    # lay.scale_y = self.scale
+                lay.operator("bas.remove_reference_image", text="", icon="X",
+                             # emboss=False
+                             ).index = i
+                lay.operator("bas.replace_reference_image", text="", icon="FILE_REFRESH",
+                             # emboss=False
+                             ).index = i
         if rl == 0:
             box.label(text="Click top right ops to reference")
+
+    scale: bpy.props.FloatProperty(default=2.75)
 
     def draw_history(self, layout: bpy.types.UILayout):
         ...
@@ -125,9 +144,11 @@ def register():
     register_class()
     bpy.types.Scene.blender_ai_studio_property = bpy.props.PointerProperty(type=SceneProperty)
     bpy.types.Image.blender_ai_studio_property = bpy.props.PointerProperty(type=ImageProperty)
+    bpy.types.Text.blender_ai_studio_prompt_hash = bpy.props.StringProperty()
 
 
 def unregister():
     del bpy.types.Scene.blender_ai_studio_property
     del bpy.types.Image.blender_ai_studio_property
+    del bpy.types.Text.blender_ai_studio_prompt_hash
     unregister_class()
