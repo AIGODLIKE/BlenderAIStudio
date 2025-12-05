@@ -377,7 +377,7 @@ class NanoBanana(StudioClient):
             user_prompt=self.prompt,
             width=resolution[0],
             height=resolution[1],
-            aspect_ratio=self.size_config,
+            aspect_ratio=size_config,
         )
         print("渲染到：", _temp_image_path)
         # temp_image_path.close()
