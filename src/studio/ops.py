@@ -407,6 +407,7 @@ class ApplyAiEditImage(bpy.types.Operator):
     bl_translation_context = OPS_TCTX
     bl_label = "Apply AI Edit"
     bl_options = {"REGISTER"}
+    running_operator: bpy.props.StringProperty(default=bl_label, options={"HIDDEN", "SKIP_SAVE"})
 
     def execute(self, context):
         print(self.bl_idname)
@@ -425,9 +426,9 @@ class ApplyAiEditImage(bpy.types.Operator):
             self.report({'ERROR'}, "NANO API key not set, Enter it in addon preferences")
             return {'CANCELLED'}
 
-        oii.running_operator = self.bl_label
+        oii.running_operator = self.running_operator
         oii.origin_image = image
-
+        generate_image_name = f"{image.name}_ai_edit_res"
         w, h = image.size
         if oii.resolution == "1K":
             w, h = (1024, 1024)
@@ -515,7 +516,7 @@ class ApplyAiEditImage(bpy.types.Operator):
             result: TaskResult = event_data["result"]
             result_data: dict = result.data
             # 存储结果
-            save_file = Path(temp_folder).joinpath("Output.png")
+            save_file = Path(temp_folder).joinpath(f"{generate_image_name}_Output.png")
             save_file.write_bytes(result_data["image_data"])
             text = f"任务完成: {_task.task_id}"
             print(text, save_file)
@@ -525,12 +526,13 @@ class ApplyAiEditImage(bpy.types.Operator):
             if gi := bpy.data.images.load(str(save_file), check_existing=False):
                 oii.generated_image = gi
                 gi.preview_ensure()
-
+                gi.name = generate_image_name
                 space_data = bpy.context.space_data
                 if getattr(space_data, "image", None):
                     space_data.image = gi
             else:
-                oii.running_message = "Unable to load generated image!" + " " + str(save_file)
+                ut = bpy.app.translations.pgettext("Unable to load generated image!")
+                oii.running_message = ut + " " + str(save_file)
             oii.save_to_history()
 
         def on_failed(event_data):
@@ -565,9 +567,8 @@ class FinalizeCompositeImage(bpy.types.Operator):
         oii = context.scene.blender_ai_studio_property
         oii.prompt = "[FINALIZE_COMPOSITE]"
 
-        oii.running_operator = self.bl_label
-
         self.report({'INFO'}, "Finalizing composite - unifying colors, contrast, lighting...")
+        bpy.ops.bas.apply_ai_edit_image(running_operator=self.bl_label)
         return {"FINISHED"}
 
 
@@ -581,7 +582,6 @@ class ReRenderImage(bpy.types.Operator):
     def execute(self, context):
         print(self.bl_idname)
         oii = context.scene.blender_ai_studio_property
-        oii.running_operator = self.bl_label
 
         image = context.space_data.image
 
@@ -595,7 +595,7 @@ class ReRenderImage(bpy.types.Operator):
         last = oii.history[-1]
         oii.prompt = last.prompt
 
-        bpy.ops.bas.apply_ai_edit_image()
+        bpy.ops.bas.apply_ai_edit_image(running_operator=self.bl_label)
         self.report({'INFO'}, "Re-rendering with previous settings...")
         return {"FINISHED"}
 
@@ -713,6 +713,37 @@ class ViewImage(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class RestoreHistory(bpy.types.Operator):
+    bl_idname = 'bas.restore_history'
+    bl_label = 'Restore History'
+    bl_translation_context = OPS_TCTX
+    bl_options = {"REGISTER"}
+    bl_description = "Restore ai edit history"
+
+    @classmethod
+    def poll(cls, context):
+        return hasattr(context, "history")
+
+    def execute(self, context):
+        history = getattr(context, "history")
+        print(self.bl_idname, history)
+        return {"FINISHED"}
+
+
+class ReportInfo(bpy.types.Operator):
+    bl_idname = 'bas.report_info'
+    bl_label = 'Report Info'
+    bl_translation_context = OPS_TCTX
+    bl_options = {"REGISTER"}
+    mode: bpy.props.StringProperty()
+    message: bpy.props.StringProperty()
+
+    def execute(self, context):
+        print(self.bl_idname, self.mode, self.message)
+        self.report({self.mode}, self.message)
+        return {"FINISHED"}
+
+
 clss = [
     AIStudioEntry,
     FileImporter,
@@ -734,6 +765,9 @@ clss = [
     PromptSave,
 
     ViewImage,
+    RestoreHistory,
+
+    ReportInfo,
 ]
 
 reg, unreg = bpy.utils.register_classes_factory(clss)

@@ -54,22 +54,31 @@ class AIStudioImagePanel(bpy.types.Panel):
             return
 
         self.draw_image_info(context, layout)
-
-        box = layout.box()
-        box.label(text="AI Edit Prompt", icon='TEXT')
-        row = box.row(align=True)
+        is_not_run = ai.running_state != "running"
+        column = layout.column(align=True)
+        column.enabled = is_not_run  # 在运行中时不允许修改
+        bb = column.box()
+        bb.label(text="Out Resolution:")
+        bb.prop(ai, "resolution", text="")
+        bb = column.box()
+        bb.label(text="AI Edit Prompt", icon='TEXT')
+        row = bb.row(align=True)
         row.prop(ai, "prompt", text="")
         row.operator("bas.prompt_edit", text="", icon="FILE_TEXT")
 
         col = layout.column(align=True)
-        col.enabled = ai.running_operator != "running"  # 在运行中时不允许修改
+        col.enabled = is_not_run  # 在运行中时不允许修改
         ai.draw_reference_images(context, col)
         col.separator(factor=1.5)
         self.draw_mask(context, col)
-        col.separator(factor=1.5)
-        self.draw_ai_layout(context, col)
+        col.separator(factor=3)
+        self.draw_ai_edit_layout(context, col)
+        if not is_not_run:
+            co = col.column(align=True)
+            co.alert = True
+            co.label(text="During task execution, parameters cannot be modified")
 
-        layout.separator(factor=1.5)
+        layout.separator(factor=1)
         self.draw_state(context, layout)
 
     @staticmethod
@@ -91,6 +100,7 @@ class AIStudioImagePanel(bpy.types.Panel):
                 r.operator_context = "INVOKE_DEFAULT"
                 r.operator("wm.call_menu", text="", icon="COLLAPSEMENU").name = "BAS_MT_select_mask_menu"
 
+        scale_y = 1.2
         if is_draw_mask:
             box = layout.box()
             if is_paint_2d:  # 绘制笔刷大小和颜色
@@ -104,7 +114,7 @@ class AIStudioImagePanel(bpy.types.Panel):
                 ops.data_path = "space_data.ui_mode"
                 ops.value = "PAINT"
             row = box.row(align=True)
-            row.scale_y = 2
+            row.scale_y = scale_y
             row.operator("bas.apply_image_mask")
             draw_row(row)
             SelectMask.draw_select_mask(context, box.box())
@@ -118,7 +128,7 @@ class AIStudioImagePanel(bpy.types.Panel):
             if ai.active_mask:
                 args["text"] = "Redraw mask"
             row = box.row(align=True)
-            row.scale_y = 2
+            row.scale_y = scale_y
             row.operator("bas.draw_mask", icon="BRUSH_DATA", **args)
 
             draw_row(row)
@@ -136,18 +146,16 @@ class AIStudioImagePanel(bpy.types.Panel):
         box = layout.box()
         box.label(text=f"{image.name}")
         box.label(text=f"{bpy.app.translations.pgettext_iface('Image size')}(px): {w} x {h}")
-        box.label(text="Out Resolution:")
-        box.prop(ai, "resolution", text="")
         if w == 0 and h == 0:
             box.alert = True
             box.label(text="The image is empty", icon="ERROR")
 
     @staticmethod
-    def draw_ai_layout(context, layout: bpy.types.UILayout):
+    def draw_ai_edit_layout(context, layout: bpy.types.UILayout):
         ai = context.scene.blender_ai_studio_property
 
         col = layout.column(align=True)
-        args = {}  # 编辑图片操作符的参数
+        args = {"icon": "SHADERFX"}  # 编辑图片操作符的参数
         ril = len(ai.reference_images)  # 参考图片数量
         if ril != 0:
             ...
@@ -155,9 +163,9 @@ class AIStudioImagePanel(bpy.types.Panel):
             args["text"] = "Please enter the prompt"
             args["icon"] = "ERROR"
             col.enabled = False
-        col.scale_y = 2
-        col.operator("bas.apply_ai_edit_image", **args)
 
+        col.scale_y = 1.5
+        col.operator("bas.apply_ai_edit_image", **args)
         layout.separator(factor=2)
         column = layout.column(align=True)
         column.scale_y = 1.5
@@ -194,33 +202,26 @@ class AIStudioImagePanel(bpy.types.Panel):
 
 class AIStudioHistoryPanel(bpy.types.Panel):
     bl_idname = "SDN_PT_BLENDER_AI_STUDIO_PT_History"
-    bl_label = "History"
-    bl_description = "生成历史"
+    bl_label = "Generate History"
+    bl_description = "Generate History"
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'UI'
     bl_category = "AIStudio"
 
-    # bl_options = {"HIDE_HEADER", "INSTANCED"}
+    bl_options = {"DEFAULT_CLOSED"}
 
     @classmethod
     def poll(cls, context):
         space_data = context.space_data
         return space_data and space_data.image is not None
 
-    def draw_header(self, context):
-        oii = context.scene.blender_ai_studio_property
-        self.layout.label(text=f"{len(oii.history)}")
+    # def draw_header(self, context):
+    #     oii = context.scene.blender_ai_studio_property
+    #     text = bpy.app.translations.pgettext("History")
+    #     self.layout.label(text=f"{text} {len(oii.history)}")
 
     def draw(self, context):
         oii = context.scene.blender_ai_studio_property
         layout = self.layout
-        for h in oii.history:
-            box = layout.box()
-            box.label(text=h.name)
-            box.label(text=h.prompt)
-            # box.label(text=str(len(h.mask_images)))
-            # box.label(text=str(len(h.reference_images)))
-            # box.label(text=str(len(h.reference_images)))
-            box.label(text=str(h.origin_image))
-            box.label(text=str(h.generated_image))
-            # box.operator("bas.rerender_history", text="", icon="FILE_REFRESH").index = h.index
+        for h in reversed(oii.history[:]):
+            h.draw_history(layout)

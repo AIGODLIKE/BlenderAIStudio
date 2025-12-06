@@ -26,7 +26,8 @@ class SceneProperty(bpy.types.PropertyGroup):
     reference_images: bpy.props.CollectionProperty(type=ImageItem, name="多张参考图", description="最大14张输入图片")
     mask_images: bpy.props.CollectionProperty(type=ImageItem, name="编辑的图片")
 
-    hide_reference: bpy.props.BoolProperty(name="Hide Reference Images", default=True)
+    expand_ui: bpy.props.BoolProperty(name="Expand Ui Images", default=True,
+                                      description="是否展开图片,在显示参考图和历史记录时使用")
     mask_index: bpy.props.IntProperty(name="Mask Image Index", default=0)
 
     prompt: bpy.props.StringProperty(
@@ -48,6 +49,11 @@ class SceneProperty(bpy.types.PropertyGroup):
     running_operator: bpy.props.StringProperty()
     running_state: bpy.props.StringProperty()
     running_message: bpy.props.StringProperty()
+
+    def clear_running_state(self):
+        self.running_operator = ""
+        self.running_message = ""
+        self.running_state = ""
 
     def save_to_history(self):
         nh = self.history.add()
@@ -94,8 +100,8 @@ class SceneProperty(bpy.types.PropertyGroup):
         alert = rl > 12
         count = f" ({rl})" if rl else ""
         rr.alert = alert
-        rr.prop(self, "hide_reference", text=f"{text}{count}",
-                icon="RIGHTARROW" if self.hide_reference else "DOWNARROW_HLT",
+        rr.prop(self, "expand_ui", text=f"{text}{count}",
+                icon="RIGHTARROW" if not self.expand_ui else "DOWNARROW_HLT",
                 emboss=False,
                 )
         if alert:
@@ -104,7 +110,7 @@ class SceneProperty(bpy.types.PropertyGroup):
         rr.alignment = "RIGHT"
         rr.operator("bas.select_reference_image_by_image", text="", icon="IMAGE_REFERENCE", emboss=False)
         rr.operator("bas.select_reference_image_by_file", text="", icon="FILE_NEW", emboss=False)
-        if self.hide_reference:
+        if not self.expand_ui:
             return
 
         """
@@ -152,7 +158,38 @@ class SceneProperty(bpy.types.PropertyGroup):
     scale: bpy.props.FloatProperty(default=2.75)
 
     def draw_history(self, layout: bpy.types.UILayout):
-        ...
+        box = layout.box()
+
+        column = box.column()
+        row = column.row(align=True)
+        row.context_pointer_set("history", self)
+        row.prop(self, "expand_ui", text=self.name,
+                 icon="RIGHTARROW" if not self.expand_ui else "DOWNARROW_HLT",
+                 emboss=False,
+                 )
+
+        column.label(text=self.prompt)
+        if not self.expand_ui:
+            row.context_pointer_set("history", self)
+            row.operator("bas.restore_history", icon="FILE_PARENT", text="",
+                         emboss=False,
+                         )
+            return
+
+        if oi := self.origin_image:
+            box.context_pointer_set("image", oi)
+            box.template_icon(oi.preview.icon_id, scale=2)
+            box.operator("bas.view_image", text="View Origin Image")
+        if gi := self.generated_image:
+            box.context_pointer_set("image", gi)
+            box.template_icon(gi.preview.icon_id, scale=2)
+            box.operator("bas.view_image", text="View Generated Image")
+        text = bpy.app.translations.pgettext("%s reference images") % len(self.mask_images)
+        box.label(text=text)
+        text = bpy.app.translations.pgettext("%s mask images") % len(self.reference_images)
+        box.label(text=text)
+        box.context_pointer_set("history", self)
+        box.operator("bas.restore_history", icon="FILE_PARENT")
 
 
 class_list = [
@@ -163,11 +200,16 @@ class_list = [
 register_class, unregister_class = bpy.utils.register_classes_factory(class_list)
 
 
+def clear_run():
+    bpy.context.scene.blender_ai_studio_property.clear_running_state()
+
+
 def register():
     register_class()
     bpy.types.Scene.blender_ai_studio_property = bpy.props.PointerProperty(type=SceneProperty)
     bpy.types.Image.blender_ai_studio_property = bpy.props.PointerProperty(type=ImageProperty)
     bpy.types.Text.blender_ai_studio_prompt_hash = bpy.props.StringProperty()
+    bpy.app.timers.register(clear_run, persistent=True)
 
 
 def unregister():
