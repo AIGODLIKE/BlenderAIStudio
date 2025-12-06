@@ -73,6 +73,26 @@ class SceneProperty(bpy.types.PropertyGroup):
             nmi.name = mi.name
             nmi.image = mi.image
 
+    def restore_history(self, context):
+        """恢复历史,将历史项里面的全部复制回来"""
+        oii = context.scene.blender_ai_studio_property
+        oii.origin_image = self.origin_image
+        oii.generated_image = self.generated_image
+        oii.prompt = self.prompt
+        oii.mask_index = self.mask_index
+
+        oii.reference_images.clear()
+        for ri in self.reference_images:
+            nri = oii.reference_images.add()
+            nri.name = ri.name
+            nri.image = ri.image
+
+        oii.mask_images.clear()
+        for mi in self.mask_images:
+            nmi = oii.mask_images.add()
+            nmi.name = mi.name
+            nmi.image = mi.image
+
     @property
     def all_references_images(self) -> list[bpy.types.Image]:
         return [i.image for i in self.reference_images if i.image]
@@ -177,13 +197,15 @@ class SceneProperty(bpy.types.PropertyGroup):
             return
 
         if oi := self.origin_image:
-            box.context_pointer_set("image", oi)
-            box.template_icon(oi.preview.icon_id, scale=2)
-            box.operator("bas.view_image", text="View Origin Image")
+            row = box.row()
+            row.context_pointer_set("image", oi)
+            row.template_icon(oi.preview.icon_id, scale=2)
+            row.operator("bas.view_image", text="View Origin Image")
         if gi := self.generated_image:
-            box.context_pointer_set("image", gi)
-            box.template_icon(gi.preview.icon_id, scale=2)
-            box.operator("bas.view_image", text="View Generated Image")
+            row = box.row()
+            row.context_pointer_set("image", gi)
+            row.template_icon(gi.preview.icon_id, scale=2)
+            row.operator("bas.view_image", text="View Generated Image")
         text = bpy.app.translations.pgettext("%s reference images") % len(self.mask_images)
         box.label(text=text)
         text = bpy.app.translations.pgettext("%s mask images") % len(self.reference_images)

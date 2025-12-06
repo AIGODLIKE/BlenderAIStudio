@@ -726,20 +726,7 @@ class RestoreHistory(bpy.types.Operator):
     def execute(self, context):
         history = getattr(context, "history")
         print(self.bl_idname, history)
-        return {"FINISHED"}
-
-
-class ReportInfo(bpy.types.Operator):
-    bl_idname = 'bas.report_info'
-    bl_label = 'Report Info'
-    bl_translation_context = OPS_TCTX
-    bl_options = {"REGISTER"}
-    mode: bpy.props.StringProperty()
-    message: bpy.props.StringProperty()
-
-    def execute(self, context):
-        print(self.bl_idname, self.mode, self.message)
-        self.report({self.mode}, self.message)
+        history.restore_history(context)
         return {"FINISHED"}
 
 
@@ -765,8 +752,6 @@ clss = [
 
     ViewImage,
     RestoreHistory,
-
-    ReportInfo,
 ]
 
 reg, unreg = bpy.utils.register_classes_factory(clss)
