@@ -428,7 +428,7 @@ class ApplyAiEditImage(bpy.types.Operator):
 
         oii.running_operator = self.running_operator
         oii.origin_image = image
-        generate_image_name = f"{image.name}_ai_edit_res"
+        generate_image_name = f"{image.name}_{self.running_operator}"
         w, h = image.size
         if oii.resolution == "1K":
             w, h = (1024, 1024)
@@ -444,15 +444,13 @@ class ApplyAiEditImage(bpy.types.Operator):
         reference_images_path = []
         mask_image_path = None
 
-        print("temp", temp_folder)
-
         if not origin_image_file_path:
             self.report({'ERROR'}, "Can't save image")
             return {'CANCELLED'}
         for ri in oii.reference_images:
             if ri.image:
                 if rii := save_image_to_temp_folder(ri.image, temp_folder):
-                    reference_images_path.append(save_image_to_temp_folder(rii, temp_folder))
+                    reference_images_path.append(rii)
                 else:
                     self.report({'ERROR'}, "Can't save reference image")
                     return {'CANCELLED'}
@@ -466,14 +464,15 @@ class ApplyAiEditImage(bpy.types.Operator):
                 self.report({'ERROR'}, "Can't save mask image")
                 return {'CANCELLED'}
 
+        print("temp", temp_folder)
+        print("reference_images_path", reference_images_path)
         from .tasks import GeminiImageEditTask, Task, TaskState, TaskResult, TaskManager
-        rii = reference_images_path[0] if len(reference_images_path) else None
         task = GeminiImageEditTask(
             api_key=pref.nano_banana_api,
             image_path=origin_image_file_path,
             edit_prompt=oii.prompt,
             mask_path=mask_image_path,
-            reference_image_path=rii,
+            reference_images_path=reference_images_path,
             width=w,
             height=h,
             max_retries=1,
@@ -528,7 +527,7 @@ class ApplyAiEditImage(bpy.types.Operator):
                 gi.preview_ensure()
                 gi.name = generate_image_name
                 space_data = bpy.context.space_data
-                if getattr(space_data, "image", None):
+                if hasattr(space_data, "image"):
                     space_data.image = gi
             else:
                 ut = bpy.app.translations.pgettext("Unable to load generated image!")

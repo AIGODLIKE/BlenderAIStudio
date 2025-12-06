@@ -139,7 +139,6 @@ class AIStudioImagePanel(bpy.types.Panel):
     @staticmethod
     def draw_image_info(context, layout: bpy.types.UILayout):
         image = context.space_data.image
-        ai = context.scene.blender_ai_studio_property
         w, h = image.size[:]
 
         layout.column(heading="Image Info")

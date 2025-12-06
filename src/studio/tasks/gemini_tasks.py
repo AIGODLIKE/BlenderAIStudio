@@ -85,7 +85,6 @@ class GeminiTaskBase(Task):
         if file_size > max_size:
             self.update_progress(message=f"{param_name}过大: {file_size / 1024 / 1024:.1f}MB")
             return False
-
         return True
 
 
@@ -214,7 +213,7 @@ class GeminiImageEditTask(GeminiTaskBase):
             image_path: str,
             edit_prompt: str,
             mask_path: Optional[str] = None,
-            reference_image_path: Optional[str] = None,
+            reference_images_path: Optional[str] | list[str] = None,
             width: int = 0,
             height: int = 0,
             aspect_ratio: str = "1:1",
@@ -228,7 +227,7 @@ class GeminiImageEditTask(GeminiTaskBase):
             image_path: 待编辑图片路径
             edit_prompt: 编辑提示词
             mask_path: 遮罩图片路径（可选）
-            reference_image_path: 参考图片路径（可选）
+            reference_images_path: 参考图片路径（可选）
             width: 输出宽度（0=自动）
             height: 输出高度（0=自动）
             max_retries: 最大重试次数
@@ -238,7 +237,7 @@ class GeminiImageEditTask(GeminiTaskBase):
         self.image_path = image_path
         self.edit_prompt = edit_prompt
         self.mask_path = mask_path
-        self.reference_image_path = reference_image_path
+        self.reference_images_path = reference_images_path
         self.width = width
         self.height = height
         self.aspect_ratio = aspect_ratio
@@ -260,9 +259,14 @@ class GeminiImageEditTask(GeminiTaskBase):
                 return False
 
         # 验证参考图片（如果提供）
-        if self.reference_image_path:
-            if not self._validate_image_path(self.reference_image_path, "参考图片"):
-                return False
+        if self.reference_images_path:
+            if isinstance(self.reference_images_path, list):
+                for path in self.reference_images_path:
+                    if not self._validate_image_path(path, "参考图片"):
+                        return False
+            else:
+                if not self._validate_image_path(self.reference_images_path, "参考图片"):
+                    return False
 
         self.update_progress(1, "参数验证完成")
         return True
@@ -277,7 +281,7 @@ class GeminiImageEditTask(GeminiTaskBase):
                 image_path=self.image_path,
                 edit_prompt=self.edit_prompt,
                 mask_path=self.mask_path,
-                reference_image_path=self.reference_image_path,
+                reference_image_path=self.reference_images_path,
                 width=self.width,
                 height=self.height,
             )
@@ -297,7 +301,7 @@ class GeminiImageEditTask(GeminiTaskBase):
                 metadata={
                     "prompt": self.edit_prompt,
                     "has_mask": bool(self.mask_path),
-                    "has_reference": bool(self.reference_image_path),
+                    "has_reference": bool(self.reference_images_path),
                 },
             )
 
@@ -720,10 +724,15 @@ class GeminiAPI:
             raise GeminiAPIError(f"Image edit failed: {str(e)}")
 
     def _build_edit_prompt(self, user_prompt: str, has_mask: bool = False, has_reference: bool = False) -> str:
-        """Build prompt for image editing"""
+        """Build prompt for image editing
+        基础提示词 + 用户输入提示词
+        IMAGE 1 (scene with sketch)
+        IMAGE 2 (mask - colored area)
+        IMAGE OTHER (reference)
+        """
 
         # Special finalization mode
-        if user_prompt == "[FINALIZE_COMPOSITE]":
+        if user_prompt == "[FINALIZE_COMPOSITE]":  # 最终合成的提示词
             base_prompt = (
                 "COMPOSITE FINALIZATION - Unify entire image into seamless photorealistic result:\n\n"
                 "CRITICAL CONTEXT:\n"
@@ -810,7 +819,7 @@ class GeminiAPI:
             )
             return base_prompt
 
-        if has_mask and has_reference:
+        if has_mask and has_reference:  # 有遮罩和参考图片
             base_prompt = (
                 "🎯 CRITICAL: READ USER'S PROMPT FIRST!\n"
                 "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -819,22 +828,22 @@ class GeminiAPI:
                 "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
                 "YOUR TASK - SIMPLE AND DIRECT:\n"
                 "1. Read user's prompt above - THIS IS WHAT YOU MUST DO!\n"
-                "2. Look at IMAGE 1 (reference) - find the object user wants\n"
-                "3. Look at IMAGE 3 (mask - colored area) - this is WHERE to place it\n"
-                "4. Look at IMAGE 2 (scene with sketch) - ERASE the sketch\n"
-                "5. Place object from IMAGE 1 into the colored area from IMAGE 3\n"
+                "2. Look at IMAGE 1 (scene with sketch) - ERASE the sketch\n"
+                "3. Look at IMAGE 2 (mask - colored area) - this is WHERE to place it\n"
+                "4. Look at IMAGE OTHER (reference) - find the object user wants\n"
+                "5. Place object from IMAGE OTHER into the colored area from IMAGE 1\n"
                 "6. Follow user's prompt for HOW to place it (sitting/standing/facing/etc)\n"
                 "7. Relight object to match scene lighting\n\n"
                 "WHAT YOU HAVE:\n"
-                "• IMAGE 1 (REFERENCE) = The object user wants to add\n"
-                "• IMAGE 2 (SCENE) = Where to add it (has colored sketch showing location)\n"
-                "• IMAGE 3 (MASK) = Exact colored area for placement\n"
+                "• IMAGE 1 (SCENE) = Where to add it (has colored sketch showing location)\n"
+                "• IMAGE 2 (MASK) = Exact colored area for placement\n"
+                "• IMAGES OTHER (REFERENCE) = The object user wants to add\n"
                 "• USER PROMPT = Tells you WHAT and HOW\n\n"
                 "CRITICAL RULES:\n"
-                "🔴 RULE #1: USER'S PROMPT IS LAW - Follow it EXACTLY!\n"
-                "🔴 RULE #2: Place object in colored area from IMAGE 3 (mask)\n"
-                "🔴 RULE #3: ERASE sketch completely - replace with real object\n"
-                "🔴 RULE #4: Relight object to match IMAGE 2's lighting\n\n"
+                " RULE #1: USER'S PROMPT IS LAW - Follow it EXACTLY!\n"
+                " RULE #2: Place object in colored area from IMAGE 2 (mask)\n"
+                " RULE #3: ERASE sketch completely - replace with real object\n"
+                " RULE #4: Relight object to match IMAGE 1 lighting\n\n"
                 "SIMPLE EXAMPLE:\n"
                 "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 "USER PROMPT: 'добавь мужчину на траве в обведённом кругу'\n"
@@ -860,42 +869,42 @@ class GeminiAPI:
                 "  → Remember its shape, textures, details\n"
                 "  → Ignore its background\n\n"
                 "STEP 3 - FIND LOCATION:\n"
-                "  → IMAGE 3 (mask) shows colored area = exact spot\n"
-                "  → IMAGE 2 shows sketch = rough guide (erase it!)\n\n"
+                "  → IMAGE 2 (mask) shows colored area = exact spot\n"
+                "  → IMAGE 1 shows sketch = rough guide (erase it!)\n\n"
                 "STEP 4 - PLACE OBJECT:\n"
-                "  → Put object in colored area (from IMAGE 3)\n"
+                "  → Put object in colored area (from IMAGE OTHER)\n"
                 "  → Follow user's prompt (orientation, pose, etc.)\n"
                 "  → ERASE sketch completely\n\n"
                 "STEP 5 - MAKE IT REALISTIC:\n"
-                "  → Relight object to match IMAGE 2's lighting\n"
+                "  → Relight object to match IMAGE 1's lighting\n"
                 "  → Adjust colors to match scene\n"
                 "  → Cast shadows (direction must match scene)\n"
                 "  → Blend edges smoothly\n\n"
                 "MORE EXAMPLES:\n"
                 "Example 1 - 'Поставь этот стул в углу у окна':\n"
-                "  → Find chair in IMAGE 1\n"
-                "  → Place it in corner near window (colored area from IMAGE 3)\n"
+                "  → Find chair in IMAGE OTHER\n"
+                "  → Place it in corner near window (colored area from IMAGE 1)\n"
                 "  → Erase colored sketch\n"
                 "  → Relight with window light\n"
                 "  → Cast shadow\n"
                 "  → DONE!\n\n"
                 "Example 2 - 'Add this person sitting at the desk':\n"
-                "  → Find person in IMAGE 1\n"
+                "  → Find person in IMAGE OTHER\n"
                 "  → Place at desk (colored area)\n"
                 "  → Make them SITTING (user said so!)\n"
                 "  → Erase sketch\n"
                 "  → Relight with office lights\n"
                 "  → DONE!\n\n"
                 "Example 3 - 'добавь мужчину на траве в обведённом кругу':\n"
-                "  → Find man in IMAGE 1\n"
-                "  → Place ON GRASS in circle area (IMAGE 3)\n"
+                "  → Find man in IMAGE OTHER\n"
+                "  → Place ON GRASS in circle area (IMAGE 1)\n"
                 "  → Erase circle sketch\n"
                 "  → Relight with outdoor lighting\n"
                 "  → Cast shadow on grass\n"
                 "  → DONE!\n\n"
                 "WHAT YOU MUST DO:\n"
                 "✅ Follow user's prompt EXACTLY\n"
-                "✅ Place object in colored area (IMAGE 3)\n"
+                "✅ Place object in colored area (IMAGE 2)\n"
                 "✅ ERASE sketch completely\n"
                 "✅ Relight object to match scene\n"
                 "✅ Cast shadows\n"
@@ -908,27 +917,24 @@ class GeminiAPI:
                 "FINAL REMINDER:\n"
                 "🔴 USER PROMPT (at top) = YOUR PRIMARY INSTRUCTION!\n"
                 "🔴 Read it carefully and do EXACTLY what it says!\n"
-                "🔴 If user says 'на траве' → place on grass!\n"
-                "🔴 If user says 'sitting' → make them sit!\n"
-                "🔴 If user says 'в обведённом кругу' → place in circled area!\n\n"
             )
-        elif has_mask:
+        elif has_mask:  # 有遮罩
             base_prompt = (
                 "INPAINTING TASK - Replace sketch with photorealistic content:\n\n"
                 "CONTEXT:\n"
                 "User drew a rough SKETCH on their image to show where they want NEW content.\n"
                 "The sketch is UGLY and TEMPORARY - it's just a guide.\n"
                 "Your job: ERASE the sketch, CREATE beautiful realistic content in that spot.\n\n"
-                "IMAGE 1 (PHOTO WITH SKETCH OVERLAY):\n"
+                "IMAGE 2 (PHOTO WITH SKETCH OVERLAY):\n"
                 "- Original photo/render with user's sketch drawn on top\n"
                 "- Sketch colors show LOCATION and rough SHAPE only\n"
                 "- Sketch is NOT the final look - it will be DELETED\n\n"
-                "IMAGE 2 (MASK - WHERE TO EDIT):\n"
+                "IMAGE 1 (MASK - WHERE TO EDIT):\n"
                 "- Black areas = DON'T TOUCH (keep original)\n"
                 "- Colored areas = SKETCH LOCATION (delete sketch, add new content)\n\n"
                 "STEP-BY-STEP PROCESS:\n"
-                "1. Look at IMAGE 1 - see the ugly sketch user drew\n"
-                "2. Look at IMAGE 2 - see WHERE the sketch is\n"
+                "1. Look at IMAGE 2 - see the ugly sketch user drew\n"
+                "2. Look at IMAGE 1 - see WHERE the sketch is\n"
                 "3. Read user's PROMPT - understand WHAT to create\n"
                 "4. COMPLETELY ERASE the sketch from those areas\n"
                 "5. CREATE photorealistic content matching the prompt\n"
@@ -965,65 +971,65 @@ class GeminiAPI:
                 "User drew sketch to show LOCATION + rough IDEA\n"
                 "You create PHOTOREALISTIC version and REMOVE sketch completely\n"
             )
-        elif has_reference:
+        elif has_reference:  # 有参考图片
             base_prompt = (
                 "PHOTOREALISTIC OBJECT INTEGRATION - Seamlessly blend reference into scene:\n\n"
                 "CRITICAL CONTEXT:\n"
                 "User is NOT asking for simple copy-paste! They want PHOTOREALISTIC INTEGRATION.\n"
                 "The object from reference must look like it was PHOTOGRAPHED in the target scene.\n"
                 "This requires ADVANCED color grading, lighting match, shadow casting, and perspective correction.\n\n"
-                "IMAGE 1 (REFERENCE - SOURCE OBJECT):\n"
-                "- Contains the object/person to integrate into IMAGE 2\n"
-                "- Extract its SHAPE and STRUCTURE (what it is)\n"
-                "- IGNORE its original lighting, colors, and background\n"
-                "- Think: 'I need this OBJECT, but I'll RELIGHT it for the new scene'\n\n"
-                "IMAGE 2 (TARGET SCENE - DESTINATION):\n"
+                "IMAGE 1 (TARGET SCENE - DESTINATION):\n"
                 "- This is your PRIMARY reference for visual style\n"
                 "- Analyze: lighting direction, color temperature, shadow hardness, ambient light\n"
                 "- The object from IMAGE 1 must MATCH this scene's lighting 100%\n\n"
+                "IMAGE OTHER (REFERENCE - SOURCE OBJECT):\n"
+                "- Contains the object/person to integrate into IMAGE 1\n"
+                "- Extract its SHAPE and STRUCTURE (what it is)\n"
+                "- IGNORE its original lighting, colors, and background\n"
+                "- Think: 'I need this OBJECT, but I'll RELIGHT it for the new scene'\n\n"
                 "YOUR TASK - PROFESSIONAL COMPOSITING:\n"
-                "STEP 1 - LIGHTING ANALYSIS (IMAGE 2):\n"
+                "STEP 1 - LIGHTING ANALYSIS (IMAGE 1):\n"
                 "- Light direction: Where are shadows pointing? (e.g., left side, top-right)\n"
                 "- Light hardness: Sharp shadows = hard light, soft shadows = diffuse light\n"
                 "- Color temperature: Warm (orange/yellow) or cool (blue/white)?\n"
                 "- Ambient light: How bright are shadow areas?\n"
                 "- Reflections: Are there glossy surfaces? What do they reflect?\n\n"
-                "STEP 2 - OBJECT EXTRACTION (IMAGE 1):\n"
+                "STEP 2 - OBJECT EXTRACTION (IMAGE OTHER):\n"
                 "- Identify the object shape, structure, materials\n"
                 "- Forget its current lighting - you will RELIGHT it\n"
                 "- Preserve textures and material properties (metal, wood, fabric, etc.)\n\n"
                 "STEP 3 - INTEGRATION (CRITICAL!):\n"
                 "A. RELIGHTING:\n"
-                "   - Apply IMAGE 2's light direction to the object\n"
+                "   - Apply IMAGE 1's light direction to the object\n"
                 "   - Match light color temperature exactly\n"
-                "   - Create shadows that match IMAGE 2's shadow style\n"
+                "   - Create shadows that match IMAGE 1's shadow style\n"
                 "   - Add ambient occlusion in contact areas\n"
                 "B. COLOR GRADING:\n"
-                "   - Adjust object's colors to match IMAGE 2's color palette\n"
-                "   - If IMAGE 2 is warm → warm the object's colors\n"
-                "   - If IMAGE 2 is desaturated → reduce object's saturation\n"
+                "   - Adjust object's colors to match IMAGE 1's color palette\n"
+                "   - If IMAGE 1 is warm → warm the object's colors\n"
+                "   - If IMAGE 1 is desaturated → reduce object's saturation\n"
                 "   - Match overall brightness/exposure\n"
                 "C. SHADOWS:\n"
-                "   - Cast shadows from object onto IMAGE 2's surfaces\n"
-                "   - Shadow direction MUST match IMAGE 2's existing shadows\n"
-                "   - Shadow softness MUST match IMAGE 2's shadow hardness\n"
+                "   - Cast shadows from object onto IMAGE 1's surfaces\n"
+                "   - Shadow direction MUST match IMAGE 1's existing shadows\n"
+                "   - Shadow softness MUST match IMAGE 1's shadow hardness\n"
                 "   - Add contact shadows (dark areas where object touches surface)\n"
                 "D. PERSPECTIVE:\n"
-                "   - Match camera angle from IMAGE 2\n"
+                "   - Match camera angle from IMAGE 1\n"
                 "   - Scale object appropriately for scene\n"
                 "   - Ensure ground plane alignment\n"
                 "E. REFLECTIONS & AMBIENT:\n"
-                "   - If object is glossy → reflect IMAGE 2's environment\n"
-                "   - Add ambient light bounce from IMAGE 2's surfaces\n"
+                "   - If object is glossy → reflect IMAGE 1's environment\n"
+                "   - Add ambient light bounce from IMAGE 1's surfaces\n"
                 "   - Color spill: nearby colored surfaces affect object colors\n\n"
                 "STEP 4 - FINAL BLEND:\n"
-                "- Edge softness: match IMAGE 2's sharpness/blur\n"
+                "- Edge softness: match IMAGE 1's sharpness/blur\n"
                 "- Atmospheric perspective: distant objects are hazier\n"
-                "- Depth of field: match IMAGE 2's focus plane\n"
-                "- Film grain/noise: match IMAGE 2's texture\n\n"
+                "- Depth of field: match IMAGE 1's focus plane\n"
+                "- Film grain/noise: match IMAGE 1's texture\n\n"
                 "REAL-WORLD EXAMPLE:\n"
-                "IMAGE 1: Photo of a red chair (photographed outdoors, bright daylight)\n"
-                "IMAGE 2: Dark moody interior with warm tungsten lights from left\n"
+                "IMAGE 1: Dark moody interior with warm tungsten lights from left\n"
+                "IMAGE 2: Photo of a red chair (photographed outdoors, bright daylight)\n"
                 "USER: 'Add the chair by the window'\n"
                 "WRONG (copy-paste): Bright red chair with daylight look = looks fake!\n"
                 "RIGHT (professional integration):\n"
@@ -1035,17 +1041,17 @@ class GeminiAPI:
                 "  → Slight warm color spill from wooden floor onto chair base\n"
                 "  → Chair looks like it was PHOTOGRAPHED in this room\n\n"
                 "CRITICAL SUCCESS CRITERIA:\n"
-                "✅ Object MUST look like it was PHOTOGRAPHED in IMAGE 2's scene\n"
-                "✅ Lighting on object MUST match IMAGE 2 exactly (direction, color, hardness)\n"
-                "✅ Object colors MUST be color-graded to match IMAGE 2's palette\n"
+                "✅ Object MUST look like it was PHOTOGRAPHED in IMAGE 1's scene\n"
+                "✅ Lighting on object MUST match IMAGE 1 exactly (direction, color, hardness)\n"
+                "✅ Object colors MUST be color-graded to match IMAGE 1's palette\n"
                 "✅ Shadows MUST be cast correctly with right direction and softness\n"
                 "✅ No visible compositing edges - perfect blend\n"
                 "✅ Viewer should NOT be able to tell it's from different photo\n"
                 "CRITICAL MISTAKES TO AVOID:\n"
-                "❌ NEVER keep object's original lighting from IMAGE 1\n"
+                "❌ NEVER keep object's original lighting from IMAGE OTHER\n"
                 "❌ NEVER keep object's original colors unchanged\n"
-                "❌ NEVER forget to cast shadows onto IMAGE 2's surfaces\n"
-                "❌ NEVER ignore IMAGE 2's light direction\n"
+                "❌ NEVER forget to cast shadows onto IMAGE 1's surfaces\n"
+                "❌ NEVER ignore IMAGE 1's light direction\n"
                 "❌ NEVER make it look like a PNG sticker pasted on\n"
                 "❌ NEVER create lighting conflicts (e.g., shadows wrong direction)\n\n"
                 "REMEMBER:\n"
@@ -1054,57 +1060,58 @@ class GeminiAPI:
                 "Final result should be INDISTINGUISHABLE from a real photograph.\n"
                 "OLD STYLE TRANSFER PROMPT (for reference, DON'T use this):\n"
                 "You are receiving TWO images:\n\n"
-                "IMAGE 1 (Style Reference - YOUR PRIMARY GUIDE):\n"
-                "- This is your MAIN reference for ALL visual aspects\n"
-                "- COPY AGGRESSIVELY: lighting setup, material types, color palette, texture quality, mood, atmosphere\n"
-                "- Study this image's visual language and REPLICATE it completely\n"
-                "- This shows the TARGET result you must achieve\n\n"
-                "IMAGE 2 (Original Image - ONLY for composition):\n"
+                "IMAGE 1 (Original Image - ONLY for composition):\n"
                 "- Use EXCLUSIVELY for object positions, layout, scene structure\n"
                 "- IGNORE its colors, materials, lighting, and current style\n"
                 "- Treat current look as TEMPORARY - will be completely replaced\n"
                 "- Keep ONLY the composition, everything else changes\n\n"
+                "IMAGE OTHER (Style Reference - YOUR PRIMARY GUIDE):\n"
+                "- This is your MAIN reference for ALL visual aspects\n"
+                "- COPY AGGRESSIVELY: lighting setup, material types, color palette, texture quality, mood, atmosphere\n"
+                "- Study this image's visual language and REPLICATE it completely\n"
+                "- This shows the TARGET result you must achieve\n\n"
                 "YOUR TASK - AGGRESSIVE STYLE TRANSFORMATION:\n"
-                "1. Keep ONLY composition/layout/objects from IMAGE 2\n"
-                "2. COMPLETELY REPLACE materials with IMAGE 1's style:\n"
-                "   - If IMAGE 1 has metallic materials → make IMAGE 2's objects metallic\n"
-                "   - If IMAGE 1 has matte surfaces → make IMAGE 2's objects matte\n"
-                "   - If IMAGE 1 has wood texture → apply wood-like materials\n"
-                "3. COMPLETELY REPLACE lighting with IMAGE 1's setup:\n"
+                "1. Keep ONLY composition/layout/objects from IMAGE 1\n"
+                "2. COMPLETELY REPLACE materials with IMAGE OTHER style:\n"
+                "   - If IMAGE OTHER has metallic materials → make IMAGE 1's objects metallic\n"
+                "   - If IMAGE OTHER has matte surfaces → make IMAGE 1's objects matte\n"
+                "   - If IMAGE OTHER has wood texture → apply wood-like materials\n"
+                "3. COMPLETELY REPLACE lighting with IMAGE OTHER setup:\n"
                 "   - Match light direction, intensity, color temperature\n"
                 "   - Copy shadow hardness/softness\n"
                 "   - Replicate ambient lighting mood\n"
-                "4. COMPLETELY REPLACE colors with IMAGE 1's palette:\n"
-                "   - If IMAGE 1 is warm (orange/red) → make IMAGE 2 warm\n"
-                "   - If IMAGE 1 is cool (blue/cyan) → make IMAGE 2 cool\n"
+                "4. COMPLETELY REPLACE colors with IMAGE OTHER palette:\n"
+                "   - If IMAGE OTHER is warm (orange/red) → make IMAGE 1 warm\n"
+                "   - If IMAGE OTHER is cool (blue/cyan) → make IMAGE 1 cool\n"
                 "   - Match color saturation and vibrancy\n"
                 "5. REPLICATE atmosphere and mood:\n"
-                "   - If IMAGE 1 is dramatic → make IMAGE 2 dramatic\n"
-                "   - If IMAGE 1 is soft/gentle → make IMAGE 2 soft/gentle\n"
+                "   - If IMAGE OTHER is dramatic → make IMAGE 1 dramatic\n"
+                "   - If IMAGE OTHER is soft/gentle → make IMAGE 1 soft/gentle\n"
                 "   - Copy depth, detail level, visual complexity\n\n"
                 "CRITICAL - BE AGGRESSIVE, NOT CONSERVATIVE:\n"
-                "❌ DON'T just 'slightly adjust' IMAGE 2\n"
-                "❌ DON'T preserve IMAGE 2's current colors/materials\n"
+                "❌ DON'T just 'slightly adjust' IMAGE 1\n"
+                "❌ DON'T preserve IMAGE 1's current colors/materials\n"
                 "❌ DON'T be subtle or gentle with changes\n"
-                "✅ COMPLETELY TRANSFORM to match IMAGE 1's style\n"
-                "✅ Think: 'IMAGE 1 is the goal, IMAGE 2 is just a layout template'\n"
-                "✅ If IMAGE 1 is blue but IMAGE 2 is red → make it BLUE\n"
-                "✅ If IMAGE 1 is dark but IMAGE 2 is bright → make it DARK\n"
-                "✅ If IMAGE 1 is detailed but IMAGE 2 is simple → add DETAILS\n\n"
+                "✅ COMPLETELY TRANSFORM to match IMAGE OTHER style\n"
+                "✅ Think: 'IMAGE OTHER is the goal, IMAGE 1 is just a layout template'\n"
+                "✅ If IMAGE OTHER is blue but IMAGE 1 is red → make it BLUE\n"
+                "✅ If IMAGE OTHER is dark but IMAGE 1 is bright → make it DARK\n"
+                "✅ If IMAGE OTHER is detailed but IMAGE 1 is simple → add DETAILS\n\n"
                 "EXAMPLE:\n"
-                "- IMAGE 1: Warm sunset photo with golden light, soft shadows, rich textures\n"
-                "- IMAGE 2: Cool blue render with flat lighting\n"
-                "- YOUR RESULT: Keep IMAGE 2's objects/layout BUT with:\n"
-                "  → Golden sunset lighting from IMAGE 1\n"
-                "  → Warm orange/red colors from IMAGE 1\n"
-                "  → Soft shadows and rich textures from IMAGE 1\n"
-                "  → Final looks like IMAGE 1's style applied to IMAGE 2's composition\n\n"
+                "- IMAGE 1: Cool blue render with flat lighting\n"
+                "- IMAGE OTHER: Warm sunset photo with golden light, soft shadows, rich textures\n"
+                "- YOUR RESULT: Keep IMAGE 1's objects/layout BUT with:\n"
+                "  → Golden sunset lighting from IMAGE OTHER\n"
+                "  → Warm orange/red colors from IMAGE OTHER\n"
+                "  → Soft shadows and rich textures from IMAGE OTHER\n"
+                "  → Final looks like IMAGE OTHER style applied to IMAGE 1's composition\n\n"
                 "REMEMBER:\n"
-                "Style reference (IMAGE 1) = your visual TARGET\n"
-                "Original image (IMAGE 2) = composition template ONLY\n"
-                "AGGRESSIVELY copy IMAGE 1's visual style to IMAGE 2's layout\n"
+                "Original image (IMAGE 1) = composition template ONLY\n"
+                "Style reference (IMAGE OTHER) = your visual TARGET\n"
+                "AGGRESSIVELY copy IMAGE OTHER visual style to IMAGE 1's layout\n"
             )
         else:
+            # 没有遮罩也没有参考图片,只有提示词输入的基本提示词
             base_prompt = (
                 "You are REFINING and IMPROVING an existing image:\n\n"
                 "ORIGINAL IMAGE:\n"
@@ -1123,27 +1130,35 @@ class GeminiAPI:
             return base_prompt
 
     def _edit_with_rest(self, image_path: str, prompt: str, mask_path: str = None, reference_path: str = None,
-                        width: int = 0, height: int = 0) -> Tuple[bytes, str]:
+                        width: int = 0, height: int = 0,
+                        aspect_ratio: str = "1:1") -> Tuple[bytes, str]:
+        """
+        图片顺序很重要
+        IMAGE 1 (scene with sketch)
+        IMAGE 2 (mask - colored area)
+        IMAGE OTHER (reference)
+        """
         try:
-            # 图片顺序很重要
+            #
             # 对于风格转换, 最先放入 Reference
             parts = [{"text": prompt}]
-            if reference_path:
-                with open(reference_path, "rb") as f:
-                    reference_base64 = base64.b64encode(f.read()).decode("utf-8")
-                part = {"inline_data": {"mime_type": "image/png", "data": reference_base64}}
+
+            def add_part(image_file_path):
+                with open(image_file_path, "rb") as f:
+                    image_base64 = base64.b64encode(f.read()).decode("utf-8")
+                part = {"inline_data": {"mime_type": "image/png", "data": image_base64}}
                 parts.append(part)
-            # 其次添加主图
-            with open(image_path, "rb") as f:
-                image_base64 = base64.b64encode(f.read()).decode("utf-8")
-            part = {"inline_data": {"mime_type": "image/png", "data": image_base64}}
-            parts.append(part)
-            # 最后添加遮罩
+
+            add_part(image_path)  # 添加主图
+            # 添加遮罩
             if mask_path:
-                with open(mask_path, "rb") as f:
-                    mask_base64 = base64.b64encode(f.read()).decode("utf-8")
-                part = {"inline_data": {"mime_type": "image/png", "data": mask_base64}}
-                parts.append(part)
+                add_part(mask_path)
+            if reference_path:
+                if isinstance(reference_path, list):
+                    for ref_path in reference_path:
+                        add_part(ref_path)
+                else:
+                    add_part(reference_path)
             url = f"{self.base_url}/{self.model}:generateContent"
             headers = {
                 "x-goog-api-key": self.api_key,
@@ -1164,10 +1179,10 @@ class GeminiAPI:
                     "temperature": 0.7,  # Lower temperature for more faithful edits
                     "maxOutputTokens": 32768,
                     "candidateCount": 1,
-                    "responseModalities": ["IMAGE"],
+                    "responseModalities": ["TEXT", "IMAGE"],
                     "imageConfig": {
                         "imageSize": resolution_str,
-                        "aspectRatio": "1:1",
+                        "aspectRatio": aspect_ratio,
                     },
                 },
             }

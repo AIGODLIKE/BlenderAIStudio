@@ -66,18 +66,22 @@ def get_text_editor_window(context: bpy.types.Context):
 def save_image_to_temp_folder(image, temp_folder) -> str | None:
     try:
         import os
-        image_path = os.path.join(temp_folder, image.name)
+
         filepath_raw = image.filepath_raw
         file_format = image.file_format
+        image_path = os.path.join(temp_folder, image.name)
+        if not image.name.endswith(".png"):  # TIPS: 临时解决没有png后缀问题
+            image.name += ".png"
         try:
-            if not image_path.endswith(".png"):  # TIPS: 临时解决没有png后缀问题
-                image_path += ".png"
             image.filepath_raw = image_path
             image.file_format = 'PNG'
             try:
                 image.save()
             except Exception as e:
                 print(e)
+                import traceback
+                traceback.print_exc()
+                traceback.print_stack()
                 image.save_render(image_path)
             if os.path.exists(image_path):
                 os.path.getsize(image_path)
@@ -87,11 +91,14 @@ def save_image_to_temp_folder(image, temp_folder) -> str | None:
             image.filepath_raw = filepath_raw
             image.file_format = file_format
             if os.path.exists(image_path):
-                return image_path
+                return str(image_path)
             else:
                 return None
     except Exception as e:
         print(e)
+        import traceback
+        traceback.print_exc()
+        traceback.print_stack()
         return None
 
 
