@@ -5,7 +5,7 @@ import bpy
 from bpy_extras.io_utils import ImportHelper
 
 from ..i18n import OPS_TCTX
-from ..utils import get_text_generic_keymap, get_text_window, get_pref
+from ..utils import get_text_generic_keymap, get_text_window, get_pref, save_image_to_temp_folder
 
 
 class AIStudioEntry(bpy.types.Operator):
@@ -161,8 +161,6 @@ class ApplyImageMask(bpy.types.Operator):
         image.use_fake_user = True
         if image.preview:
             image.preview.reload()
-        # image.pack()
-        # image.filepath = ""
 
         ai = image.blender_ai_studio_property
         oii = context.scene.blender_ai_studio_property
@@ -176,6 +174,30 @@ class ApplyImageMask(bpy.types.Operator):
         return {"FINISHED"}
 
 
+# class CancelDrawMask(bpy.types.Operator):
+#     bl_idname = "bas.cancel_draw_mask"
+#     bl_translation_context = OPS_TCTX
+#     bl_label = "Cancel Draw Mask"
+#     bl_options = {"REGISTER"}
+#
+#     @classmethod
+#     def poll(cls, context):
+#         space = context.space_data
+#         image = getattr(space, "image", None)
+#         return image and image.blender_ai_studio_property.is_mask_image
+#
+#     def execute(self, context):
+#         space = context.space_data
+#         image = getattr(space, "image", None)
+#         oii = context.scene.blender_ai_studio_property
+#         ri = oii.mask_images[self.index].image
+#         if image and ri == image:
+#             oi = ri.blender_ai_studio_property.origin_image
+#             if oi:
+#                 setattr(context.space_data, "image", oi)
+#         return {"FINISHED"}
+
+
 class SelectMask(bpy.types.Operator):
     bl_idname = "bas.select_mask"
     bl_translation_context = OPS_TCTX
@@ -186,6 +208,8 @@ class SelectMask(bpy.types.Operator):
 
     @classmethod
     def description(cls, context, properties):
+        if properties.remove:
+            return "Remove Mask"
         if properties.index == -1:
             return "Not using mask"
         return cls.bl_label
@@ -206,6 +230,11 @@ class SelectMask(bpy.types.Operator):
         print(self.bl_idname, self.index, image)
 
         if self.remove:
+            ri = oii.mask_images[self.index].image
+            if image and ri == image:
+                oi = ri.blender_ai_studio_property.origin_image
+                if oi:
+                    setattr(context.space_data, "image", oi)
             oii.mask_images.remove(self.index)
         else:
             oii.mask_index = self.index
@@ -220,8 +249,8 @@ class SelectMask(bpy.types.Operator):
     @staticmethod
     def draw_select_mask(context, layout, use_box=False):
         column = layout.column(align=True)
+        column.label(text="Mask History")
         column.operator_context = "EXEC_DEFAULT"
-        # column.label(text=SelectMask.bl_label)
         oii = context.scene.blender_ai_studio_property
         for index, m in enumerate(oii.mask_images):
             if m.image and m.image.preview:
@@ -372,27 +401,155 @@ class RemoveReferenceImage(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class GenerateImage(bpy.types.Operator):
-    bl_idname = "bas.generate_image"
-    bl_description = "Generate Image"
+class ApplyAiEditImage(bpy.types.Operator):
+    bl_idname = "bas.apply_ai_edit_image"
+    bl_description = "Apply AI Edit Image"
     bl_translation_context = OPS_TCTX
-    bl_label = "Generate Image"
+    bl_label = "Apply AI Edit"
     bl_options = {"REGISTER"}
 
     def execute(self, context):
         print(self.bl_idname)
-        return {"FINISHED"}
+        pref = get_pref()
+        oii = context.scene.blender_ai_studio_property
+        image = context.space_data.image
+        if not image:
+            self.report({'ERROR'}, "No image")
+            return {'CANCELLED'}
 
+        if not oii.prompt.strip() and not len(oii.reference_images):  # 检查提示词和参考图片
+            self.report({'ERROR'}, "Enter ai edit prompt or select reference images")
+            return {'CANCELLED'}
 
-class ReRenderImage(bpy.types.Operator):
-    bl_idname = "bas.rerender_image"
-    bl_description = "ReRender Image"
-    bl_translation_context = OPS_TCTX
-    bl_label = "ReRender Image"
-    bl_options = {"REGISTER"}
+        if not pref.nano_banana_api:
+            self.report({'ERROR'}, "NANO API key not set, Enter it in addon preferences")
+            return {'CANCELLED'}
 
-    def execute(self, context):
-        print(self.bl_idname)
+        oii.running_operator = self.bl_label
+        oii.origin_image = image
+
+        w, h = image.size
+        if oii.resolution == "1K":
+            w, h = (1024, 1024)
+        elif oii.resolution == "2K":
+            w, h = (2048, 2048)
+        elif oii.resolution == "4K":
+            w, h = (4096, 4096)
+
+        # 将blender图片保存到临时文件夹
+        import tempfile
+        temp_folder = tempfile.mkdtemp(prefix="bas_nano_banana_ai_image_")
+        origin_image_file_path = save_image_to_temp_folder(image, temp_folder)
+        reference_images_path = []
+        mask_image_path = None
+
+        print("temp", temp_folder)
+
+        if not origin_image_file_path:
+            self.report({'ERROR'}, "Can't save image")
+            return {'CANCELLED'}
+        for ri in oii.reference_images:
+            if ri.image:
+                if rii := save_image_to_temp_folder(ri.image, temp_folder):
+                    reference_images_path.append(save_image_to_temp_folder(rii, temp_folder))
+                else:
+                    self.report({'ERROR'}, "Can't save reference image")
+                    return {'CANCELLED'}
+            else:
+                self.report({'ERROR'}, "Can't save reference image")
+                return {'CANCELLED'}
+        if oii.active_mask:
+            if mask_path := save_image_to_temp_folder(oii.active_mask, temp_folder):
+                mask_image_path = mask_path
+            else:
+                self.report({'ERROR'}, "Can't save mask image")
+                return {'CANCELLED'}
+
+        from .tasks import GeminiImageEditTask, Task, TaskState, TaskResult, TaskManager
+        rii = reference_images_path[0] if len(reference_images_path) else None
+        task = GeminiImageEditTask(
+            api_key=pref.nano_banana_api,
+            image_path=origin_image_file_path,
+            edit_prompt=oii.prompt,
+            mask_path=mask_image_path,
+            reference_image_path=rii,
+            width=w,
+            height=h,
+            max_retries=1,
+        )
+        oii.running_message = "Start..."
+
+        # 2. 注册回调
+        def on_state_changed(event_data):
+            _task: Task = event_data["task"]
+            old_state: TaskState = event_data["old_state"]
+            new_state: TaskState = event_data["new_state"]
+            print(f"状态改变: {old_state.value} -> {new_state.value}")
+            oii.running_state = new_state.value
+
+        def on_progress(event_data):
+            # {
+            #     "current_step": 2,
+            #     "total_steps": 4,
+            #     "percentage": 0.5,
+            #     "message": "正在调用 API...",
+            #     "details": {},
+            # }
+            _task: Task = event_data["task"]
+            progress: dict = event_data["progress"]
+            percent = progress["percentage"]
+            message = progress["message"]
+            p = bpy.app.translations.pgettext('Progress')
+            text = f"{p}: {percent * 100}% - {message}"
+            print(text)
+            oii.running_message = text
+
+        def on_completed(event_data):
+            # result_data = {
+            #     "image_data": b"",
+            #     "mime_type": "image/png",
+            #     "width": 1024,
+            #     "height": 1024,
+            # }
+            _task: Task = event_data["task"]
+            result: TaskResult = event_data["result"]
+            result_data: dict = result.data
+            # 存储结果
+            save_file = Path(temp_folder).joinpath("Output.png")
+            save_file.write_bytes(result_data["image_data"])
+            text = f"任务完成: {_task.task_id}"
+            print(text, save_file)
+            oii.running_message = "Running completed"
+
+            import bpy
+            if gi := bpy.data.images.load(str(save_file), check_existing=False):
+                oii.generated_image = gi
+                gi.preview_ensure()
+
+                space_data = bpy.context.space_data
+                if getattr(space_data, "image", None):
+                    space_data.image = gi
+            else:
+                oii.running_message = "Unable to load generated image!" + " " + str(save_file)
+            oii.save_to_history()
+
+        def on_failed(event_data):
+            print("on_failed", event_data)
+            _task: Task = event_data["task"]
+            result: TaskResult = event_data["result"]
+            if not result.success:
+                print(result.error)
+                oii.running_message = str(result.error)
+            else:
+                oii.running_message = "Unknown error" + " " + str(result.data)
+
+        task.register_callback("state_changed", on_state_changed)
+        task.register_callback("progress_updated", on_progress)
+        task.register_callback("completed", on_completed)
+        task.register_callback("failed", on_failed)
+        TaskManager.get_instance().submit_task(task)
+        print(f"任务提交: {task.task_id}")
+        print("task", task)
         return {"FINISHED"}
 
 
@@ -405,6 +562,41 @@ class FinalizeCompositeImage(bpy.types.Operator):
 
     def execute(self, context):
         print(self.bl_idname)
+        oii = context.scene.blender_ai_studio_property
+        oii.prompt = "[FINALIZE_COMPOSITE]"
+
+        oii.running_operator = self.bl_label
+
+        self.report({'INFO'}, "Finalizing composite - unifying colors, contrast, lighting...")
+        return {"FINISHED"}
+
+
+class ReRenderImage(bpy.types.Operator):
+    bl_idname = "bas.rerender_image"
+    bl_translation_context = OPS_TCTX
+    bl_label = "ReRender Image"
+    bl_options = {"REGISTER"}
+    bl_description = "Generate a new variation with the same prompt and settings"
+
+    def execute(self, context):
+        print(self.bl_idname)
+        oii = context.scene.blender_ai_studio_property
+        oii.running_operator = self.bl_label
+
+        image = context.space_data.image
+
+        if not image:
+            self.report({'ERROR'}, "No image in editor")
+            return {'CANCELLED'}
+
+        if len(oii.history) == 0:
+            self.report({'INFO'}, "No history - use 'Apply AI Edit' first")
+            return {'CANCELLED'}
+        last = oii.history[-1]
+        oii.prompt = last.prompt
+
+        bpy.ops.bas.apply_ai_edit_image()
+        self.report({'INFO'}, "Re-rendering with previous settings...")
         return {"FINISHED"}
 
 
@@ -496,6 +688,31 @@ class PromptSave(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class ViewImage(bpy.types.Operator):
+    bl_idname = 'bas.view_image'
+    bl_label = 'View Image'
+    bl_translation_context = OPS_TCTX
+    bl_options = {"REGISTER"}
+    bl_description = "View image"
+
+    @classmethod
+    def poll(cls, context):
+        return hasattr(context.space_data, "image")
+
+    def execute(self, context):
+        image = getattr(context, "image", None)
+        print(self.bl_idname, image)
+        if not image:
+            self.report({'ERROR'}, "No image")
+            return {'CANCELLED'}
+        if image.preview:
+            image.preview.reload()
+        else:
+            image.preview_ensure()
+        setattr(context.space_data, "image", image)
+        return {"FINISHED"}
+
+
 clss = [
     AIStudioEntry,
     FileImporter,
@@ -509,12 +726,14 @@ clss = [
     SelectReferenceImageByImage,
     ReplaceReferenceImage,
 
-    GenerateImage,
-    ReRenderImage,
+    ApplyAiEditImage,
     FinalizeCompositeImage,
+    ReRenderImage,
 
     PromptEdit,
     PromptSave,
+
+    ViewImage,
 ]
 
 reg, unreg = bpy.utils.register_classes_factory(clss)

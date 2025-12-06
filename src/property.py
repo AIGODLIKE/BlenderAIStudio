@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 import bpy
 
 
@@ -31,18 +33,39 @@ class SceneProperty(bpy.types.PropertyGroup):
         name="Prompt",
         maxlen=1000,
     )
+
+    history: bpy.props.CollectionProperty(type=SceneProperty)
     resolution: bpy.props.EnumProperty(
         name="Out Resolution",
         items=[
-            ("INPUT", "Input Size", "Keep original resolution"),
-            ("1k", "1k(1024x1024)", "1k resolution"),
-            ("2k", "2k(2048x2048)", "2k resolution"),
-            ("4k", "4k(4096x4096)", "4k resolution"),
+            ("AUTO", "Auto (Match Input)", "Keep original resolution"),
+            ("1K", "1k(1024x1024)", "1k resolution"),
+            ("2K", "2k(2048x2048)", "2k resolution"),
+            ("4K", "4k(4096x4096)", "4k resolution"),
         ],
-        default="INPUT",
+        default="AUTO",
     )
+    running_operator: bpy.props.StringProperty()
+    running_state: bpy.props.StringProperty()
+    running_message: bpy.props.StringProperty()
 
-    history: bpy.props.CollectionProperty(type=SceneProperty)
+    def save_to_history(self):
+        nh = self.history.add()
+        nh.name = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        nh.origin_image = self.origin_image
+        nh.generated_image = self.generated_image
+        nh.prompt = self.prompt
+        nh.mask_index = self.mask_index
+
+        for ri in self.reference_images:
+            nri = nh.reference_images.add()
+            nri.name = ri.name
+            nri.image = ri.image
+
+        for mi in self.mask_images:
+            nmi = nh.mask_images.add()
+            nmi.name = mi.name
+            nmi.image = mi.image
 
     @property
     def all_references_images(self) -> list[bpy.types.Image]:
@@ -80,7 +103,7 @@ class SceneProperty(bpy.types.PropertyGroup):
         rr = row.row()
         rr.alignment = "RIGHT"
         rr.operator("bas.select_reference_image_by_image", text="", icon="IMAGE_REFERENCE", emboss=False)
-        rr.operator("bas.select_reference_image_by_file", text="", icon="ADD", emboss=False)
+        rr.operator("bas.select_reference_image_by_file", text="", icon="FILE_NEW", emboss=False)
         if self.hide_reference:
             return
 
