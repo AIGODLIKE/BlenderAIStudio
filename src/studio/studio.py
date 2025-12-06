@@ -238,19 +238,19 @@ class StudioHistoryItem:
                 with with_child("##Buttons", (0, h1), child_flags=flags):
                     imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R / 2)
                     imgui.push_style_color(imgui.Col.BUTTON, col_bg)
-                    imgui.begin_table("##Buttons", 1)
-                    imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 0)
+                    if imgui.begin_table("##Buttons", 1):
+                        imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 0)
 
-                    bh = h1 / 2 - imgui.get_style().cell_padding[1] * 2 - imgui.get_style().frame_padding[1]
-                    imgui.table_next_column()
-                    imgui.button("编辑", (-imgui.FLT_MIN, bh))
+                        bh = h1 / 2 - imgui.get_style().cell_padding[1] * 2 - imgui.get_style().frame_padding[1]
+                        imgui.table_next_column()
+                        imgui.button("编辑", (-imgui.FLT_MIN, bh))
 
-                    imgui.table_next_column()
-                    imgui.button("详情", (-imgui.FLT_MIN, bh))
+                        imgui.table_next_column()
+                        imgui.button("详情", (-imgui.FLT_MIN, bh))
 
+                        imgui.end_table()
                     imgui.pop_style_var(1)
                     imgui.pop_style_color(1)
-                    imgui.end_table()
                 imgui.pop_style_var(3)
                 imgui.pop_style_color(1)
 
