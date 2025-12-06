@@ -156,6 +156,132 @@ class StudioImagesDescriptor(WidgetDescriptor):
         imgui.end_group()
 
 
+class StudioHistoryItem:
+    def __init__(self) -> None:
+        self.result: dict = {}
+        self.output_file: str = ""
+        self.metadata: dict = {}
+        self.vendor: str = ""
+        self.index: int = 0
+
+    def draw(self, app: "AIStudio"):
+        col_bg = Const.WINDOW_BG
+        col_widget = Const.FRAME_BG
+        flags = 0
+        flags |= imgui.ChildFlags.FRAME_STYLE
+        flags |= imgui.ChildFlags.AUTO_RESIZE_Y
+        flags |= imgui.ChildFlags.ALWAYS_AUTO_RESIZE
+        imgui.push_style_color(imgui.Col.FRAME_BG, col_bg)
+        with with_child("##HistoryItem", (0, 0), child_flags=flags):
+            imgui.push_style_color(imgui.Col.FRAME_BG, col_widget)
+
+            # 标题栏
+            if imgui.begin_table("##Header", 3):
+                imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_FIXED, 0, 0)
+                imgui.table_setup_column("##Ele2", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 1)
+                imgui.table_setup_column("##Ele3", imgui.TableColumnFlags.WIDTH_FIXED, 0, 2)
+
+                app.font_manager.push_h1_font(24)
+                imgui.table_next_column()
+                imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
+                imgui.text(f"#{self.index:03d}")
+                imgui.pop_style_color()
+                app.font_manager.pop_font()
+
+                imgui.table_next_column()
+                imgui.dummy((0, 0))
+
+                imgui.table_next_column()
+                file_name = Path(self.output_file).stem
+                imgui.text(file_name)
+                
+
+                imgui.end_table()
+
+            # 图片
+            if imgui.begin_table("##Content", 2):
+                aw = imgui.get_content_region_avail()[0]
+                w1 = 207 / 354 * aw
+                h1 = 126 / 207 * w1
+                imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_FIXED, w1, 0)
+                imgui.table_setup_column("##Ele2", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 1)
+
+                imgui.table_next_column()
+                imgui.push_style_color(imgui.Col.FRAME_BG, col_widget)
+                imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R)
+                with with_child("##Image", (w1, h1), child_flags=flags):
+                    imgui.push_style_color(imgui.Col.FRAME_BG, col_bg)
+                    icon = TexturePool.get_tex_id(self.output_file)
+                    
+                    aw, ah = imgui.get_content_region_avail()
+                    imgui.image(icon, (aw, ah))
+                    if imgui.is_item_hovered():
+                        imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.CHILD_R)
+                        imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, (12, 12))
+                        imgui.begin_tooltip()
+                        tex = TexturePool.get_tex(icon)
+                        file_name = Path(self.output_file).stem
+                        print(imgui.get_style().window_padding)
+                        imgui.text(f"{file_name} [{tex.width}x{tex.height}]")
+                        imgui.dummy((0, 0))
+                        imgui.image(icon, (tex.width, tex.height))
+                        imgui.end_tooltip()
+                        imgui.pop_style_var(2)
+                    imgui.pop_style_color(1)
+                imgui.pop_style_var(1)
+                imgui.pop_style_color(1)
+
+                imgui.table_next_column()
+                imgui.push_style_color(imgui.Col.FRAME_BG, col_widget)
+                imgui.push_style_var(imgui.StyleVar.CELL_PADDING, Const.CELL_P)
+                imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R)
+                imgui.push_style_var(imgui.StyleVar.FRAME_PADDING, (Const.CELL_P[0] * 2, Const.CELL_P[1]))
+                with with_child("##Buttons", (0, h1), child_flags=flags):
+                    imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R / 2)
+                    imgui.push_style_color(imgui.Col.BUTTON, col_bg)
+                    imgui.begin_table("##Buttons", 1)
+                    imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 0)
+
+                    bh = h1 / 2 - imgui.get_style().cell_padding[1] * 2 - imgui.get_style().frame_padding[1]
+                    imgui.table_next_column()
+                    imgui.button("编辑", (-imgui.FLT_MIN, bh))
+
+                    imgui.table_next_column()
+                    imgui.button("详情", (-imgui.FLT_MIN, bh))
+
+                    imgui.pop_style_var(1)
+                    imgui.pop_style_color(1)
+                    imgui.end_table()
+                imgui.pop_style_var(3)
+                imgui.pop_style_color(1)
+
+                imgui.end_table()
+            imgui.pop_style_color(1)
+        imgui.pop_style_color(1)
+
+
+class StudioHistory:
+    _INSTANCE = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._INSTANCE is None:
+            cls._INSTANCE = super().__new__(cls)
+        return cls._INSTANCE
+
+    def __init__(self):
+        self.items: list[StudioHistoryItem] = []
+
+    @classmethod
+    def get_instance(cls) -> "StudioHistory":
+        if cls._INSTANCE is None:
+            cls._INSTANCE = cls()
+        return cls._INSTANCE
+
+    def add(self, item: StudioHistoryItem):
+        item.index = len(self.items) + 1
+        self.items.insert(0, item)
+
+
 class StudioClient(BaseAdapter):
     VENDOR = ""
 
@@ -165,6 +291,7 @@ class StudioClient(BaseAdapter):
         self.task_manager = TaskManager.get_instance()
         self.task_id: str = ""
         self.is_task_submitting = False
+        self.history = StudioHistory.get_instance()
 
     def get_ctxt(self) -> str:
         return PROP_TCTX
@@ -186,6 +313,9 @@ class StudioClient(BaseAdapter):
 
     def draw_history_panel(self):
         pass
+
+    def add_history(self, item: StudioHistoryItem):
+        self.history.add(item)
 
     def new_generate_task(self):
         pass
@@ -419,7 +549,14 @@ class NanoBanana(StudioClient):
             save_file = path_dir.joinpath("Output.png")
             save_file.write_bytes(result_data["image_data"])
             print(f"任务完成: {_task.task_id}")
-            # TODO 存储历史记录
+            # 存储历史记录
+            history_item = StudioHistoryItem()
+            history_item.result = result_data
+            history_item.output_file = save_file.as_posix()
+            history_item.metadata = result.metadata
+            history_item.vendor = NanoBanana.VENDOR
+            history = StudioHistory.get_instance()
+            history.add(history_item)
 
         def on_failed(event_data):
             _task: Task = event_data["task"]
@@ -855,6 +992,9 @@ class AIStudio(AppHud):
                     widget.display_begin(widget, self)
                     widget.display(widget, self)
                     widget.display_end(widget, self)
+                client = wrapper.studio_client
+                if client.history.items:
+                    client.history.items[0].draw(self)
             imgui.pop_style_color()
 
             # 底部按钮
