@@ -221,7 +221,6 @@ class StudioHistoryItem:
                         imgui.begin_tooltip()
                         tex = TexturePool.get_tex(icon)
                         file_name = Path(self.output_file).stem
-                        print(imgui.get_style().window_padding)
                         imgui.text(f"{file_name} [{tex.width}x{tex.height}]")
                         imgui.dummy((0, 0))
                         imgui.image(icon, (tex.width, tex.height))
