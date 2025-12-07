@@ -21,6 +21,7 @@ from .tasks import (
 from .wrapper import with_child, BaseAdapter, WidgetDescriptor, DescriptorFactory
 from ..i18n import PROP_TCTX
 from ..preferences import get_pref
+from ..utils import get_version
 from ..utils.render import render_scene_to_png, render_scene_depth_to_png
 from ..timer import Timer
 
@@ -994,21 +995,38 @@ class AIStudio(AppHud):
         # Left
         if True:
             imgui.begin_group()
-            imgui.set_cursor_pos((fp[0], fp[1] - cp[1]))
+            imgui.set_cursor_pos_y(fp[1])
 
             btn_size = 40, 40
             left_w = btn_size[0] + (fp[0] + fp[0]) * 2
-            imgui.begin_table("CategoryTable", 1, outer_size=(left_w - fp[0], 0))
+            imgui.push_style_var_y(imgui.StyleVar.ITEM_SPACING, fp[1])
             subpanel_config = {
                 AIStudioPanelType.GENERATION: "generation",
                 AIStudioPanelType.HISTORY: "history",
                 AIStudioPanelType.SETTINGS: "settings",
             }
+            btn_size = (btn_size[0] + fp[0] * 2, btn_size[1] + fp[1] * 2)
             for subpanel in subpanel_config:
-                imgui.table_next_column()
+                if subpanel == AIStudioPanelType.SETTINGS:
+                    ah = imgui.get_content_region_avail()[1]
+                    imgui.dummy((0, ah - btn_size[1] - fp[1] * 2))
+                    pos = imgui.get_cursor_pos()
+
+                    self.font_manager.push_h5_font(12 * Const.SCALE)
+                    line_height = imgui.get_text_line_height_with_spacing()
+                    imgui.set_cursor_pos((fp[0], pos[1] - fp[1] * 2 - line_height + 4))
+                    imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+                    imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
+                    imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
+                    imgui.button(f"V{'.'.join(map(str, get_version()))}", (btn_size[0], line_height))
+                    imgui.pop_style_color(3)
+                    self.font_manager.pop_font()
+
+                    imgui.set_cursor_pos_y(pos[1])
+                imgui.set_cursor_pos_x(fp[0])
                 imgui.begin_group()
                 icon = TexturePool.get_tex_id(subpanel_config[subpanel])
-                if imgui.button(f"##Btn{subpanel}", (btn_size[0] + fp[0] * 2, btn_size[1] + fp[1] * 2)):
+                if imgui.button(f"##Btn{subpanel}", btn_size):
                     self.active_panel = subpanel
                 col = Const.CLOSE_BUTTON_NORMAL
                 if imgui.is_item_active():
@@ -1025,9 +1043,8 @@ class AIStudio(AppHud):
                 pmax = pmax[0] - fp[0], pmax[1] - fp[1]
                 dl.add_image(icon, pmin, pmax, col=col)
                 imgui.end_group()
-
-            imgui.end_table()
             imgui.end_group()
+            imgui.pop_style_var(1)
 
         imgui.same_line()
         imgui.pop_style_var(6)
