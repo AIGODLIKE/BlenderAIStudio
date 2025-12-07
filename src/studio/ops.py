@@ -719,6 +719,57 @@ class RestoreHistory(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class OpenImageInNewWindow(bpy.types.Operator):
+    bl_idname = 'bas.open_image_in_new_window'
+    bl_label = 'Open Image In New Window'
+    bl_translation_context = OPS_TCTX
+    bl_options = {"REGISTER"}
+    bl_description = "Open image in new window"
+    image_path: bpy.props.StringProperty()
+
+    def execute(self, context):
+        wm = context.window_manager
+
+        # 获取一个新窗口
+        image_window = None
+        if len(wm.windows) > 1:
+            last_window = wm.windows[-1]
+            if len(last_window.screen.areas[:]) == 1:
+                last_area = last_window.screen.areas[0]
+                if last_area.type == "IMAGE_EDITOR":
+                    image_window = last_window
+
+        try:
+            if image_window is None:
+                bpy.ops.wm.window_new("EXEC_DEFAULT", False)
+                last_window = bpy.context.window_manager.windows[-1]
+                last_window.screen.areas[0].type = "IMAGE_EDITOR"
+                image_window = last_window
+
+            if not image_window:
+                self.report({'ERROR'}, "No image window")
+                return {'CANCELLED'}
+            if image_window:
+                image = bpy.data.images.load(self.image_path, check_existing=False)
+                if image is None:
+                    self.report({'ERROR'}, "No image" + self.image_path)
+                    return {'CANCELLED'}
+                for area in image_window.screen.areas:
+                    if area.type == "IMAGE_EDITOR":
+                        for space in area.spaces:
+                            if space.type == "IMAGE_EDITOR":
+                                space.image = image
+                                return {"FINISHED"}
+                self.report({'ERROR'}, "No image area")
+        except Exception as e:
+            print(e)
+            import traceback
+            traceback.print_exc()
+            traceback.print_stack()
+
+        return {'CANCELLED'}
+
+
 clss = [
     AIStudioEntry,
     FileImporter,
@@ -742,6 +793,8 @@ clss = [
 
     ViewImage,
     RestoreHistory,
+
+    OpenImageInNewWindow,
 ]
 
 reg, unreg = bpy.utils.register_classes_factory(clss)
