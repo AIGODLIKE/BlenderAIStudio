@@ -2,6 +2,7 @@ import bpy
 
 from ..i18n import PANEL_TCTX
 from ..studio.ops import AIStudioEntry
+from ..utils import get_custom_icon
 
 
 class AIStudioPanel(bpy.types.Panel):
@@ -55,15 +56,18 @@ class AIStudioImagePanel(bpy.types.Panel):
 
         self.draw_image_info(context, layout)
         is_not_run = ai.running_state != "running"
+        w, h = ai.get_out_resolution(context)
         column = layout.column(align=True)
         column.enabled = is_not_run  # 在运行中时不允许修改
         bb = column.box()
-        bb.label(text="Aspect Ratio:")
-        bb.prop(ai, "aspect_ratio", text="")
-        bb.label(text="Out Resolution:")
-        bb.prop(ai, "resolution", text="")
-        w, h = ai.get_out_resolution(context)
-        bb.label(text=f"{w} x {h}")
+        row = bb.row(align=True)
+        row.label(text="", icon_value=get_custom_icon("aspect_ratio"))
+        row.prop(ai, "aspect_ratio", text="")
+        # bb.label(text="Out Resolution:")
+        row = bb.row(align=True)
+        row.label(text="", icon_value=get_custom_icon("resolution"))
+        row.prop(ai, "resolution", text="")
+        bb.label(text=bpy.app.translations.pgettext("Out Resolution:") + f"{w} x {h}")
         bb = column.box()
         bb.label(text="AI Edit Prompt", icon='TEXT')
         row = bb.row(align=True)
@@ -145,10 +149,12 @@ class AIStudioImagePanel(bpy.types.Panel):
         image = context.space_data.image
         w, h = image.size[:]
 
-        layout.column(heading="Image Info")
+        layout.column()
+
         box = layout.box()
-        box.label(text=f"{image.name}")
+        box.label(text="Image Info")
         box.label(text=f"{bpy.app.translations.pgettext_iface('Image size')}(px): {w} x {h}")
+        box.label(text=f"{image.name}")
         if w == 0 and h == 0:
             box.alert = True
             box.label(text="The image is empty", icon="ERROR")
