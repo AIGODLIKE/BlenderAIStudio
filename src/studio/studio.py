@@ -237,7 +237,7 @@ class StudioHistoryItem:
                     pmin = imgui.get_item_rect_min()
                     pmax = imgui.get_item_rect_max()
                     dl = imgui.get_window_draw_list()
-                    dl.add_image_rounded(icon, pmin, pmax, uvmin, uvmax, 0xFFFFFFFF, 5)
+                    dl.add_image_rounded(icon, pmin, pmax, uvmin, uvmax, 0xFFFFFFFF, 12)
                     if imgui.is_item_hovered():
                         imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.CHILD_R)
                         imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, (12, 12))
@@ -246,7 +246,11 @@ class StudioHistoryItem:
                         file_name = Path(self.output_file).stem
                         imgui.text(f"{file_name} [{tex.width}x{tex.height}]")
                         imgui.dummy((0, 0))
-                        imgui.image(icon, (tex.width, tex.height))
+                        imgui.invisible_button("FakeButton", (tex.width, tex.height))
+                        pmin = imgui.get_item_rect_min()
+                        pmax = imgui.get_item_rect_max()
+                        dl = imgui.get_window_draw_list()
+                        dl.add_image_rounded(icon, pmin, pmax, uvmin, uvmax, 0xFFFFFFFF, Const.CHILD_R * 0.8)
                         imgui.end_tooltip()
                         imgui.pop_style_var(2)
                     imgui.pop_style_color(4)
@@ -263,22 +267,66 @@ class StudioHistoryItem:
                     imgui.push_style_color(imgui.Col.BUTTON, col_bg)
                     if imgui.begin_table("##Buttons", 1):
                         imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 0)
+                        # 编辑
+                        if True:
+                            label = "编辑"
+                            style = imgui.get_style()
+                            bh = h1 / 2 - style.cell_padding[1] * 2 - style.frame_padding[1]
+                            imgui.table_next_column()
+                            if imgui.button("##编辑", (-imgui.FLT_MIN, bh)):
+                                print("编辑图片")
+                            dl = imgui.get_window_draw_list()
+                            pmin = imgui.get_item_rect_min()
+                            pmax = imgui.get_item_rect_max()
+                            lh = imgui.get_text_line_height()
+                            text_width = imgui.calc_text_size(label)[0]
+                            pcenter = (pmin[0] + pmax[0]) * 0.5, (pmin[1] + pmax[1]) * 0.5
+                            content_width = text_width + lh + style.item_spacing[0]
+                            content_height = lh
 
-                        bh = h1 / 2 - imgui.get_style().cell_padding[1] * 2 - imgui.get_style().frame_padding[1]
-                        imgui.table_next_column()
-                        if imgui.button("编辑", (-imgui.FLT_MIN, bh)):
-                            print("编辑图片")
+                            icon = TexturePool.get_tex_id("image_edit")
+                            ipmin = pcenter[0] - content_width * 0.5, pcenter[1] - content_height * 0.5
+                            ipmax = ipmin[0] + content_height, pcenter[1] + content_height * 0.5
+                            dl.add_image(icon, ipmin, ipmax)
 
-                        imgui.table_next_column()
-                        old_show_detail = self.show_detail
-                        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_SELECTED)
-                        if old_show_detail:
-                            imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON_SELECTED)
-                        if imgui.button("详情", (-imgui.FLT_MIN, bh)):
-                            self.show_detail = not self.show_detail
-                        if old_show_detail:
+                            col = imgui.get_color_u32(imgui.get_style().colors[imgui.Col.TEXT])
+                            tpos = pcenter[0] - content_width * 0.5 + lh + style.item_spacing[0], pcenter[1] - content_height * 0.5
+                            dl.add_text(tpos, col, label)
+
+                        # 细节
+                        if True:
+                            label = "详情"
+                            style = imgui.get_style()
+                            bh = h1 / 2 - style.cell_padding[1] * 2 - style.frame_padding[1]
+
+                            imgui.table_next_column()
+                            old_show_detail = self.show_detail
+                            imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_SELECTED)
+                            if old_show_detail:
+                                imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON_SELECTED)
+                            if imgui.button("##详情", (-imgui.FLT_MIN, bh)):
+                                self.show_detail = not self.show_detail
+                            if old_show_detail:
+                                imgui.pop_style_color(1)
                             imgui.pop_style_color(1)
-                        imgui.pop_style_color(1)
+
+                            dl = imgui.get_window_draw_list()
+                            pmin = imgui.get_item_rect_min()
+                            pmax = imgui.get_item_rect_max()
+                            lh = imgui.get_text_line_height()
+                            text_width = imgui.calc_text_size(label)[0]
+                            pcenter = (pmin[0] + pmax[0]) * 0.5, (pmin[1] + pmax[1]) * 0.5
+                            content_width = text_width + lh + style.item_spacing[0]
+                            content_height = lh
+
+                            icon = TexturePool.get_tex_id("image_detail")
+                            ipmin = pcenter[0] - content_width * 0.5, pcenter[1] - content_height * 0.5
+                            ipmax = ipmin[0] + content_height, pcenter[1] + content_height * 0.5
+                            dl.add_image(icon, ipmin, ipmax)
+
+                            col = imgui.get_color_u32(imgui.get_style().colors[imgui.Col.TEXT])
+                            tpos = pcenter[0] - content_width * 0.5 + lh + style.item_spacing[0], pcenter[1] - content_height * 0.5
+                            dl.add_text(tpos, col, label)
 
                         imgui.end_table()
                     imgui.pop_style_var(1)
@@ -345,6 +393,7 @@ class StudioHistoryItem:
                 # if imgui.button("复制", (-imgui.FLT_MIN, 0)):
                 #     pass
                 if imgui.button("导出", (-imgui.FLT_MIN, 0)):
+
                     def export_image_callback(file_path: str):
                         copyfile(self.output_file, file_path)
                         print("导出图片到：", file_path)
