@@ -100,7 +100,7 @@ class GeminiImageGenerationTask(GeminiTaskBase):
             api_key: str,
             image_path: str,
             user_prompt: str,
-            reference_image_path: Optional[str] | [str] = None,
+            reference_images_path: list[str],
             is_color_render: bool = False,
             width: int = 1024,
             height: int = 1024,
@@ -114,7 +114,7 @@ class GeminiImageGenerationTask(GeminiTaskBase):
             api_key: Gemini API Key
             image_path: 深度图/输入图片路径
             user_prompt: 用户提示词
-            reference_image_path: 参考图片路径（可选）
+            reference_images_path: 参考图片路径（可选）
             is_color_render: 是否为彩色渲染（True=彩色, False=深度图）
             width: 输出宽度
             height: 输出高度
@@ -124,7 +124,7 @@ class GeminiImageGenerationTask(GeminiTaskBase):
 
         self.image_path = image_path
         self.user_prompt = user_prompt
-        self.reference_image_path = reference_image_path
+        self.reference_images_path = reference_images_path
         self.is_color_render = is_color_render
         self.width = width
         self.height = height
@@ -143,8 +143,8 @@ class GeminiImageGenerationTask(GeminiTaskBase):
             return False
 
         # 验证参考图片（如果提供）
-        if self.reference_image_path:
-            if not self._validate_image_path(self.reference_image_path, "参考图片"):
+        for ref_image_path in self.reference_images_path:
+            if not self._validate_image_path(ref_image_path, "参考图片"):
                 return False
 
         self.update_progress(1, "参数验证完成")
@@ -163,7 +163,7 @@ class GeminiImageGenerationTask(GeminiTaskBase):
             image_data, mime_type = self.api_client.generate_image(
                 depth_image_path=self.image_path,
                 user_prompt=self.user_prompt,
-                reference_image_path=self.reference_image_path,
+                reference_images_path=self.reference_images_path,
                 is_color_render=self.is_color_render,
                 width=self.width,
                 height=self.height,
@@ -190,7 +190,7 @@ class GeminiImageGenerationTask(GeminiTaskBase):
                 metadata={
                     "prompt": self.user_prompt,
                     "is_color_render": self.is_color_render,
-                    "has_reference": bool(self.reference_image_path),
+                    "has_reference": bool(self.reference_images_path),
                 },
             )
 
@@ -548,7 +548,7 @@ class GeminiAPI:
             return f"{base_prompt}\n\nUSER PROMPT (EXECUTE THIS): {user_prompt.strip()}"
         return base_prompt
 
-    def generate_image(self, depth_image_path: str, user_prompt: str, reference_image_path: str = None,
+    def generate_image(self, depth_image_path: str, user_prompt: str, reference_images_path: list[str],
                        is_color_render: bool = False, width: int = 1024, height: int = 1024,
                        aspect_ratio: str = "1:1") -> Tuple[bytes, str]:
         """
@@ -560,8 +560,11 @@ class GeminiAPI:
         """
         try:
             # 构建完整提示词
-            full_prompt = self._build_generate_prompt(user_prompt, has_reference=bool(reference_image_path),
-                                                      is_color_render=is_color_render)
+            full_prompt = self._build_generate_prompt(
+                user_prompt,
+                has_reference=bool(reference_images_path),
+                is_color_render=is_color_render,
+            )
 
             # 控制输出分辨率
             full_prompt += f"\n\nCRITICAL OUTPUT SETTING: Generate image EXACTLY at {width}x{height} pixels."
@@ -581,7 +584,7 @@ class GeminiAPI:
             parts.append(part)
 
             # Add reference image (Style) - SECOND image
-            if reference_image_path:
+            for reference_image_path in reference_images_path:
                 with open(reference_image_path, "rb") as f:
                     reference_base64 = base64.b64encode(f.read()).decode("utf-8")
                 part = {"inline_data": {"mime_type": "image/png", "data": reference_base64}}

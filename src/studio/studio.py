@@ -486,7 +486,6 @@ class NanoBanana(StudioClient):
             render_scene_to_png(scene, _temp_image_path)
         elif self.input_image_type == "CameraDepth":
             render_scene_depth_to_png(scene, _temp_image_path)
-        reference_image = self.reference_images[0] if self.reference_images else None
         resolution = (1024, 1024)
         if self.resolution == "1K":
             resolution = (1024, 1024)
@@ -502,7 +501,7 @@ class NanoBanana(StudioClient):
         task = GeminiImageGenerationTask(
             api_key=self.api_key,
             image_path=_temp_image_path,
-            reference_image_path=reference_image,
+            reference_images_path=self.reference_images,
             user_prompt=self.prompt,
             width=resolution[0],
             height=resolution[1],
