@@ -1,6 +1,9 @@
+import time
 import bpy
 import webbrowser
 import tempfile
+from shutil import copyfile
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Iterable
@@ -163,6 +166,8 @@ class StudioHistoryItem:
         self.metadata: dict = {}
         self.vendor: str = ""
         self.index: int = 0
+        self.timestamp: float = 0
+        self.show_detail: bool = False
 
     def draw(self, app: "AIStudio"):
         col_bg = Const.WINDOW_BG
@@ -243,10 +248,19 @@ class StudioHistoryItem:
 
                         bh = h1 / 2 - imgui.get_style().cell_padding[1] * 2 - imgui.get_style().frame_padding[1]
                         imgui.table_next_column()
-                        imgui.button("编辑", (-imgui.FLT_MIN, bh))
+                        if imgui.button("编辑", (-imgui.FLT_MIN, bh)):
+                            print("编辑图片")
 
                         imgui.table_next_column()
-                        imgui.button("详情", (-imgui.FLT_MIN, bh))
+                        old_show_detail = self.show_detail
+                        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_SELECTED)
+                        if old_show_detail:
+                            imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON_SELECTED)
+                        if imgui.button("详情", (-imgui.FLT_MIN, bh)):
+                            self.show_detail = not self.show_detail
+                        if old_show_detail:
+                            imgui.pop_style_color(1)
+                        imgui.pop_style_color(1)
 
                         imgui.end_table()
                     imgui.pop_style_var(1)
@@ -255,6 +269,72 @@ class StudioHistoryItem:
                 imgui.pop_style_color(1)
 
                 imgui.end_table()
+            if self.show_detail:
+                imgui.text("提示词")
+                prompt = self.metadata.get("prompt", "No prompt found")
+                h = imgui.get_text_line_height()
+                imgui.same_line(imgui.get_content_region_avail()[0] - h)
+                # 复制按钮
+                if True:
+                    icon = TexturePool.get_tex_id("prompt_copy")
+                    imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+                    imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
+                    imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
+                    if imgui.button("##copy", (h, h)):
+                        bpy.context.window_manager.clipboard = prompt
+                    imgui.pop_style_color(3)
+                    col = (1, 1, 1, 1)
+                    if imgui.is_item_active():
+                        col = Const.BUTTON_SELECTED
+                    elif imgui.is_item_hovered():
+                        col = Const.CLOSE_BUTTON_HOVERED
+                    col = imgui.get_color_u32(col)
+                    dl = imgui.get_window_draw_list()
+                    pmin = imgui.get_item_rect_min()
+                    pmax = imgui.get_item_rect_max()
+                    dl.add_image(icon, pmin, pmax, col=col)
+                
+                # 提示词
+                mlt_flags = imgui.InputTextFlags.WORD_WRAP
+                h = 133 / 354 * imgui.get_content_region_avail()[0]
+                _, _ = imgui.input_text_multiline("##prompt", prompt, (-1, h), mlt_flags)
+                h = imgui.get_text_line_height()
+                icon = TexturePool.get_tex_id(self.output_file)
+                tex = TexturePool.get_tex(icon)
+                tex_width = tex.width
+                tex_height = tex.height
+
+                # 图片信息
+                icon = TexturePool.get_tex_id("image_info_resolution")
+                imgui.dummy((0, 0))
+                imgui.image(icon, (h, h))
+                imgui.same_line()
+                imgui.text(f"{tex_width}*{tex_height} px (72dpi)")
+
+                icon = TexturePool.get_tex_id("image_info_vendor")
+                imgui.dummy((0, 0))
+                imgui.image(icon, (h, h))
+                imgui.same_line()
+                imgui.text(f"{self.vendor}生成")
+
+                icon = TexturePool.get_tex_id("image_info_timestamp")
+                imgui.dummy((0, 0))
+                imgui.image(icon, (h, h))
+                imgui.same_line()
+                imgui.text(datetime.fromtimestamp(self.timestamp).strftime("%Y-%m-%d %H:%M:%S"))
+                
+                # 复制/导出
+                # if imgui.button("复制", (-imgui.FLT_MIN, 0)):
+                #     pass
+                if imgui.button("导出", (-imgui.FLT_MIN, 0)):
+                    def export_image_callback(file_path: str):
+                        copyfile(self.output_file, file_path)
+                        print("导出图片到：", file_path)
+
+                    from .ops import FileCallbackRegistry
+
+                    callback_id = FileCallbackRegistry.register_callback(export_image_callback)
+                    bpy.ops.bas.file_exporter("INVOKE_DEFAULT", callback_id=callback_id)
             imgui.pop_style_color(1)
         imgui.pop_style_color(1)
 
@@ -556,6 +636,7 @@ class NanoBanana(StudioClient):
             history_item.output_file = save_file.as_posix()
             history_item.metadata = result.metadata
             history_item.vendor = NanoBanana.VENDOR
+            history_item.timestamp = time.time()
             history = StudioHistory.get_instance()
             history.add(history_item)
 
