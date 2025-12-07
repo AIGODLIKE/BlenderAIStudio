@@ -546,9 +546,10 @@ class NanoBanana(StudioClient):
             result: TaskResult = event_data["result"]
             result_data: dict = result.data
             # 存储结果
-            save_file = path_dir.joinpath("Output.png")
+            save_file = Path(tempfile.NamedTemporaryFile(suffix=".png", prefix="Output", delete=False).name)
             save_file.write_bytes(result_data["image_data"])
             print(f"任务完成: {_task.task_id}")
+            print(f"结果已保存到: {save_file.as_posix()}")
             # 存储历史记录
             history_item = StudioHistoryItem()
             history_item.result = result_data
