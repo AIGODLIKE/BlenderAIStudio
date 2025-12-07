@@ -526,9 +526,14 @@ class ApplyAiEditImage(bpy.types.Operator):
                 oii.generated_image = gi
                 gi.preview_ensure()
                 gi.name = generate_image_name
-                space_data = bpy.context.space_data
-                if hasattr(space_data, "image"):
+                try:
+                    space_data = bpy.context.space_data
                     space_data.image = gi
+                except Exception as e:
+                    print("error", e)
+                    import traceback
+                    traceback.print_exc()
+                    traceback.print_stack()
             else:
                 ut = bpy.app.translations.pgettext("Unable to load generated image!")
                 oii.running_message = ut + " " + str(save_file)
