@@ -1145,18 +1145,27 @@ class AIStudio(AppHud):
             imgui.push_style_var_x(imgui.StyleVar.FRAME_PADDING, Const.RP_FRAME_P[0])
             imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.RP_FRAME_INNER_R)
             imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, Const.RP_CHILD_IS)
+            imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0)
             imgui.push_style_color(imgui.Col.FRAME_BG, Const.FRAME_BG)
+            imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
             items = list(self.clients)
+            max_item_width = 0
+            for item in items:
+                max_item_width = max(max_item_width, imgui.calc_text_size(item)[0])
+            max_item_width += 2 * imgui.get_style().frame_padding[0]
             if imgui.begin_combo("##Item", self.active_client):
                 for item in items:
                     is_selected = self.active_client == item
-                    if imgui.selectable(item, is_selected)[0]:
-                        self.active_client = item
                     if is_selected:
-                        imgui.set_item_default_focus()
+                        imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
+                    if imgui.button(item, (max_item_width, 0)):
+                        self.active_client = item
+                        imgui.close_current_popup()
+                    if is_selected:
+                        imgui.pop_style_color()
                 imgui.end_combo()
-            imgui.pop_style_color()
-            imgui.pop_style_var(3)
+            imgui.pop_style_color(2)
+            imgui.pop_style_var(4)
             imgui.pop_item_width()
         imgui.pop_style_color(1)
 
