@@ -436,6 +436,7 @@ class Task(ABC):
             # 设置最终状态
             if self.is_cancelled():
                 self.set_state(TaskState.CANCELLED)
+                self._trigger_callback("cancelled", {"task": self, "result": None})
                 return TaskResult.failure_result(Exception("Task cancelled during execution"), "任务在执行过程中被取消")
             elif result.is_success():
                 self.set_state(TaskState.COMPLETED)

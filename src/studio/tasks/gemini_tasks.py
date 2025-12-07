@@ -1,6 +1,7 @@
 import base64
 import json
 import tempfile
+import time
 from pathlib import Path
 from typing import Tuple, Optional
 
@@ -153,9 +154,11 @@ class GeminiImageGenerationTask(GeminiTaskBase):
     def execute(self) -> TaskResult:
         """执行图片生成"""
         try:
-            import time
-
             time.sleep(1)
+            if self.is_cancelled():
+                error_msg = "生成失败: 任务被取消"
+                self.update_progress(message=error_msg)
+                return TaskResult.failure_result(Exception("任务被取消"), error_msg)
             self.update_progress(2, "正在调用 Gemini API...")
 
             # 调用 API
@@ -169,7 +172,11 @@ class GeminiImageGenerationTask(GeminiTaskBase):
                 height=self.height,
                 aspect_ratio=self.aspect_ratio,
             )
-            time.sleep(1)
+
+            if self.is_cancelled():
+                error_msg = "生成失败: 任务被取消"
+                self.update_progress(message=error_msg)
+                return TaskResult.failure_result(Exception("任务被取消"), error_msg)
 
             self.update_progress(3, "API 调用成功，处理响应...")
 
@@ -180,10 +187,13 @@ class GeminiImageGenerationTask(GeminiTaskBase):
                 "width": self.width,
                 "height": self.height,
             }
-            time.sleep(1)
+
+            if self.is_cancelled():
+                error_msg = "生成失败: 任务被取消"
+                self.update_progress(message=error_msg)
+                return TaskResult.failure_result(Exception("任务被取消"), error_msg)
 
             self.update_progress(4, "图片生成完成")
-            time.sleep(1)
 
             return TaskResult.success_result(
                 data=result_data,
