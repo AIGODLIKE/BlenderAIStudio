@@ -322,7 +322,7 @@ class StudioHistoryItem:
                 imgui.image(icon, (h, h))
                 imgui.same_line()
                 imgui.text(datetime.fromtimestamp(self.timestamp).strftime("%Y-%m-%d %H:%M:%S"))
-                
+                imgui.dummy((0, 0))
                 # 复制/导出
                 # if imgui.button("复制", (-imgui.FLT_MIN, 0)):
                 #     pass
