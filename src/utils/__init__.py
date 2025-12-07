@@ -19,6 +19,12 @@ def get_custom_icon(name="None"):
     return previews_icons[name.lower()].icon_id
 
 
+def get_version():
+    from ...__init__ import bl_info
+
+    return bl_info.get("version", (0, 0, 0))
+
+
 def get_pref():
     from ... import __package__ as base_name
     return bpy.context.preferences.addons[base_name].preferences

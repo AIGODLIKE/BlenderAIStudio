@@ -21,6 +21,7 @@ from .tasks import (
 from .wrapper import with_child, BaseAdapter, WidgetDescriptor, DescriptorFactory
 from ..i18n import PROP_TCTX
 from ..preferences import get_pref
+from ..utils import get_version
 from ..utils.render import render_scene_to_png, render_scene_depth_to_png
 from ..timer import Timer
 
@@ -144,6 +145,20 @@ class StudioImagesDescriptor(WidgetDescriptor):
             self.adapter.on_image_action(self.widget_name, "delete_image", index)
         imgui.pop_style_color(3)
         if is_hovered:
+            imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.CHILD_R)
+            imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, (12, 12))
+            imgui.begin_tooltip()
+            tex = TexturePool.get_tex(icon)
+            file_name = Path(img_path).stem
+            imgui.text(f"{file_name} [{tex.width}x{tex.height}]")
+            imgui.dummy((0, imgui.get_style().frame_padding[1]))
+            imgui.invisible_button("FakeButton", (tex.width, tex.height))
+            pmin = imgui.get_item_rect_min()
+            pmax = imgui.get_item_rect_max()
+            dl = imgui.get_window_draw_list()
+            dl.add_image_rounded(icon, pmin, pmax, (0, 0), (1, 1), 0xFFFFFFFF, Const.CHILD_R * 0.8)
+            imgui.end_tooltip()
+            imgui.pop_style_var(2)
             imgui.set_cursor_pos(pos)
             col = (67 / 255, 207 / 255, 124 / 255, 1)
             if imgui.is_item_active():
@@ -237,7 +252,7 @@ class StudioHistoryItem:
                     pmin = imgui.get_item_rect_min()
                     pmax = imgui.get_item_rect_max()
                     dl = imgui.get_window_draw_list()
-                    dl.add_image_rounded(icon, pmin, pmax, uvmin, uvmax, 0xFFFFFFFF, 5)
+                    dl.add_image_rounded(icon, pmin, pmax, uvmin, uvmax, 0xFFFFFFFF, 12)
                     if imgui.is_item_hovered():
                         imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.CHILD_R)
                         imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, (12, 12))
@@ -246,7 +261,11 @@ class StudioHistoryItem:
                         file_name = Path(self.output_file).stem
                         imgui.text(f"{file_name} [{tex.width}x{tex.height}]")
                         imgui.dummy((0, 0))
-                        imgui.image(icon, (tex.width, tex.height))
+                        imgui.invisible_button("FakeButton", (tex.width, tex.height))
+                        pmin = imgui.get_item_rect_min()
+                        pmax = imgui.get_item_rect_max()
+                        dl = imgui.get_window_draw_list()
+                        dl.add_image_rounded(icon, pmin, pmax, (0, 0), (1, 1), 0xFFFFFFFF, Const.CHILD_R * 0.8)
                         imgui.end_tooltip()
                         imgui.pop_style_var(2)
                     imgui.pop_style_color(4)
@@ -263,22 +282,66 @@ class StudioHistoryItem:
                     imgui.push_style_color(imgui.Col.BUTTON, col_bg)
                     if imgui.begin_table("##Buttons", 1):
                         imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 0)
+                        # 编辑
+                        if True:
+                            label = "编辑"
+                            style = imgui.get_style()
+                            bh = h1 / 2 - style.cell_padding[1] * 2 - style.frame_padding[1]
+                            imgui.table_next_column()
+                            if imgui.button("##编辑", (-imgui.FLT_MIN, bh)):
+                                print("编辑图片")
+                            dl = imgui.get_window_draw_list()
+                            pmin = imgui.get_item_rect_min()
+                            pmax = imgui.get_item_rect_max()
+                            lh = imgui.get_text_line_height()
+                            text_width = imgui.calc_text_size(label)[0]
+                            pcenter = (pmin[0] + pmax[0]) * 0.5, (pmin[1] + pmax[1]) * 0.5
+                            content_width = text_width + lh + style.item_spacing[0]
+                            content_height = lh
 
-                        bh = h1 / 2 - imgui.get_style().cell_padding[1] * 2 - imgui.get_style().frame_padding[1]
-                        imgui.table_next_column()
-                        if imgui.button("编辑", (-imgui.FLT_MIN, bh)):
-                            print("编辑图片")
+                            icon = TexturePool.get_tex_id("image_edit")
+                            ipmin = pcenter[0] - content_width * 0.5, pcenter[1] - content_height * 0.5
+                            ipmax = ipmin[0] + content_height, pcenter[1] + content_height * 0.5
+                            dl.add_image(icon, ipmin, ipmax)
 
-                        imgui.table_next_column()
-                        old_show_detail = self.show_detail
-                        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_SELECTED)
-                        if old_show_detail:
-                            imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON_SELECTED)
-                        if imgui.button("详情", (-imgui.FLT_MIN, bh)):
-                            self.show_detail = not self.show_detail
-                        if old_show_detail:
+                            col = imgui.get_color_u32(imgui.get_style().colors[imgui.Col.TEXT])
+                            tpos = pcenter[0] - content_width * 0.5 + lh + style.item_spacing[0], pcenter[1] - content_height * 0.5
+                            dl.add_text(tpos, col, label)
+
+                        # 细节
+                        if True:
+                            label = "详情"
+                            style = imgui.get_style()
+                            bh = h1 / 2 - style.cell_padding[1] * 2 - style.frame_padding[1]
+
+                            imgui.table_next_column()
+                            old_show_detail = self.show_detail
+                            imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_SELECTED)
+                            if old_show_detail:
+                                imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON_SELECTED)
+                            if imgui.button("##详情", (-imgui.FLT_MIN, bh)):
+                                self.show_detail = not self.show_detail
+                            if old_show_detail:
+                                imgui.pop_style_color(1)
                             imgui.pop_style_color(1)
-                        imgui.pop_style_color(1)
+
+                            dl = imgui.get_window_draw_list()
+                            pmin = imgui.get_item_rect_min()
+                            pmax = imgui.get_item_rect_max()
+                            lh = imgui.get_text_line_height()
+                            text_width = imgui.calc_text_size(label)[0]
+                            pcenter = (pmin[0] + pmax[0]) * 0.5, (pmin[1] + pmax[1]) * 0.5
+                            content_width = text_width + lh + style.item_spacing[0]
+                            content_height = lh
+
+                            icon = TexturePool.get_tex_id("image_detail")
+                            ipmin = pcenter[0] - content_width * 0.5, pcenter[1] - content_height * 0.5
+                            ipmax = ipmin[0] + content_height, pcenter[1] + content_height * 0.5
+                            dl.add_image(icon, ipmin, ipmax)
+
+                            col = imgui.get_color_u32(imgui.get_style().colors[imgui.Col.TEXT])
+                            tpos = pcenter[0] - content_width * 0.5 + lh + style.item_spacing[0], pcenter[1] - content_height * 0.5
+                            dl.add_text(tpos, col, label)
 
                         imgui.end_table()
                     imgui.pop_style_var(1)
@@ -345,6 +408,7 @@ class StudioHistoryItem:
                 # if imgui.button("复制", (-imgui.FLT_MIN, 0)):
                 #     pass
                 if imgui.button("导出", (-imgui.FLT_MIN, 0)):
+
                     def export_image_callback(file_path: str):
                         copyfile(self.output_file, file_path)
                         print("导出图片到：", file_path)
@@ -931,21 +995,38 @@ class AIStudio(AppHud):
         # Left
         if True:
             imgui.begin_group()
-            imgui.set_cursor_pos((fp[0], fp[1] - cp[1]))
+            imgui.set_cursor_pos_y(fp[1])
 
             btn_size = 40, 40
             left_w = btn_size[0] + (fp[0] + fp[0]) * 2
-            imgui.begin_table("CategoryTable", 1, outer_size=(left_w - fp[0], 0))
+            imgui.push_style_var_y(imgui.StyleVar.ITEM_SPACING, fp[1])
             subpanel_config = {
                 AIStudioPanelType.GENERATION: "generation",
                 AIStudioPanelType.HISTORY: "history",
                 AIStudioPanelType.SETTINGS: "settings",
             }
+            btn_size = (btn_size[0] + fp[0] * 2, btn_size[1] + fp[1] * 2)
             for subpanel in subpanel_config:
-                imgui.table_next_column()
+                if subpanel == AIStudioPanelType.SETTINGS:
+                    ah = imgui.get_content_region_avail()[1]
+                    imgui.dummy((0, ah - btn_size[1] - fp[1] * 2))
+                    pos = imgui.get_cursor_pos()
+
+                    self.font_manager.push_h5_font(12 * Const.SCALE)
+                    line_height = imgui.get_text_line_height_with_spacing()
+                    imgui.set_cursor_pos((fp[0], pos[1] - fp[1] * 2 - line_height + 4))
+                    imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+                    imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
+                    imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
+                    imgui.button(f"V{'.'.join(map(str, get_version()))}", (btn_size[0], line_height))
+                    imgui.pop_style_color(3)
+                    self.font_manager.pop_font()
+
+                    imgui.set_cursor_pos_y(pos[1])
+                imgui.set_cursor_pos_x(fp[0])
                 imgui.begin_group()
                 icon = TexturePool.get_tex_id(subpanel_config[subpanel])
-                if imgui.button(f"##Btn{subpanel}", (btn_size[0] + fp[0] * 2, btn_size[1] + fp[1] * 2)):
+                if imgui.button(f"##Btn{subpanel}", btn_size):
                     self.active_panel = subpanel
                 col = Const.CLOSE_BUTTON_NORMAL
                 if imgui.is_item_active():
@@ -962,9 +1043,8 @@ class AIStudio(AppHud):
                 pmax = pmax[0] - fp[0], pmax[1] - fp[1]
                 dl.add_image(icon, pmin, pmax, col=col)
                 imgui.end_group()
-
-            imgui.end_table()
             imgui.end_group()
+            imgui.pop_style_var(1)
 
         imgui.same_line()
         imgui.pop_style_var(6)
