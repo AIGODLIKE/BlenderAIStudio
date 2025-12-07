@@ -428,6 +428,9 @@ class StudioClient(BaseAdapter):
     def new_generate_task(self):
         pass
 
+    def cancel_generate_task(self):
+        pass
+
     def query_task_status(self) -> dict:
         if not self.task_id:
             return {}
@@ -580,6 +583,9 @@ class NanoBanana(StudioClient):
         self.is_task_submitting = True
         Timer.put(self.job)
 
+    def cancel_generate_task(self):
+        self.task_manager.cancel_task(self.task_id)
+
     def job(self):
         self.is_task_submitting = False
         # 1. 创建任务
@@ -667,6 +673,15 @@ class NanoBanana(StudioClient):
             history = StudioHistory.get_instance()
             history.add(history_item)
 
+        def on_cancelled(event_data):
+            _task: Task = event_data["task"]
+            try:
+                if self.task_id == _task.task_id:
+                    self.task_id = None
+                    print(f"任务已取消: {_task.task_id}")
+            except Exception:
+                pass
+
         def on_failed(event_data):
             _task: Task = event_data["task"]
             result: TaskResult = event_data["result"]
@@ -676,6 +691,7 @@ class NanoBanana(StudioClient):
         task.register_callback("state_changed", on_state_changed)
         task.register_callback("progress_updated", on_progress)
         task.register_callback("completed", on_completed)
+        task.register_callback("cancelled", on_cancelled)
         task.register_callback("failed", on_failed)
         print(f"任务提交: {task.task_id}")
 
@@ -1087,30 +1103,53 @@ class AIStudio(AppHud):
 
                 imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0.6)
                 imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, 15)
-                imgui.push_style_color(imgui.Col.BUTTON, Const.SLIDER_NORMAL)
 
                 self.font_manager.push_h1_font()
                 client = self.clients.get(self.active_client, StudioClient())
+                status = client.query_task_status()
+                # 按钮状态:
+                #   1. 无状态
+                #   2. 正在提交
+                #   3. 正在渲染
+                #   4. 停止渲染
+                # "running", "processing"
+                task_state: TaskState = status.get("state", "")
                 is_rendering = False
+                show_stop_btn = False
                 label = "  开始AI渲染"
                 if client.is_task_submitting:
                     label = "  任务提交中"
-                status = client.query_task_status()
-                # "running", "processing"
-                task_state: TaskState = status.get("state", "")
                 if task_state == "running":
                     is_rendering = True
                     label = "  正在AI渲染"
+                    rmin = imgui.get_cursor_screen_pos()
+                    rmax = (rmin[0] + full_width, rmin[1] + gen_btn_height)
+                    if imgui.is_mouse_hovering_rect(rmin, rmax):
+                        label = "  停止AI渲染"
+                        show_stop_btn = True
+                col_btn = Const.SLIDER_NORMAL
+                col_btn_hover = (77 / 255, 161 / 255, 255 / 255, 1)
+                col_btn_active = (26 / 255, 112 / 255, 208 / 255, 1)
                 if is_rendering:
-                    imgui.push_style_color(imgui.Col.BUTTON, (255 / 255, 141 / 255, 26 / 255, 1))
-                    imgui.push_style_color(imgui.Col.BUTTON_HOVERED, (255 / 255, 87 / 255, 51 / 255, 1))
+                    col_btn = (255 / 255, 141 / 255, 26 / 255, 1)
+                    col_btn_hover = (255 / 255, 87 / 255, 51 / 255, 1)
+                    col_btn_active = (255 / 255, 131 / 255, 5 / 255, 1)
+                    if show_stop_btn:
+                        col_btn = (255 / 255, 116 / 255, 51 / 255, 1)
+                        col_btn_hover = (255 / 255, 116 / 255, 51 / 255, 1)
+                        col_btn_active = (255 / 255, 62 / 255, 20 / 255, 1)
+
+                imgui.push_style_color(imgui.Col.BUTTON, col_btn)
+                imgui.push_style_color(imgui.Col.BUTTON_HOVERED, col_btn_hover)
+                imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, col_btn_active)
 
                 label_size = imgui.calc_text_size(label)
                 if imgui.button("##开始AI渲染", (full_width, gen_btn_height)):
-                    print("开始AI渲染")
-                    client.new_generate_task()
-                if is_rendering:
-                    imgui.pop_style_color(2)
+                    if not is_rendering:
+                        client.new_generate_task()
+                    elif show_stop_btn:
+                        client.cancel_generate_task()
+
                 pmin = imgui.get_item_rect_min()
                 pmax = imgui.get_item_rect_max()
                 inner_width = 30 + label_size[0]
@@ -1119,15 +1158,20 @@ class AIStudio(AppHud):
                 offset_y = (pmax[1] - pmin[1] - inner_height) * 0.5
                 pmin = pmin[0] + offset_x, pmin[1] + offset_y
                 pmax = pmax[0] - offset_x, pmax[1] - offset_y
-                icon = TexturePool.get_tex_id("start_ai_generate")
+                icon_name = "start_ai_generate"
+                if is_rendering:
+                    icon_name = "ai_rendering"
+                    if show_stop_btn:
+                        icon_name = "stop_ai_generate"
+                icon = TexturePool.get_tex_id(icon_name)
                 dl = imgui.get_window_draw_list()
-                dl.add_image(icon, pmin, (pmin[0] + 30, pmax[1]))
+                dl.add_image(icon, pmin, (pmin[0] + (pmax[1] - pmin[1]), pmax[1]))
                 col = imgui.get_color_u32((1, 1, 1, 1))
                 dl.add_text((pmin[0] + 30, pmin[1]), col, label)
                 self.font_manager.pop_font()
 
                 imgui.pop_style_var(2)
-                imgui.pop_style_color()
+                imgui.pop_style_color(3)
 
             imgui.pop_style_var(6)
             imgui.pop_style_color(5)
