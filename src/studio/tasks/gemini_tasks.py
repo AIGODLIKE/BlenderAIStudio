@@ -96,16 +96,16 @@ class GeminiImageGenerationTask(GeminiTaskBase):
     """
 
     def __init__(
-            self,
-            api_key: str,
-            image_path: str,
-            user_prompt: str,
-            reference_images_path: list[str],
-            is_color_render: bool = False,
-            width: int = 1024,
-            height: int = 1024,
-            aspect_ratio: str = "1:1",
-            max_retries: int = 3,
+        self,
+        api_key: str,
+        image_path: str,
+        user_prompt: str,
+        reference_images_path: list[str],
+        is_color_render: bool = False,
+        width: int = 1024,
+        height: int = 1024,
+        aspect_ratio: str = "1:1",
+        max_retries: int = 3,
     ):
         """
         初始化图片生成任务
@@ -208,16 +208,16 @@ class GeminiImageEditTask(GeminiTaskBase):
     """
 
     def __init__(
-            self,
-            api_key: str,
-            image_path: str,
-            edit_prompt: str,
-            mask_path: Optional[str] = None,
-            reference_images_path: Optional[str] | list[str] = None,
-            width: int = 0,
-            height: int = 0,
-            aspect_ratio: str = "1:1",
-            max_retries: int = 3,
+        self,
+        api_key: str,
+        image_path: str,
+        edit_prompt: str,
+        mask_path: Optional[str] = None,
+        reference_images_path: Optional[str] | list[str] = None,
+        width: int = 0,
+        height: int = 0,
+        aspect_ratio: str = "1:1",
+        max_retries: int = 3,
     ):
         """
         初始化图片编辑任务
@@ -319,14 +319,14 @@ class GeminiStyleTransferTask(GeminiTaskBase):
     """
 
     def __init__(
-            self,
-            api_key: str,
-            target_image_path: str,
-            style_image_path: str,
-            style_prompt: str = "",
-            width: int = 0,
-            height: int = 0,
-            max_retries: int = 3,
+        self,
+        api_key: str,
+        target_image_path: str,
+        style_image_path: str,
+        style_prompt: str = "",
+        width: int = 0,
+        height: int = 0,
+        max_retries: int = 3,
     ):
         """
         初始化风格迁移任务
@@ -418,8 +418,12 @@ class GeminiAPI:
         self.base_url = "https://generativelanguage.googleapis.com/v1beta"
         self.model = model
 
-    def _build_generate_prompt(self, user_prompt: str, has_reference: bool = False,
-                               is_color_render: bool = False) -> str:
+    def _build_generate_prompt(
+        self,
+        user_prompt: str,
+        has_reference: bool = False,
+        is_color_render: bool = False,
+    ) -> str:
         if is_color_render:
             if has_reference:
                 base_prompt = (
@@ -548,9 +552,16 @@ class GeminiAPI:
             return f"{base_prompt}\n\nUSER PROMPT (EXECUTE THIS): {user_prompt.strip()}"
         return base_prompt
 
-    def generate_image(self, depth_image_path: str, user_prompt: str, reference_images_path: list[str],
-                       is_color_render: bool = False, width: int = 1024, height: int = 1024,
-                       aspect_ratio: str = "1:1") -> Tuple[bytes, str]:
+    def generate_image(
+        self,
+        depth_image_path: str,
+        user_prompt: str,
+        reference_images_path: list[str],
+        is_color_render: bool = False,
+        width: int = 1024,
+        height: int = 1024,
+        aspect_ratio: str = "1:1",
+    ) -> Tuple[bytes, str]:
         """
         由深度图和提示词生成图像(可选使用参考图作为 风格化/材质)
         Args:
@@ -701,8 +712,15 @@ class GeminiAPI:
             png_data = Path(f.name).read_bytes()
             return png_data
 
-    def edit_image(self, image_path: str, edit_prompt: str, mask_path: str = None, reference_image_path: str = None,
-                   width: int = 0, height: int = 0) -> Tuple[bytes, str]:
+    def edit_image(
+        self,
+        image_path: str,
+        edit_prompt: str,
+        mask_path: str = None,
+        reference_image_path: str = None,
+        width: int = 0,
+        height: int = 0,
+    ) -> Tuple[bytes, str]:
         """
         基于提示词(和遮罩, 可选)编辑现有图像
 
@@ -717,8 +735,11 @@ class GeminiAPI:
         """
         try:
             # Build edit prompt
-            full_prompt = self._build_edit_prompt(edit_prompt, has_mask=bool(mask_path),
-                                                  has_reference=bool(reference_image_path))
+            full_prompt = self._build_edit_prompt(
+                edit_prompt,
+                has_mask=bool(mask_path),
+                has_reference=bool(reference_image_path),
+            )
             return self._edit_with_rest(image_path, full_prompt, mask_path, reference_image_path, width, height)
 
         except Exception as e:
@@ -1132,9 +1153,16 @@ class GeminiAPI:
         else:
             return base_prompt
 
-    def _edit_with_rest(self, image_path: str, prompt: str, mask_path: str = None, reference_path: str = None,
-                        width: int = 0, height: int = 0,
-                        aspect_ratio: str = "1:1") -> Tuple[bytes, str]:
+    def _edit_with_rest(
+        self,
+        image_path: str,
+        prompt: str,
+        mask_path: str = None,
+        reference_path: str = None,
+        width: int = 0,
+        height: int = 0,
+        aspect_ratio: str = "1:1",
+    ) -> Tuple[bytes, str]:
         """
         图片顺序很重要
         IMAGE 1 (scene with sketch)
