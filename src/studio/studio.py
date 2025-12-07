@@ -199,7 +199,6 @@ class StudioHistoryItem:
                 imgui.table_next_column()
                 file_name = Path(self.output_file).stem
                 imgui.text(file_name)
-                
 
                 imgui.end_table()
 
@@ -217,7 +216,7 @@ class StudioHistoryItem:
                 with with_child("##Image", (w1, h1), child_flags=flags):
                     imgui.push_style_color(imgui.Col.FRAME_BG, col_bg)
                     icon = TexturePool.get_tex_id(self.output_file)
-                    
+
                     aw, ah = imgui.get_content_region_avail()
                     imgui.image(icon, (aw, ah))
                     if imgui.is_item_hovered():
@@ -293,7 +292,7 @@ class StudioHistoryItem:
                     pmin = imgui.get_item_rect_min()
                     pmax = imgui.get_item_rect_max()
                     dl.add_image(icon, pmin, pmax, col=col)
-                
+
                 # 提示词
                 mlt_flags = imgui.InputTextFlags.WORD_WRAP
                 h = 133 / 354 * imgui.get_content_region_avail()[0]
@@ -350,6 +349,15 @@ class StudioHistory:
     def __init__(self):
         self.items: list[StudioHistoryItem] = []
         self.current_index = 0
+
+    def add_fake_item(self):
+        history_item = StudioHistoryItem()
+        history_item.result = {}
+        history_item.output_file = "/Users/karrycharon/Desktop/OutputImage/AIStudio/Output.png"
+        history_item.metadata = {"prompt": "这是一个测试"}
+        history_item.vendor = NanoBanana.VENDOR
+        history_item.timestamp = time.time()
+        self.add(history_item)
 
     @classmethod
     def get_instance(cls) -> "StudioHistory":
@@ -728,6 +736,7 @@ class AIStudioPanelType(Enum):
     NONE = "none"
     GENERATION = "generation"
     SETTINGS = "settings"
+    HISTORY = "history"
 
 
 class AIStudio(AppHud):
@@ -894,6 +903,7 @@ class AIStudio(AppHud):
             imgui.begin_table("CategoryTable", 1, outer_size=(left_w - fp[0], 0))
             subpanel_config = {
                 AIStudioPanelType.GENERATION: "generation",
+                AIStudioPanelType.HISTORY: "history",
                 AIStudioPanelType.SETTINGS: "settings",
             }
             for subpanel in subpanel_config:
@@ -945,6 +955,7 @@ class AIStudio(AppHud):
             imgui.table_next_column()
             imgui.begin_group()
             self.draw_generation_panel()
+            self.draw_history_panel()
             self.draw_setting_panel()
             imgui.end_group()
 
@@ -1006,37 +1017,7 @@ class AIStudio(AppHud):
             imgui.text("")
 
             imgui.table_next_column()
-            imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0.75)
-            imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R)
-            imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)
-            imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
-            imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
-            self.font_manager.push_h1_font(24)
-            label = " 帮助"
-            label_size = imgui.calc_text_size(label)
-            if imgui.button(f"##{label}", (112, 44)):
-                help_url = self.clients.get(self.active_client, StudioClient()).help_url
-                if help_url:
-                    webbrowser.open(help_url)
-
-            pmin = imgui.get_item_rect_min()
-            pmax = imgui.get_item_rect_max()
-            icon_size = imgui.get_text_line_height()
-            inner_width = icon_size + label_size[0]
-            inner_height = label_size[1]
-            offset_x = (pmax[0] - pmin[0] - inner_width) * 0.5
-            offset_y = (pmax[1] - pmin[1] - inner_height) * 0.5
-            pmin = pmin[0] + offset_x, pmin[1] + offset_y
-            pmax = pmax[0] - offset_x, pmax[1] - offset_y
-            icon = TexturePool.get_tex_id("help")
-            dl = imgui.get_window_draw_list()
-            dl.add_image(icon, pmin, (pmin[0] + icon_size, pmax[1]))
-            col = imgui.get_color_u32(Const.BUTTON_SELECTED)
-            dl.add_text((pmin[0] + icon_size, pmin[1]), col, label)
-
-            self.font_manager.pop_font()
-            imgui.pop_style_color(3)
-            imgui.pop_style_var(2)
+            self.draw_help_button()
 
             imgui.end_table()
             imgui.dummy((dummy_size[0], dummy_size[1] - 8))
@@ -1160,6 +1141,91 @@ class AIStudio(AppHud):
             imgui.pop_item_width()
         imgui.pop_style_color(1)
 
+    def draw_history_panel(self):
+        if self.active_panel != AIStudioPanelType.HISTORY:
+            return
+        dummy_size = 0, 26 / 2
+        imgui.push_style_var_x(imgui.StyleVar.CELL_PADDING, Const.LP_CELL_P[0])
+        imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, (0, 0))
+
+        if True:
+            self.font_manager.push_h1_font()
+            imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+            imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
+            imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
+            imgui.button("历史")
+            imgui.same_line()
+            icon = TexturePool.get_tex_id("history_header")
+            tex = TexturePool.get_tex(icon)
+            scale = imgui.get_text_line_height() / tex.height
+            imgui.image_button("", icon, (tex.width * scale, tex.height * scale), tint_col=Const.BUTTON_SELECTED)
+            imgui.pop_style_color(3)
+            imgui.same_line()
+            self.draw_panel_close_button()
+            self.font_manager.pop_font()
+            imgui.dummy(dummy_size)
+
+        # 设置面板
+        if True:
+            imgui.dummy(dummy_size)
+            imgui.begin_table("#Engine", 4)
+            imgui.table_setup_column("#EngineEle1", imgui.TableColumnFlags.WIDTH_FIXED, 0, 0)
+            imgui.table_setup_column("#EngineEle2", imgui.TableColumnFlags.WIDTH_FIXED, 0, 1)
+            imgui.table_setup_column("#EngineEle3", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 2)
+            imgui.table_setup_column("#EngineEle4", imgui.TableColumnFlags.WIDTH_FIXED, 0, 3)
+            imgui.table_next_column()
+            self.font_manager.push_h2_font()
+            imgui.text("引擎")
+            self.font_manager.pop_font()
+
+            # 小字
+            imgui.table_next_column()
+            imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+            imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
+            imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
+            imgui.push_style_var_y(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0)
+            imgui.push_font(None, 12 * Const.SCALE)
+            imgui.button("API")
+            imgui.pop_font()
+            imgui.pop_style_var()
+            imgui.pop_style_color(3)
+
+            imgui.table_next_column()
+            imgui.text("")
+
+            imgui.table_next_column()
+            self.draw_help_button()
+
+            imgui.end_table()
+
+            imgui.dummy((dummy_size[0], dummy_size[1] - 8))
+
+            imgui.push_style_var_y(imgui.StyleVar.WINDOW_PADDING, 24)
+            imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R)
+            imgui.push_style_var(imgui.StyleVar.FRAME_PADDING, Const.CHILD_P)
+            imgui.push_style_var(imgui.StyleVar.FRAME_BORDER_SIZE, Const.CHILD_BS)
+            imgui.push_style_var(imgui.StyleVar.POPUP_ROUNDING, 24)
+            imgui.push_style_var_y(imgui.StyleVar.ITEM_SPACING, 15)
+
+            imgui.push_style_color(imgui.Col.FRAME_BG, Const.WINDOW_BG)
+            imgui.push_style_color(imgui.Col.POPUP_BG, Const.POPUP_BG)
+            imgui.push_style_color(imgui.Col.HEADER, Const.BUTTON)
+            imgui.push_style_color(imgui.Col.HEADER_ACTIVE, Const.BUTTON_ACTIVE)
+            imgui.push_style_color(imgui.Col.HEADER_HOVERED, Const.BUTTON_HOVERED)
+
+            flags = 0
+            flags |= imgui.ChildFlags.FRAME_STYLE
+            imgui.push_style_color(imgui.Col.FRAME_BG, (48 / 255, 48 / 255, 48 / 255, 1))
+            history = StudioHistory.get_instance()
+            for item in history.items:
+                item.draw(self)
+            imgui.pop_style_color(1)
+
+            imgui.pop_style_var(6)
+            imgui.pop_style_color(5)
+
+        imgui.pop_style_var(2)
+
     def draw_setting_panel(self):
         if self.active_panel != AIStudioPanelType.SETTINGS:
             return
@@ -1187,9 +1253,35 @@ class AIStudio(AppHud):
         # 设置面板
         if True:
             imgui.dummy(dummy_size)
+            imgui.begin_table("#Engine", 4)
+            imgui.table_setup_column("#EngineEle1", imgui.TableColumnFlags.WIDTH_FIXED, 0, 0)
+            imgui.table_setup_column("#EngineEle2", imgui.TableColumnFlags.WIDTH_FIXED, 0, 1)
+            imgui.table_setup_column("#EngineEle3", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 2)
+            imgui.table_setup_column("#EngineEle4", imgui.TableColumnFlags.WIDTH_FIXED, 0, 3)
+            imgui.table_next_column()
             self.font_manager.push_h2_font()
             imgui.text("服务")
             self.font_manager.pop_font()
+
+            # 小字
+            imgui.table_next_column()
+            imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+            imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
+            imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
+            imgui.push_style_var_y(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0)
+            imgui.push_font(None, 12 * Const.SCALE)
+            imgui.button("API")
+            imgui.pop_font()
+            imgui.pop_style_var()
+            imgui.pop_style_color(3)
+
+            imgui.table_next_column()
+            imgui.text("")
+
+            imgui.table_next_column()
+            self.draw_help_button()
+
+            imgui.end_table()
             imgui.dummy((dummy_size[0], dummy_size[1] - 8))
 
             imgui.push_style_var_y(imgui.StyleVar.WINDOW_PADDING, 24)
@@ -1225,6 +1317,40 @@ class AIStudio(AppHud):
             self.font_manager.pop_font()
             imgui.pop_style_var()
 
+        imgui.pop_style_var(2)
+
+    def draw_help_button(self):
+        help_url = self.clients.get(self.active_client, StudioClient()).help_url
+        if not help_url:
+            return
+        imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0.75)
+        imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R)
+        imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)
+        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
+        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
+        self.font_manager.push_h1_font(24)
+        label = " 帮助"
+        label_size = imgui.calc_text_size(label)
+        if imgui.button(f"##{label}", (112, 44)):
+            webbrowser.open(help_url)
+
+        pmin = imgui.get_item_rect_min()
+        pmax = imgui.get_item_rect_max()
+        icon_size = imgui.get_text_line_height()
+        inner_width = icon_size + label_size[0]
+        inner_height = label_size[1]
+        offset_x = (pmax[0] - pmin[0] - inner_width) * 0.5
+        offset_y = (pmax[1] - pmin[1] - inner_height) * 0.5
+        pmin = pmin[0] + offset_x, pmin[1] + offset_y
+        pmax = pmax[0] - offset_x, pmax[1] - offset_y
+        icon = TexturePool.get_tex_id("help")
+        dl = imgui.get_window_draw_list()
+        dl.add_image(icon, pmin, (pmin[0] + icon_size, pmax[1]))
+        col = imgui.get_color_u32(Const.BUTTON_SELECTED)
+        dl.add_text((pmin[0] + icon_size, pmin[1]), col, label)
+
+        self.font_manager.pop_font()
+        imgui.pop_style_color(3)
         imgui.pop_style_var(2)
 
     def draw_panel_close_button(self):
