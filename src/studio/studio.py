@@ -177,7 +177,7 @@ class StudioHistoryItem:
         flags |= imgui.ChildFlags.AUTO_RESIZE_Y
         flags |= imgui.ChildFlags.ALWAYS_AUTO_RESIZE
         imgui.push_style_color(imgui.Col.FRAME_BG, col_bg)
-        with with_child("##HistoryItem", (0, 0), child_flags=flags):
+        with with_child(f"##Item_{self.index}", (0, 0), child_flags=flags):
             imgui.push_style_color(imgui.Col.FRAME_BG, col_widget)
 
             # 标题栏
@@ -1215,10 +1215,14 @@ class AIStudio(AppHud):
 
             flags = 0
             flags |= imgui.ChildFlags.FRAME_STYLE
+            avail_rect = imgui.get_content_region_avail()
+            avail_height = avail_rect[1]
+            wp = imgui.get_style().window_padding
             imgui.push_style_color(imgui.Col.FRAME_BG, (48 / 255, 48 / 255, 48 / 255, 1))
-            history = StudioHistory.get_instance()
-            for item in history.items:
-                item.draw(self)
+            with with_child("Outer", (0, avail_height - wp[1]), flags):
+                history = StudioHistory.get_instance()
+                for item in history.items:
+                    item.draw(self)
             imgui.pop_style_color(1)
 
             imgui.pop_style_var(6)
