@@ -4,6 +4,8 @@ from datetime import datetime
 
 import bpy
 
+from .utils import get_custom_icon
+
 
 class ImageItem(bpy.types.PropertyGroup):
     image: bpy.props.PointerProperty(type=bpy.types.Image, name="图片")
@@ -203,8 +205,14 @@ class SceneProperty(bpy.types.PropertyGroup):
             rr.label(text="", icon="ERROR")
         rr = row.row()
         rr.alignment = "RIGHT"
-        rr.operator("bas.select_reference_image_by_image", text="", icon="IMAGE_REFERENCE", emboss=False)
-        rr.operator("bas.select_reference_image_by_file", text="", icon="FILE_NEW", emboss=False)
+        rr.operator("bas.select_reference_image_by_image", text="",
+                    emboss=False,
+                    icon_value=get_custom_icon("select_references_by_bl_image")
+                    )
+        rr.operator("bas.select_reference_image_by_file", text="",
+                    emboss=False,
+                    icon_value=get_custom_icon("select_references_by_bl_image"),
+                    )
         if not self.expand_ui:
             return
 
