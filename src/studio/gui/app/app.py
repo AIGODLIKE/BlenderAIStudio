@@ -461,9 +461,8 @@ class AppHud(App):
         return bpy.context.preferences.view.ui_scale * get_pref().ui_pre_scale
 
     def update_mouse_pos(self, mpos: tuple[float, float]):
-        mx = mpos[0] / self.screen_scale
-        my = self.screen_height - 1 - mpos[1] / self.screen_scale
-        self.io.add_mouse_pos_event(mx, my)
+        translated_pos = self.M.inverted() @ Vector((*mpos, 0))
+        self.io.add_mouse_pos_event(translated_pos[0], translated_pos[1])
 
     def update_gpu_matrix(self):
         """

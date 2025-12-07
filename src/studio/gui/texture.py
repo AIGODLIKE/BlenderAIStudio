@@ -18,15 +18,16 @@ class TexturePool:
             file_path = ICON_PATH.joinpath("none.png")
         buf = oiio.ImageBuf(file_path.as_posix())
         spec = buf.spec()
-        if spec.nchannels == 3:
-            alpha_spec = oiio.ImageSpec(spec.width, spec.height, 1, oiio.FLOAT)
-            alpha_buf = oiio.ImageBuf(alpha_spec)
-            oiio.ImageBufAlgo.fill(alpha_buf, 1.0)
-            buf = oiio.ImageBufAlgo.channel_append(buf, alpha_buf)
-        spec = buf.spec()
         pixels = buf.get_pixels(oiio.FLOAT)
         gpu_buf = gpu.types.Buffer("FLOAT", (spec.width, spec.height, spec.nchannels), pixels)
-        gpu_tex = gpu.types.GPUTexture(gpu_buf.dimensions[:2], format="RGBA8", data=gpu_buf)
+        tex_format_map = {
+            1: "DEPTH_COMPONENT16",
+            2: "RG16F",
+            3: "RGB16F",
+            4: "RGBA8",
+        }
+        tex_format = tex_format_map[spec.nchannels]
+        gpu_tex = gpu.types.GPUTexture(gpu_buf.dimensions[:2], format=tex_format, data=gpu_buf)
         return gpu_tex
 
     @classmethod
