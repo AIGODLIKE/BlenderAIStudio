@@ -70,11 +70,11 @@ def save_image_to_temp_folder(image, temp_folder) -> str | None:
         filepath_raw = image.filepath_raw
         file_format = image.file_format
         image_path = os.path.join(temp_folder, image.name)
-        if not image.name.endswith(".png"):  # TIPS: 临时解决没有png后缀问题
-            image.name += ".png"
         try:
             image.filepath_raw = image_path
             image.file_format = 'PNG'
+            if not filepath_raw.endswith(".png"):  # TIPS: 临时解决没有png后缀问题
+                filepath_raw += ".png"
             try:
                 image.save()
             except Exception as e:

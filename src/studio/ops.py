@@ -87,13 +87,13 @@ class FileImporter(bpy.types.Operator, ImportHelper):
 class FileExporter(bpy.types.Operator, ExportHelper):
     bl_idname = "bas.file_exporter"
     bl_label = "Export File"
-    
+
     filename_ext = ".png"
 
     filter_glob: bpy.props.StringProperty(default="*.png;*.jpg;*.jpeg;", options={"HIDDEN"})
     filepath: bpy.props.StringProperty(subtype="FILE_PATH")
     callback_id: bpy.props.StringProperty()
-    
+
     def execute(self, context):
         img_path = Path(self.filepath).as_posix()
         FileCallbackRegistry.execute_callback(self.callback_id, img_path)
@@ -122,12 +122,11 @@ class DrawImageMask(bpy.types.Operator):
         image.use_fake_user = True
         scene_prop = context.scene.blender_ai_studio_property
 
-        name = f"{image.name}_mask"
+        name = f"{image.name}_mask.png"
 
         mask_image = image.copy()
         mask_image.use_fake_user = True
         mask_image.pack()
-        # mask_image.preview_ensure()
         mask_image.filepath = ""
         mask_image.name = name
 
@@ -188,30 +187,6 @@ class ApplyImageMask(bpy.types.Operator):
                 oii.mask_index = index
                 continue
         return {"FINISHED"}
-
-
-# class CancelDrawMask(bpy.types.Operator):
-#     bl_idname = "bas.cancel_draw_mask"
-#     bl_translation_context = OPS_TCTX
-#     bl_label = "Cancel Draw Mask"
-#     bl_options = {"REGISTER"}
-#
-#     @classmethod
-#     def poll(cls, context):
-#         space = context.space_data
-#         image = getattr(space, "image", None)
-#         return image and image.blender_ai_studio_property.is_mask_image
-#
-#     def execute(self, context):
-#         space = context.space_data
-#         image = getattr(space, "image", None)
-#         oii = context.scene.blender_ai_studio_property
-#         ri = oii.mask_images[self.index].image
-#         if image and ri == image:
-#             oi = ri.blender_ai_studio_property.origin_image
-#             if oi:
-#                 setattr(context.space_data, "image", oi)
-#         return {"FINISHED"}
 
 
 class SelectMask(bpy.types.Operator):
@@ -429,7 +404,8 @@ class ApplyAiEditImage(bpy.types.Operator):
         print(self.bl_idname)
         pref = get_pref()
         oii = context.scene.blender_ai_studio_property
-        image = context.space_data.image
+        space_data = context.space_data
+        image = space_data.image
         if not image:
             self.report({'ERROR'}, "No image")
             return {'CANCELLED'}
@@ -543,7 +519,6 @@ class ApplyAiEditImage(bpy.types.Operator):
                 gi.preview_ensure()
                 gi.name = generate_image_name
                 try:
-                    space_data = bpy.context.space_data
                     space_data.image = gi
                 except Exception as e:
                     print("error", e)
