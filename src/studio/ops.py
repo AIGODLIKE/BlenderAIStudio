@@ -2,7 +2,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import bpy
-from bpy_extras.io_utils import ImportHelper
+from bpy_extras.io_utils import ImportHelper, ExportHelper
 
 from ..i18n import OPS_TCTX
 from ..utils import get_text_generic_keymap, get_text_window, get_pref, save_image_to_temp_folder
@@ -78,6 +78,22 @@ class FileImporter(bpy.types.Operator, ImportHelper):
         bpy.context.window_manager.fileselect_add(self)
         return {"RUNNING_MODAL"}
 
+    def execute(self, context):
+        img_path = Path(self.filepath).as_posix()
+        FileCallbackRegistry.execute_callback(self.callback_id, img_path)
+        return {"FINISHED"}
+
+
+class FileExporter(bpy.types.Operator, ExportHelper):
+    bl_idname = "bas.file_exporter"
+    bl_label = "Export File"
+    
+    filename_ext = ".png"
+
+    filter_glob: bpy.props.StringProperty(default="*.png;*.jpg;*.jpeg;", options={"HIDDEN"})
+    filepath: bpy.props.StringProperty(subtype="FILE_PATH")
+    callback_id: bpy.props.StringProperty()
+    
     def execute(self, context):
         img_path = Path(self.filepath).as_posix()
         FileCallbackRegistry.execute_callback(self.callback_id, img_path)
@@ -738,6 +754,7 @@ class RestoreHistory(bpy.types.Operator):
 clss = [
     AIStudioEntry,
     FileImporter,
+    FileExporter,
 
     SelectMask,
     DrawImageMask,
