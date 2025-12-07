@@ -215,10 +215,29 @@ class StudioHistoryItem:
                 imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R)
                 with with_child("##Image", (w1, h1), child_flags=flags):
                     imgui.push_style_color(imgui.Col.FRAME_BG, col_bg)
+                    imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
+                    imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
+                    imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
+                    bw, bh = imgui.get_content_region_avail()
                     icon = TexturePool.get_tex_id(self.output_file)
-
-                    aw, ah = imgui.get_content_region_avail()
-                    imgui.image(icon, (aw, ah))
+                    tex = TexturePool.get_tex(icon)
+                    tex_aspect_ratio = tex.width / tex.height
+                    btn_aspect_ratio = bw / bh
+                    uvmin = (0, 0)
+                    uvmax = (1, 1)
+                    if tex_aspect_ratio > btn_aspect_ratio:
+                        clip_uv_x = abs(tex.width - (tex.height / bh) * bw) / tex.width * 0.5
+                        uvmin = (clip_uv_x, 0)
+                        uvmax = (1 - clip_uv_x, 1)
+                    else:
+                        clip_uv_y = abs(tex.height - (tex.width / bw) * bh) / tex.height * 0.5
+                        uvmin = (0, clip_uv_y)
+                        uvmax = (1, 1 - clip_uv_y)
+                    imgui.button("##FakeButton", (bw, bh))
+                    pmin = imgui.get_item_rect_min()
+                    pmax = imgui.get_item_rect_max()
+                    dl = imgui.get_window_draw_list()
+                    dl.add_image_rounded(icon, pmin, pmax, uvmin, uvmax, 0xFFFFFFFF, 5)
                     if imgui.is_item_hovered():
                         imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.CHILD_R)
                         imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, (12, 12))
@@ -230,7 +249,7 @@ class StudioHistoryItem:
                         imgui.image(icon, (tex.width, tex.height))
                         imgui.end_tooltip()
                         imgui.pop_style_var(2)
-                    imgui.pop_style_color(1)
+                    imgui.pop_style_color(4)
                 imgui.pop_style_var(1)
                 imgui.pop_style_color(1)
 
