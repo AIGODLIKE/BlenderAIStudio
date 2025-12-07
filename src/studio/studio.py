@@ -476,12 +476,12 @@ class NanoBanana(StudioClient):
     def job(self):
         self.is_task_submitting = False
         # 1. 创建任务
-        path_dir = Path.home().joinpath("Desktop/OutputImage/AIStudio")
-        path_dir.mkdir(parents=True, exist_ok=True)
-        temp_image_path = path_dir.joinpath("Depth.png")
-        _temp_image_path = temp_image_path.as_posix()
-        # temp_image_path = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-        # _temp_image_path = temp_image_path.name
+        # path_dir = Path.home().joinpath("Desktop/OutputImage/AIStudio")
+        # path_dir.mkdir(parents=True, exist_ok=True)
+        # temp_image_path = path_dir.joinpath("Depth.png")
+        # _temp_image_path = temp_image_path.as_posix()
+        temp_image_path = tempfile.NamedTemporaryFile(suffix=".png", prefix="Depth", delete=False)
+        _temp_image_path = temp_image_path.name
         # 渲染图片
         scene = bpy.context.scene
         if self.input_image_type == "CameraRender":
