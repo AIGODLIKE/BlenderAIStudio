@@ -421,13 +421,6 @@ class ApplyAiEditImage(bpy.types.Operator):
         oii.running_operator = self.running_operator
         oii.origin_image = image
         generate_image_name = f"{image.name}_{self.running_operator}"
-        w, h = image.size
-        if oii.resolution == "1K":
-            w, h = (1024, 1024)
-        elif oii.resolution == "2K":
-            w, h = (2048, 2048)
-        elif oii.resolution == "4K":
-            w, h = (4096, 4096)
 
         # 将blender图片保存到临时文件夹
         import tempfile
@@ -465,8 +458,8 @@ class ApplyAiEditImage(bpy.types.Operator):
             edit_prompt=oii.prompt,
             mask_path=mask_image_path,
             reference_images_path=reference_images_path,
-            width=w,
-            height=h,
+            aspect_ratio=oii.aspect_ratio,
+            resolution=oii.resolution,
             max_retries=1,
         )
         oii.running_message = "Start..."

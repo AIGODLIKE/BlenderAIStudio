@@ -40,15 +40,90 @@ class SceneProperty(bpy.types.PropertyGroup):
         name="Out Resolution",
         items=[
             ("AUTO", "Auto (Match Input)", "Keep original resolution"),
-            ("1K", "1k(1024x1024)", "1k resolution"),
-            ("2K", "2k(2048x2048)", "2k resolution"),
-            ("4K", "4k(4096x4096)", "4k resolution"),
+            ("1K", "1k", "1k resolution"),
+            ("2K", "2k", "2k resolution"),
+            ("4K", "4k", "4k resolution"),
         ],
         default="AUTO",
     )
     running_operator: bpy.props.StringProperty()
     running_state: bpy.props.StringProperty()
     running_message: bpy.props.StringProperty()
+    aspect_ratio: bpy.props.EnumProperty(
+        name="Aspect Ratio",
+        items=[
+            ("1:1", "1:1", "1:1"),
+            ("2:3", "2:3", "2:3"),
+            ("3:2", "3:2", "3:2"),
+            ("3:4", "3:4", "3:4"),
+            ("4:3", "4:3", "4:3"),
+            ("4:5", "4:5", "4:5"),
+            ("5:4", "5:4", "5:4"),
+            ("9:16", "9:16", "9:16"),
+            ("16:9", "16:9", "16:9"),
+            ("21:9", "21:9", "21:9"),
+        ]
+    )
+
+    def get_out_resolution(self, context) -> tuple[int, int]:
+        """
+        1:1	1024x1024	1210	2048x2048	1210	4096x4096	2000
+        2:3	848x1264	1210	1696x2528	1210	3392x5056	2000
+        3:2	1264x848	1210	2528x1696	1210	5056x3392	2000
+        3:4	896x1200	1210	1792x2400	1210	3584x4800	2000
+        4:3	1200x896	1210	2400x1792	1210	4800x3584	2000
+        4:5	928x1152	1210	1856x2304	1210	3712x4608	2000
+        5:4	1152x928	1210	2304x1856	1210	4608x3712	2000
+        9:16	768x1376	1210	1536x2752	1210	3072x5504	2000
+        16:9	1376x768	1210	2752x1536	1210	5504x3072	2000
+        21:9	1584x672	1210	3168x1344	1210	6336x2688	2000
+        https://ai.google.dev/gemini-api/docs/image-generation?hl=zh-cn#aspect_ratios_and_image_size
+        """
+        return {
+            ("1:1", "1K"): (1024, 1024),
+            ("1:1", "2K"): (2048, 2048),
+            ("1:1", "4K"): (4096, 4096),
+            ("2:3", "1K"): (848, 1264),
+            ("2:3", "2K"): (1696, 2528),
+            ("2:3", "4K"): (3392, 5056),
+            ("3:2", "1K"): (1264, 848),
+            ("3:2", "2K"): (2528, 1696),
+            ("3:2", "4K"): (5056, 3392),
+            ("3:4", "1K"): (896, 1200),
+            ("3:4", "2K"): (1792, 2400),
+            ("3:4", "4K"): (3584, 4800),
+            ("4:3", "1K"): (1200, 896),
+            ("4:3", "2K"): (2400, 1792),
+            ("4:3", "4K"): (4800, 3584),
+            ("4:5", "1K"): (928, 1152),
+            ("4:5", "2K"): (1856, 2304),
+            ("4:5", "4K"): (3712, 4608),
+            ("5:4", "1K"): (1152, 928),
+            ("5:4", "2K"): (2304, 1856),
+            ("5:4", "4K"): (4608, 3712),
+            ("9:16", "1K"): (768, 1376),
+            ("9:16", "2K"): (1536, 2752),
+            ("9:16", "4K"): (3072, 5504),
+            ("16:9", "1K"): (1376, 768),
+            ("16:9", "2K"): (2752, 1536),
+            ("16:9", "4K"): (5504, 3072),
+            ("21:9", "1K"): (1584, 672),
+            ("21:9", "2K"): (3168, 1344),
+            ("21:9", "4K"): (6336, 2688),
+        }.get((self.aspect_ratio, self.get_resolution_str(context)), (0, 0))
+
+    def get_resolution_str(self, context) -> str:
+        resolution = self.resolution
+        if resolution == "AUTO":
+            if image := context.space_data.image:
+                w, h = image.size
+                resolution_str = "1K"
+                if w >= 4096 or h >= 4096:
+                    resolution_str = "4K"
+                elif w >= 2048 or h >= 2048:
+                    resolution_str = "2K"
+                return resolution_str
+        return resolution
 
     def clear_running_state(self):
         self.running_operator = ""

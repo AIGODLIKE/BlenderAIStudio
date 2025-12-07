@@ -58,8 +58,12 @@ class AIStudioImagePanel(bpy.types.Panel):
         column = layout.column(align=True)
         column.enabled = is_not_run  # 在运行中时不允许修改
         bb = column.box()
+        bb.label(text="Aspect Ratio:")
+        bb.prop(ai, "aspect_ratio", text="")
         bb.label(text="Out Resolution:")
         bb.prop(ai, "resolution", text="")
+        w, h = ai.get_out_resolution(context)
+        bb.label(text=f"{w} x {h}")
         bb = column.box()
         bb.label(text="AI Edit Prompt", icon='TEXT')
         row = bb.row(align=True)
@@ -153,23 +157,21 @@ class AIStudioImagePanel(bpy.types.Panel):
     def draw_ai_edit_layout(context, layout: bpy.types.UILayout):
         ai = context.scene.blender_ai_studio_property
 
-        col = layout.column(align=True)
-        args = {"icon": "SHADERFX"}  # 编辑图片操作符的参数
+        row = layout.row(align=True)
+        args = {
+            "text": "Render",
+            "icon": "SHADERFX"}  # 编辑图片操作符的参数
         ril = len(ai.reference_images)  # 参考图片数量
         if ril != 0:
             ...
         elif ai.prompt == "":
             args["text"] = "Please enter the prompt"
             args["icon"] = "ERROR"
-            col.enabled = False
+            row.enabled = False
 
-        col.scale_y = 1.5
-        col.operator("bas.apply_ai_edit_image", **args)
-        layout.separator(factor=2)
-        column = layout.column(align=True)
-        column.scale_y = 1.5
-        column.operator("bas.rerender_image")
-        column.operator("bas.finalize_composite")
+        row.scale_y = 1.5
+        row.operator("bas.apply_ai_edit_image", **args)
+        row.menu("BAS_MT_render_button_menu", icon='DOWNARROW_HLT', text="")
 
     @staticmethod
     def draw_state(context, layout: bpy.types.UILayout):

@@ -1,13 +1,15 @@
 import bpy
 
-from .menu import SelectMaskMenu
+from .menu import SelectMaskMenu, RenderButtonMenu
 from .panel import AIStudioPanel, AIStudioImagePanel, AIStudioHistoryPanel
 
 clss = [
     AIStudioPanel,
     AIStudioImagePanel,
     AIStudioHistoryPanel,
+
     SelectMaskMenu,
+    RenderButtonMenu,
 ]
 
 register_classes, unregister_classes = bpy.utils.register_classes_factory(clss)

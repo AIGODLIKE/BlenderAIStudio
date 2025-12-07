@@ -96,16 +96,16 @@ class GeminiImageGenerationTask(GeminiTaskBase):
     """
 
     def __init__(
-        self,
-        api_key: str,
-        image_path: str,
-        user_prompt: str,
-        reference_images_path: list[str],
-        is_color_render: bool = False,
-        width: int = 1024,
-        height: int = 1024,
-        aspect_ratio: str = "1:1",
-        max_retries: int = 3,
+            self,
+            api_key: str,
+            image_path: str,
+            user_prompt: str,
+            reference_images_path: list[str],
+            is_color_render: bool = False,
+            width: int = 1024,
+            height: int = 1024,
+            aspect_ratio: str = "1:1",
+            max_retries: int = 3,
     ):
         """
         初始化图片生成任务
@@ -208,16 +208,15 @@ class GeminiImageEditTask(GeminiTaskBase):
     """
 
     def __init__(
-        self,
-        api_key: str,
-        image_path: str,
-        edit_prompt: str,
-        mask_path: Optional[str] = None,
-        reference_images_path: Optional[str] | list[str] = None,
-        width: int = 0,
-        height: int = 0,
-        aspect_ratio: str = "1:1",
-        max_retries: int = 3,
+            self,
+            api_key: str,
+            image_path: str,
+            edit_prompt: str,
+            mask_path: Optional[str] = None,
+            reference_images_path: Optional[str] | list[str] = None,
+            resolution: str = "1K",
+            aspect_ratio: str = "1:1",
+            max_retries: int = 3,
     ):
         """
         初始化图片编辑任务
@@ -238,8 +237,7 @@ class GeminiImageEditTask(GeminiTaskBase):
         self.edit_prompt = edit_prompt
         self.mask_path = mask_path
         self.reference_images_path = reference_images_path
-        self.width = width
-        self.height = height
+        self.resolution = resolution
         self.aspect_ratio = aspect_ratio
 
         self.progress.total_steps = 4
@@ -282,8 +280,8 @@ class GeminiImageEditTask(GeminiTaskBase):
                 edit_prompt=self.edit_prompt,
                 mask_path=self.mask_path,
                 reference_image_path=self.reference_images_path,
-                width=self.width,
-                height=self.height,
+                resolution=self.resolution,
+                aspect_ratio=self.aspect_ratio,
             )
 
             self.update_progress(3, "API 调用成功，处理响应...")
@@ -319,14 +317,14 @@ class GeminiStyleTransferTask(GeminiTaskBase):
     """
 
     def __init__(
-        self,
-        api_key: str,
-        target_image_path: str,
-        style_image_path: str,
-        style_prompt: str = "",
-        width: int = 0,
-        height: int = 0,
-        max_retries: int = 3,
+            self,
+            api_key: str,
+            target_image_path: str,
+            style_image_path: str,
+            style_prompt: str = "",
+            resolution="1K",
+            aspect_ratio="1:1",
+            max_retries: int = 3,
     ):
         """
         初始化风格迁移任务
@@ -345,9 +343,8 @@ class GeminiStyleTransferTask(GeminiTaskBase):
         self.target_image_path = target_image_path
         self.style_image_path = style_image_path
         self.style_prompt = style_prompt
-        self.width = width
-        self.height = height
-
+        self.resolution = resolution
+        self.aspect_ratio = aspect_ratio
         self.progress.total_steps = 4
 
     def prepare(self) -> bool:
@@ -376,8 +373,8 @@ class GeminiStyleTransferTask(GeminiTaskBase):
                 image_path=self.target_image_path,
                 edit_prompt=self.style_prompt or "应用参考图片的风格",
                 reference_image_path=self.style_image_path,
-                width=self.width,
-                height=self.height,
+                resolution=self.resolution,
+                aspect_ratio=self.aspect_ratio,
             )
 
             self.update_progress(3, "API 调用成功，处理响应...")
@@ -419,10 +416,10 @@ class GeminiAPI:
         self.model = model
 
     def _build_generate_prompt(
-        self,
-        user_prompt: str,
-        has_reference: bool = False,
-        is_color_render: bool = False,
+            self,
+            user_prompt: str,
+            has_reference: bool = False,
+            is_color_render: bool = False,
     ) -> str:
         if is_color_render:
             if has_reference:
@@ -553,14 +550,14 @@ class GeminiAPI:
         return base_prompt
 
     def generate_image(
-        self,
-        depth_image_path: str,
-        user_prompt: str,
-        reference_images_path: list[str],
-        is_color_render: bool = False,
-        width: int = 1024,
-        height: int = 1024,
-        aspect_ratio: str = "1:1",
+            self,
+            depth_image_path: str,
+            user_prompt: str,
+            reference_images_path: list[str],
+            is_color_render: bool = False,
+            width: int = 1024,
+            height: int = 1024,
+            aspect_ratio: str = "1:1",
     ) -> Tuple[bytes, str]:
         """
         由深度图和提示词生成图像(可选使用参考图作为 风格化/材质)
@@ -713,13 +710,13 @@ class GeminiAPI:
             return png_data
 
     def edit_image(
-        self,
-        image_path: str,
-        edit_prompt: str,
-        mask_path: str = None,
-        reference_image_path: str = None,
-        width: int = 0,
-        height: int = 0,
+            self,
+            image_path: str,
+            edit_prompt: str,
+            mask_path: str = None,
+            reference_image_path: str = None,
+            resolution: str = "1K",
+            aspect_ratio: str = "1:1",
     ) -> Tuple[bytes, str]:
         """
         基于提示词(和遮罩, 可选)编辑现有图像
@@ -732,6 +729,12 @@ class GeminiAPI:
             width, height: 目标分辨率(可选) 0为自动匹配输入
 
         Returns: (image_data, mime_type)
+        :param aspect_ratio:
+        :param image_path:
+        :param edit_prompt:
+        :param mask_path:
+        :param reference_image_path:
+        :param resolution:
         """
         try:
             # Build edit prompt
@@ -740,7 +743,8 @@ class GeminiAPI:
                 has_mask=bool(mask_path),
                 has_reference=bool(reference_image_path),
             )
-            return self._edit_with_rest(image_path, full_prompt, mask_path, reference_image_path, width, height)
+            return self._edit_with_rest(image_path, full_prompt, mask_path, reference_image_path, resolution,
+                                        aspect_ratio)
 
         except Exception as e:
             if isinstance(e, GeminiAPIError):
@@ -755,7 +759,6 @@ class GeminiAPI:
         IMAGE OTHER (reference)
         """
 
-        # Special finalization mode
         if user_prompt == "[FINALIZE_COMPOSITE]":  # 最终合成的提示词
             base_prompt = (
                 "COMPOSITE FINALIZATION - Unify entire image into seamless photorealistic result:\n\n"
@@ -945,41 +948,49 @@ class GeminiAPI:
         elif has_mask:  # 有遮罩
             base_prompt = (
                 "INPAINTING TASK - Replace sketch with photorealistic content:\n\n"
+
                 "CONTEXT:\n"
                 "User drew a rough SKETCH on their image to show where they want NEW content.\n"
                 "The sketch is UGLY and TEMPORARY - it's just a guide.\n"
                 "Your job: ERASE the sketch, CREATE beautiful realistic content in that spot.\n\n"
+
                 "IMAGE 1 (PHOTO WITH SKETCH OVERLAY):\n"
                 "- Original photo/render with user's sketch drawn on top\n"
                 "- Sketch colors show LOCATION and rough SHAPE only\n"
                 "- Sketch is NOT the final look - it will be DELETED\n\n"
+
                 "IMAGE 2 (MASK - WHERE TO EDIT):\n"
                 "- Black areas = DON'T TOUCH (keep original)\n"
                 "- Colored areas = SKETCH LOCATION (delete sketch, add new content)\n\n"
+
                 "STEP-BY-STEP PROCESS:\n"
-                "1. Look at IMAGE 1 - see WHERE the sketch is\n"
-                "2. Look at IMAGE 2 - see the ugly sketch user drew\n"
+                "1. Look at IMAGE 1 - see the ugly sketch user drew\n"
+                "2. Look at IMAGE 2 - see WHERE the sketch is\n"
                 "3. Read user's PROMPT - understand WHAT to create\n"
                 "4. COMPLETELY ERASE the sketch from those areas\n"
                 "5. CREATE photorealistic content matching the prompt\n"
                 "6. Match original image's lighting, shadows, perspective, style\n"
                 "7. Blend edges perfectly (no visible seams)\n\n"
+
                 "REAL EXAMPLES:\n"
                 "Example 1:\n"
                 "  - User draws RED CIRCLE\n"
                 "  - Prompt: 'add sunset light through window'\n"
                 "  - You do: DELETE red circle → CREATE realistic warm sunlight rays\n"
                 "  - Final: Beautiful sunset light, NO red circle visible\n\n"
+
                 "Example 2:\n"
                 "  - User draws BLUE BLOB\n"
                 "  - Prompt: 'add water puddle on floor'\n"
                 "  - You do: DELETE blue blob → CREATE realistic water with reflections\n"
                 "  - Final: Real water puddle, NO blue blob visible\n\n"
+
                 "Example 3:\n"
                 "  - User draws GREEN SCRIBBLES\n"
                 "  - Prompt: 'add plant in vase'\n"
                 "  - You do: DELETE green scribbles → CREATE detailed plant with leaves\n"
                 "  - Final: Beautiful plant, NO scribbles visible\n\n"
+
                 "CRITICAL RULES:\n"
                 "❌ NEVER keep the sketch visible\n"
                 "❌ NEVER 'improve' the sketch - DELETE it completely\n"
@@ -989,6 +1000,7 @@ class GeminiAPI:
                 "✅ ALWAYS match original image lighting and style\n"
                 "✅ ALWAYS blend seamlessly at edges\n"
                 "✅ ALWAYS follow user's text prompt for WHAT to create\n\n"
+
                 "REMEMBER:\n"
                 "Sketch = temporary guide (like construction lines in drawing)\n"
                 "Final image = professional result with NO sketch traces\n"
@@ -1154,14 +1166,13 @@ class GeminiAPI:
             return base_prompt
 
     def _edit_with_rest(
-        self,
-        image_path: str,
-        prompt: str,
-        mask_path: str = None,
-        reference_path: str = None,
-        width: int = 0,
-        height: int = 0,
-        aspect_ratio: str = "1:1",
+            self,
+            image_path: str,
+            prompt: str,
+            mask_path: str = None,
+            reference_path: str = None,
+            resolution="1K",
+            aspect_ratio: str = "1:1",
     ) -> Tuple[bytes, str]:
         """
         图片顺序很重要
@@ -1170,8 +1181,6 @@ class GeminiAPI:
         IMAGE OTHER (reference)
         """
         try:
-            #
-            # 对于风格转换, 最先放入 Reference
             parts = [{"text": prompt}]
 
             def add_part(image_file_path):
@@ -1179,6 +1188,7 @@ class GeminiAPI:
                     image_base64 = base64.b64encode(f.read()).decode("utf-8")
                 part = {"inline_data": {"mime_type": "image/png", "data": image_base64}}
                 parts.append(part)
+                print("add_part", image_file_path)
 
             add_part(image_path)  # 添加主图
             # 添加遮罩
@@ -1196,14 +1206,6 @@ class GeminiAPI:
                 "Content-Type": "application/json",
                 "X-Goog-Api-Client": "python-blender-addon",
             }
-            # Determine resolution
-            resolution_str = "1K"
-            if width > 0 and height > 0:
-                # User forced resolution
-                if width >= 4096 or height >= 4096:
-                    resolution_str = "4K"
-                elif width >= 2048 or height >= 2048:
-                    resolution_str = "2K"
             payload = {
                 "contents": [{"parts": parts}],
                 "generationConfig": {
@@ -1212,7 +1214,7 @@ class GeminiAPI:
                     "candidateCount": 1,
                     "responseModalities": ["TEXT", "IMAGE"],
                     "imageConfig": {
-                        "imageSize": resolution_str,
+                        "imageSize": resolution,
                         "aspectRatio": aspect_ratio,
                     },
                 },

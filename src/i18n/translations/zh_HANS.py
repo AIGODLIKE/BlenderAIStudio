@@ -74,6 +74,8 @@ translations = (
     ("Finalize Composite", "最终合成", None),
     ("ReRender Image", "重渲染图像", OPS_TCTX),
     ("ReRender Image", "重渲染图像", None),
+    ("Render", "渲染", OPS_TCTX),
+    ("Aspect Ratio:", "宽高比:", None),
     ("Generate History", "生成历史", None),
     ("During task execution, parameters cannot be modified", "在任务执行过程中，参数不能修改", None),
     ("Generate a new variation with the same prompt and settings", "使用相同的提示和设置生成新的变体", OPS_TCTX),
