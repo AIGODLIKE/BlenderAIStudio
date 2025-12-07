@@ -149,6 +149,7 @@ class SceneProperty(bpy.types.PropertyGroup):
             nmi = nh.mask_images.add()
             nmi.name = mi.name
             nmi.image = mi.image
+        self.mask_images.clear()
 
     def restore_history(self, context):
         """恢复历史,将历史项里面的全部复制回来"""
