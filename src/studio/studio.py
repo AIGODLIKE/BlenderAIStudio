@@ -269,6 +269,7 @@ class StudioHistory:
 
     def __init__(self):
         self.items: list[StudioHistoryItem] = []
+        self.current_index = 0
 
     @classmethod
     def get_instance(cls) -> "StudioHistory":
@@ -277,7 +278,8 @@ class StudioHistory:
         return cls._INSTANCE
 
     def add(self, item: StudioHistoryItem):
-        item.index = len(self.items) + 1
+        self.current_index += 1
+        item.index = self.current_index
         self.items.insert(0, item)
 
 
