@@ -4,8 +4,8 @@ GLOBAL_SCALE = 1.25
 class Const:
     SCALE = GLOBAL_SCALE
     # 通用
-    WINDOW_P = (6, 6)  # Padding
-    WINDOW_R = 33  # Rounding
+    WINDOW_P = (14 * GLOBAL_SCALE, 14 * GLOBAL_SCALE)  # Padding
+    WINDOW_R = 15  # Rounding
     WINDOW_BS = 0  # Border Size
 
     CHILD_P = (8, 8)
@@ -20,6 +20,9 @@ class Const:
     CHILD_SB_GRAB_HOVERED = (40 / 255, 40 / 255, 40 / 255, 1)
 
     FRAME_R = 27
+    FRAME_P = WINDOW_P
+
+    ITEM_S = WINDOW_P
 
     POPUP_R = 20  # Rounding
     POPUP_BS = 2
@@ -65,7 +68,7 @@ class Const:
     RP_R_WINDOW_P = (26, 26)
     RP_FRAME_R = 12
     RP_FRAME_INNER_R = 10
-    RP_FRAME_P = (12 * GLOBAL_SCALE, 12 * GLOBAL_SCALE)
+    RP_FRAME_P = WINDOW_P
     RP_CHILD_IS = (10, 10)
     RP_CELL_P = (0, 15 / 2)
 
