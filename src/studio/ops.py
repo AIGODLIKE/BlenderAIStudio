@@ -126,7 +126,11 @@ class DrawImageMask(bpy.types.Operator):
 
         mask_image = image.copy()
         mask_image.use_fake_user = True
-        mask_image.pack()
+        try:
+            if not mask_image.packed_file:
+                mask_image.pack()
+        except RuntimeError as e:
+            print("pack error", e)
         mask_image.filepath = ""
         mask_image.name = name
 
@@ -726,7 +730,10 @@ class OpenImageInNewWindow(bpy.types.Operator):
     bl_translation_context = OPS_TCTX
     bl_options = {"REGISTER"}
     bl_description = "Open image in new window"
+
     image_path: bpy.props.StringProperty()
+    aspect_ratio: bpy.props.StringProperty()
+    resolution: bpy.props.StringProperty()
 
     def execute(self, context):
         wm = context.window_manager
