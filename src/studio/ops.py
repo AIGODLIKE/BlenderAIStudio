@@ -548,11 +548,11 @@ class ApplyAiEditImage(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class FinalizeCompositeImage(bpy.types.Operator):
-    bl_idname = "bas.finalize_composite"
-    bl_description = "Finalize Composite"
+class SmartFixImage(bpy.types.Operator):
+    bl_idname = "bas.smart_fix"
+    bl_description = "Smart Fix"
     bl_translation_context = OPS_TCTX
-    bl_label = "Finalize Composite"
+    bl_label = "Smart Fix"
     bl_options = {"REGISTER"}
 
     def execute(self, context):
@@ -560,7 +560,7 @@ class FinalizeCompositeImage(bpy.types.Operator):
         oii = context.scene.blender_ai_studio_property
         oii.prompt = "[智能修复]"
 
-        self.report({'INFO'}, "Finalizing composite - unifying colors, contrast, lighting...")
+        self.report({'INFO'}, "Smart Fix - unifying colors, contrast, lighting...")
         bpy.ops.bas.apply_ai_edit_image(running_operator=self.bl_label)
         return {"FINISHED"}
 
@@ -792,7 +792,7 @@ clss = [
     ReplaceReferenceImage,
 
     ApplyAiEditImage,
-    FinalizeCompositeImage,
+    SmartFixImage,
     ReRenderImage,
 
     PromptEdit,

@@ -28,4 +28,4 @@ class RenderButtonMenu(bpy.types.Menu):
         column = self.layout.column(align=True)
         column.scale_y = 1.5
         column.operator("bas.rerender_image", icon="RENDER_STILL")
-        column.operator("bas.finalize_composite", icon="RENDERLAYERS")
+        column.operator("bas.smart_fix", icon="RENDERLAYERS")
