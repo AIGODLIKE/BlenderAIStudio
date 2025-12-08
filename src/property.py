@@ -29,7 +29,8 @@ class SceneProperty(bpy.types.PropertyGroup):
     mask_images: bpy.props.CollectionProperty(type=ImageItem, name="编辑的图片")
 
     expand_ui: bpy.props.BoolProperty(name="Expand Ui Images", default=True,
-                                      description="是否展开图片,在显示参考图和历史记录时使用")
+                                      description="是否展开图片,在显示参考图")
+    expand_history: bpy.props.BoolProperty(default=False)
     mask_index: bpy.props.IntProperty(name="Mask Image Index", default=0)
 
     prompt: bpy.props.StringProperty(
@@ -37,7 +38,6 @@ class SceneProperty(bpy.types.PropertyGroup):
         maxlen=1000,
     )
 
-    history: bpy.props.CollectionProperty(type=SceneProperty)
     resolution: bpy.props.EnumProperty(
         name="Out Resolution",
         items=[
@@ -65,8 +65,12 @@ class SceneProperty(bpy.types.PropertyGroup):
             ("9:16", "9:16", "9:16"),
             ("16:9", "16:9", "16:9"),
             ("21:9", "21:9", "21:9"),
-        ],
+        ]
     )
+
+    generation_time: bpy.props.StringProperty()
+    generation_vendor: bpy.props.StringProperty()
+    history: bpy.props.CollectionProperty(type=SceneProperty)
 
     def get_out_resolution(self, context) -> tuple[int, int]:
         """
@@ -135,7 +139,8 @@ class SceneProperty(bpy.types.PropertyGroup):
 
     def save_to_history(self):
         nh = self.history.add()
-        nh.name = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        nh.generation_time = nh.name = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        nh.generation_vendor = "NanoBanana生成"
         nh.origin_image = self.origin_image
         nh.generated_image = self.generated_image
         nh.prompt = self.prompt
@@ -268,18 +273,31 @@ class SceneProperty(bpy.types.PropertyGroup):
         column = box.column()
         row = column.row(align=True)
         row.context_pointer_set("history", self)
-        row.prop(self, "expand_ui", text=self.name,
-                 icon="RIGHTARROW" if not self.expand_ui else "DOWNARROW_HLT",
+        row.prop(self, "expand_history", text=self.name,
+                 icon="RIGHTARROW" if not self.expand_history else "DOWNARROW_HLT",
                  emboss=False,
                  )
 
         column.label(text=self.prompt)
-        if not self.expand_ui:
+        if not self.expand_history:
             row.context_pointer_set("history", self)
             row.operator("bas.restore_history", icon="FILE_PARENT", text="",
                          emboss=False,
                          )
             return
+
+        column = box.column()
+        gi = self.generated_image
+        if gi:
+            row = column.row()
+            w, h = gi.size
+            row.label(text=f"{w}*{h} px(72dpi)", icon_value=get_custom_icon("image_info_resolution"))
+        column.label(text=self.generation_vendor, icon_value=get_custom_icon("image_info_vendor"))
+        column.label(text=self.generation_time,icon_value=get_custom_icon("image_info_timestamp"))
+        text = bpy.app.translations.pgettext("%s reference images") % len(self.mask_images)
+        column.label(text=text)
+        text = bpy.app.translations.pgettext("%s mask images") % len(self.reference_images)
+        column.label(text=text)
 
         if oi := self.origin_image:
             row = box.row()
@@ -291,10 +309,6 @@ class SceneProperty(bpy.types.PropertyGroup):
             row.context_pointer_set("image", gi)
             row.template_icon(gi.preview.icon_id, scale=2)
             row.operator("bas.view_image", text="View Generated Image")
-        text = bpy.app.translations.pgettext("%s reference images") % len(self.mask_images)
-        box.label(text=text)
-        text = bpy.app.translations.pgettext("%s mask images") % len(self.reference_images)
-        box.label(text=text)
         box.context_pointer_set("history", self)
         box.operator("bas.restore_history", icon="FILE_PARENT")
 
