@@ -7,6 +7,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Iterable
+from traceback import print_exc
 from .gui.texture import TexturePool
 from .gui.app.app import AppHud
 from .gui.app.renderer import imgui
@@ -32,6 +33,14 @@ def get_tool_panel_width():
             continue
         return region.width
     return 0
+
+
+def edit_image_with_context(file_path, context):
+    try:
+        with bpy.context.temp_override(**context):
+            bpy.ops.bas.open_image_in_new_window(image_path=file_path)
+    except Exception:
+        print_exc()
 
 
 class StudioImagesDescriptor(WidgetDescriptor):
@@ -290,6 +299,7 @@ class StudioHistoryItem:
                             imgui.table_next_column()
                             if imgui.button("##编辑", (-imgui.FLT_MIN, bh)):
                                 print("编辑图片")
+                                Timer.put((edit_image_with_context, self.output_file, bpy.context.copy()))
                             dl = imgui.get_window_draw_list()
                             pmin = imgui.get_item_rect_min()
                             pmax = imgui.get_item_rect_max()
