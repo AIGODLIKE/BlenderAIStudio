@@ -1072,7 +1072,7 @@ class AIStudio(AppHud):
             dl.add_rect_filled(lt, rb, col, r, imgui.DrawFlags.ROUND_CORNERS_RIGHT)
 
             cx, cy = imgui.get_cursor_pos()
-            cx += Const.RP_R_WINDOW_P[0]
+            cx += Const.RP_R_WINDOW_P[0] + fp[0]
             cy += Const.RP_R_WINDOW_P[1]
             imgui.set_cursor_pos((cx, cy - cp[1]))
             imgui.begin_table("##RightInner", 1, outer_size=(ww - left_w - Const.RP_R_WINDOW_P[0] * 2, 0))
