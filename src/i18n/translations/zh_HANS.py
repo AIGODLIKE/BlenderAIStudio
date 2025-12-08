@@ -40,7 +40,7 @@ translations = (
     ("Up to 12 images can be selected", "最多可选择12张图像", None),
     ("Please enter the prompt", "请输入提示词", OPS_TCTX),
     ("The image is empty", "图像为空", None),
-    ("Apply AI Edit Image", "应用AI编辑图像", OPS_TCTX),
+    ("Apply AI Edit Image", "应用AI编辑图像", None),
     ("Restore History", "还原历史记录", OPS_TCTX),
     ("Apply AI Edit", "应用AI编辑", OPS_TCTX),
     ("Apply AI Edit", "应用AI编辑", None),
@@ -81,5 +81,5 @@ translations = (
     ("Generate History", "生成历史", None),
     ("Smart Fix - unifying colors, contrast, lighting...", "智能修复 - 统一颜色,对比度,灯光...", None),
     ("During task execution, parameters cannot be modified", "在任务执行过程中，参数不能修改", None),
-    ("Generate a new variation with the same prompt and settings", "使用相同的提示和设置生成新的变体", OPS_TCTX),
+    ("Generate a new variation with the same prompt and settings", "使用相同的提示和设置生成新的变体", None),
 )

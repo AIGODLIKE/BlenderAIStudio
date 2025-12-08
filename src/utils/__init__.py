@@ -75,12 +75,10 @@ def save_image_to_temp_folder(image, temp_folder) -> str | None:
 
         filepath_raw = image.filepath_raw
         file_format = image.file_format
-        image_path = os.path.join(temp_folder, image.name)
+        image_path = os.path.join(temp_folder, png_name_suffix(image.name))
         try:
             image.filepath_raw = image_path
             image.file_format = 'PNG'
-            if not filepath_raw.endswith(".png"):  # TIPS: 临时解决没有png后缀问题
-                filepath_raw += ".png"
             try:
                 image.save()
             except Exception as e:
@@ -108,9 +106,14 @@ def save_image_to_temp_folder(image, temp_folder) -> str | None:
         return None
 
 
-def png_name_suffix(name, suffix):
+def png_name_suffix(name, suffix=None):
     """设置png图片的后缀"""
-    ...
+    print("png_name_suffix", name, suffix)
+    aa = ["jpg", "jpeg", "png", "bmp", "tif", "tiff", "tga", "exr", "hdr"]
+    name = ".".join([i for i in name.split(".") if i.lower() not in aa])
+    if not suffix:
+        suffix = ""
+    return name + suffix + ".png"
 
 
 def register():

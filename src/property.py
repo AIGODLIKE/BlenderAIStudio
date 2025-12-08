@@ -5,6 +5,7 @@ from datetime import datetime
 import bpy
 
 from .utils import get_custom_icon
+from .i18n import PROP_TCTX
 
 
 class ImageItem(bpy.types.PropertyGroup):
@@ -296,8 +297,8 @@ class SceneProperty(bpy.types.PropertyGroup):
         column.label(text=self.generation_time,icon_value=get_custom_icon("image_info_timestamp"))
         text = bpy.app.translations.pgettext("%s reference images") % len(self.mask_images)
         column.label(text=text)
-        text = bpy.app.translations.pgettext("%s mask images") % len(self.reference_images)
-        column.label(text=text)
+        # text = bpy.app.translations.pgettext("%s mask images") % len(self.reference_images)
+        # column.label(text=text)
 
         if oi := self.origin_image:
             row = box.row()
@@ -311,6 +312,20 @@ class SceneProperty(bpy.types.PropertyGroup):
             row.operator("bas.view_image", text="View Generated Image")
         box.context_pointer_set("history", self)
         box.operator("bas.restore_history", icon="FILE_PARENT")
+
+    @property
+    def more_history_information(self) -> str:
+        r = bpy.app.translations.pgettext("%s reference images") % len(self.mask_images)
+        m = bpy.app.translations.pgettext("%s mask images") % len(self.reference_images)
+        prompt = bpy.app.translations.pgettext("Prompt", msgctxt=PROP_TCTX)
+        return (f"{self.generation_vendor}\n" +
+                f"{self.generation_time}\n" +
+                f"{r}\n" +
+                f"{m}\n" +
+                f"\n" +
+                f"{prompt}\n" +
+                f"{self.prompt}\n"
+                )
 
 
 class_list = [

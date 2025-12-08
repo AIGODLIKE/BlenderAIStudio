@@ -4,8 +4,8 @@ from uuid import uuid4
 import bpy
 from bpy_extras.io_utils import ImportHelper, ExportHelper
 
-from ..i18n import OPS_TCTX
-from ..utils import get_text_generic_keymap, get_text_window, get_pref, save_image_to_temp_folder
+from ..i18n import OPS_TCTX, PROP_TCTX
+from ..utils import get_text_generic_keymap, get_text_window, get_pref, save_image_to_temp_folder, png_name_suffix
 
 
 class AIStudioEntry(bpy.types.Operator):
@@ -122,7 +122,7 @@ class DrawImageMask(bpy.types.Operator):
         image.use_fake_user = True
         scene_prop = context.scene.blender_ai_studio_property
 
-        name = f"{image.name}_mask.png"
+        name = png_name_suffix(image.name, "mask")
 
         mask_image = image.copy()
         mask_image.use_fake_user = True
@@ -330,10 +330,7 @@ class SelectReferenceImageByImage(bpy.types.Operator):
                     row.context_pointer_set("image", i)
                     row.template_icon(i.preview.icon_id, scale=self.icon_scale)
                     col = row.column()
-                    col.operator(self.bl_idname, text=i.name, translate=False, emboss=False)
-                    col.operator(self.bl_idname, icon="RESTRICT_SELECT_OFF",
-                                 text=bpy.app.translations.pgettext_iface("Select Reference"),
-                                 )
+                    col.operator(self.bl_idname, text=i.name, translate=False, emboss=False, icon="RESTRICT_SELECT_OFF")
                 else:
                     i.preview_ensure()
 
@@ -716,6 +713,14 @@ class RestoreHistory(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         return hasattr(context, "history")
+
+    @classmethod
+    def description(cls, context, properties):
+        history = getattr(context, "history")
+        if history:
+            text = bpy.app.translations.pgettext("Restore ai edit history")
+            return f"{text}\n%s" % history.more_history_information
+        return "Restore ai edit history"
 
     def execute(self, context):
         history = getattr(context, "history")
