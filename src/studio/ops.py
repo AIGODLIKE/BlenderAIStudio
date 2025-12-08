@@ -558,7 +558,7 @@ class FinalizeCompositeImage(bpy.types.Operator):
     def execute(self, context):
         print(self.bl_idname)
         oii = context.scene.blender_ai_studio_property
-        oii.prompt = "[FINALIZE_COMPOSITE]"
+        oii.prompt = "[智能修复]"
 
         self.report({'INFO'}, "Finalizing composite - unifying colors, contrast, lighting...")
         bpy.ops.bas.apply_ai_edit_image(running_operator=self.bl_label)
@@ -732,8 +732,7 @@ class OpenImageInNewWindow(bpy.types.Operator):
     bl_description = "Open image in new window"
 
     image_path: bpy.props.StringProperty()
-    aspect_ratio: bpy.props.StringProperty()
-    resolution: bpy.props.StringProperty()
+    data: bpy.props.StringProperty()
 
     def execute(self, context):
         wm = context.window_manager

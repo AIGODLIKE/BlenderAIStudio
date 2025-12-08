@@ -51,6 +51,7 @@ class SceneProperty(bpy.types.PropertyGroup):
     running_operator: bpy.props.StringProperty()
     running_state: bpy.props.StringProperty()
     running_message: bpy.props.StringProperty()
+
     aspect_ratio: bpy.props.EnumProperty(
         name="Aspect Ratio",
         items=[
@@ -64,7 +65,7 @@ class SceneProperty(bpy.types.PropertyGroup):
             ("9:16", "9:16", "9:16"),
             ("16:9", "16:9", "16:9"),
             ("21:9", "21:9", "21:9"),
-        ]
+        ],
     )
 
     def get_out_resolution(self, context) -> tuple[int, int]:

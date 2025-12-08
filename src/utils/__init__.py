@@ -108,6 +108,11 @@ def save_image_to_temp_folder(image, temp_folder) -> str | None:
         return None
 
 
+def png_name_suffix(name, suffix):
+    """设置png图片的后缀"""
+    ...
+
+
 def register():
     pass
 
