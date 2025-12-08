@@ -108,6 +108,10 @@ class DrawImageMask(bpy.types.Operator):
     bl_label = "Draw Mask"
     bl_options = {"REGISTER"}
     bl_translation_context = OPS_TCTX
+    bl_description = "Mask"
+    run_count: bpy.props.IntProperty(default=0)
+
+    is_edit: bpy.props.BoolProperty(default=False)
 
     @classmethod
     def poll(cls, context):
@@ -115,9 +119,8 @@ class DrawImageMask(bpy.types.Operator):
         image = getattr(space, "image", None)
         return image and not image.blender_ai_studio_property.is_mask_image
 
-    def execute(self, context):
+    def invoke(self, context, event):
         bpy.ops.ed.undo_push(message="Push Undo")
-        from bl_ui.properties_paint_common import UnifiedPaintPanel
         space = context.space_data
         print(self.bl_idname)
 
@@ -125,42 +128,58 @@ class DrawImageMask(bpy.types.Operator):
         image.use_fake_user = True
         scene_prop = context.scene.blender_ai_studio_property
 
-        name = png_name_suffix(image.name, "mask")
+        name = png_name_suffix(image.name, "_mask")
 
-        mask_image = image.copy()
-        mask_image.use_fake_user = True
-        try:
-            if not mask_image.packed_file:
-                mask_image.pack()
-        except RuntimeError as e:
-            print("pack error", e)
-        mask_image.filepath = ""
-        mask_image.name = name
+        if self.is_edit:
+            mask_image = getattr(context, "image", None)
+        else:
+            mask_image = image.copy()
+            mask_image.use_fake_user = True
+            try:
+                if not mask_image.packed_file:
+                    mask_image.pack()
+            except RuntimeError as e:
+                print("pack error", e)
+            mask_image.filepath = ""
+            mask_image.name = name
 
-        mi = scene_prop.mask_images.add()  # 新创建一个mask图
-        mi.name = name
-        mi.image = mask_image
+            mi = scene_prop.mask_images.add()  # 新创建一个mask图
+            mi.name = name
+            mi.image = mask_image
 
-        aip = mask_image.blender_ai_studio_property
-        aip.is_mask_image = True
-        aip.origin_image = image
-
+            aip = mask_image.blender_ai_studio_property
+            aip.is_mask_image = True
+            aip.origin_image = image
+        if mask_image is None:
+            self.report({"ERROR"}, "Can't create mask image")
+            return {"CANCELLED"}
         space.image = mask_image
         space.ui_mode = "PAINT"
-        bpy.ops.brush.asset_activate(
-            "EXEC_DEFAULT",
-            False,
-            asset_library_type='ESSENTIALS',
-            asset_library_identifier="",
-            relative_asset_identifier="brushes\\essentials_brushes-mesh_texture.blend\\Brush\\Paint Hard Pressure")
 
-        if paint_settings := getattr(UnifiedPaintPanel.paint_settings(context), "unified_paint_settings", None):
-            paint_settings.size = 4
-            paint_settings.color = [1, 0, 0]
+        context.window_manager.modal_handler_add(self)
+        return {"RUNNING_MODAL"}
+
+    def modal(self, context, event):
+        from bl_ui.properties_paint_common import UnifiedPaintPanel
+        space = context.space_data
         if space.ui_mode == "PAINT":
             space.uv_editor.show_uv = False
-        bpy.ops.ed.undo_push(message="Push Undo")
-        return {"FINISHED"}
+        if paint_settings := getattr(UnifiedPaintPanel.paint_settings(context), "unified_paint_settings", None):
+            bpy.ops.brush.asset_activate(
+                "EXEC_DEFAULT",
+                False,
+                asset_library_type='ESSENTIALS',
+                asset_library_identifier="",
+                relative_asset_identifier=r"brushes\\essentials_brushes-mesh_texture.blend\\Brush\\Paint Hard Pressure")
+            paint_settings.size = 4
+            paint_settings.color = [1, 0, 0]
+            bpy.ops.ed.undo_push(message="Push Undo")
+            return {"FINISHED"}
+
+        if self.run_count > 20:  # 最多等待20次
+            return {'CANCELLED'}
+        self.run_count += 1
+        return {"RUNNING_MODAL"}
 
 
 class ApplyImageMask(bpy.types.Operator):
@@ -270,7 +289,7 @@ def add_reference_image(context, image, image_name=False):
     ai = context.scene.blender_ai_studio_property
     ri = ai.reference_images.add()
     ri.image = image
-    ri.name = png_name_suffix(image.name, "REFERENCE")
+    ri.name = png_name_suffix(image.name, "_reference")
     if image_name:
         image.name = ri.name
     image.preview_ensure()

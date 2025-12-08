@@ -114,7 +114,7 @@ def save_image_to_temp_folder(image, temp_folder) -> str | None:
 
 def png_name_suffix(name, suffix=None):
     """设置png图片的后缀"""
-    print("png_name_suffix", name, suffix)
+    # print("png_name_suffix", name, suffix)
     aa = ["jpg", "jpeg", "png", "bmp", "tif", "tiff", "tga", "exr", "hdr"]
     name = ".".join([i for i in name.split(".") if i.lower() not in aa])
     if not suffix:

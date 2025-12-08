@@ -117,12 +117,12 @@ class AIStudioImagePanel(bpy.types.Panel):
                     box.prop(paint_settings, "color")
             box.template_icon(get_custom_icon("draw_mask_example"), scale=6)
             if not is_paint_2d:
-                ops = box.operator("wm.context_set_string", text="Continue drawing")
+                ops = box.operator("wm.context_set_string", text="Continue drawing", icon="BRUSH_DATA")
                 ops.data_path = "space_data.ui_mode"
                 ops.value = "PAINT"
             row = box.row(align=True)
             row.scale_y = scale_y
-            row.operator("bas.apply_image_mask")
+            row.operator("bas.apply_image_mask", icon="CHECKMARK")
             draw_row(row)
             SelectMask.draw_select_mask(context, box.box())
         else:
@@ -136,7 +136,10 @@ class AIStudioImagePanel(bpy.types.Panel):
                 args["text"] = "Redraw mask"
             row = box.row(align=True)
             row.scale_y = scale_y
-            row.operator("bas.draw_mask", icon="BRUSH_DATA", **args)
+            row.operator("bas.draw_mask", icon="BRUSH_DATA", **args).is_edit = False
+            if ai.active_mask:
+                row.context_pointer_set("image", ai.active_mask)
+                row.operator("bas.draw_mask", icon="IMAGE_RGB_ALPHA", text="Edit mask").is_edit = True
 
             draw_row(row)
             if ai and ai.active_mask and ai.active_mask.preview:
@@ -165,7 +168,7 @@ class AIStudioImagePanel(bpy.types.Panel):
 
         column = layout.column(align=True)
         row = column.row(align=True)
-        row.scale_y = 1.5
+        row.scale_y = 1.2
         row.operator("bas.rerender_image", icon="RENDER_STILL")
         row.operator("bas.smart_fix", icon="RENDERLAYERS")
 
@@ -239,3 +242,5 @@ class AIStudioHistoryPanel(bpy.types.Panel):
         layout = self.layout
         for h in reversed(oii.history[:]):
             h.draw_history(layout)
+        if len(oii.history) == 0:
+            layout.label(text="No history available at the moment")
