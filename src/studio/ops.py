@@ -771,7 +771,6 @@ class OpenImageInNewWindow(bpy.types.Operator):
             return {"RUNNING_MODAL"}
 
     def load_data(self, context):
-        print("load_data", self.data)
         try:
             data = json.loads(self.data)
             metadata = data.get("metadata", None)
@@ -783,7 +782,7 @@ class OpenImageInNewWindow(bpy.types.Operator):
                 oii.resolution = resolution
         except Exception as e:
             print(e)
-            print("load_data error")
+            print("load_data error", self.data)
 
     def modal(self, context, event):
         return self.execute(context)
