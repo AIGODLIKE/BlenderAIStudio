@@ -985,12 +985,12 @@ class AIStudio(AppHud):
         flags |= imgui.WindowFlags.NO_SCROLLBAR
         flags |= imgui.WindowFlags.NO_SAVED_SETTINGS
 
-        imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, Const.RP_WINDOW_P)
-        imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.RP_WINDOW_R)
-        imgui.push_style_var(imgui.StyleVar.FRAME_PADDING, Const.RP_FRAME_P)
+        imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, Const.WINDOW_P)
+        imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.WINDOW_R)
+        imgui.push_style_var(imgui.StyleVar.FRAME_PADDING, Const.FRAME_P)
         imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.RP_FRAME_R)
         imgui.push_style_var(imgui.StyleVar.CELL_PADDING, Const.RP_CELL_P)
-        imgui.push_style_var_x(imgui.StyleVar.ITEM_SPACING, 0)
+        imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, Const.ITEM_S)
 
         imgui.push_style_color(imgui.Col.WINDOW_BG, Const.RP_L_BOX_BG)
         imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
@@ -999,17 +999,13 @@ class AIStudio(AppHud):
 
         istyle = imgui.get_style()
         fp = istyle.frame_padding
-        cp = istyle.cell_padding
+        item_spacing = istyle.item_spacing
 
         imgui.begin("##AIStudioPanel", False, flags)
         # Left
         if True:
             imgui.begin_group()
-            imgui.set_cursor_pos_y(fp[1])
-
             btn_size = 40, 40
-            left_w = btn_size[0] + (fp[0] + fp[0]) * 2
-            imgui.push_style_var_y(imgui.StyleVar.ITEM_SPACING, fp[1])
             subpanel_config = {
                 AIStudioPanelType.GENERATION: "generation",
                 AIStudioPanelType.HISTORY: "history",
@@ -1018,23 +1014,21 @@ class AIStudio(AppHud):
             btn_size = (btn_size[0] + fp[0] * 2, btn_size[1] + fp[1] * 2)
             for subpanel in subpanel_config:
                 if subpanel == AIStudioPanelType.SETTINGS:
-                    ah = imgui.get_content_region_avail()[1]
-                    imgui.dummy((0, ah - btn_size[1] - fp[1] * 2))
+                    imgui.invisible_button("##Dummy", (1, -(btn_size[1] + item_spacing[1])))
                     pos = imgui.get_cursor_pos()
 
                     self.font_manager.push_h5_font(12 * Const.SCALE)
                     line_height = imgui.get_text_line_height_with_spacing()
-                    imgui.set_cursor_pos((fp[0], pos[1] - fp[1] * 2 - line_height + 4))
+                    imgui.set_cursor_pos_y(pos[1] - item_spacing[1] - line_height)
                     imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
                     imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
                     imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
-                    imgui.button(f"V{'.'.join(map(str, get_version()))}", (btn_size[0], line_height))
+                    imgui.button(f"V{'.'.join(map(str, get_version()))}")
                     imgui.pop_style_color(3)
                     self.font_manager.pop_font()
 
                     imgui.set_cursor_pos_y(pos[1])
-                imgui.set_cursor_pos_x(fp[0])
-                imgui.begin_group()
+
                 icon = TexturePool.get_tex_id(subpanel_config[subpanel])
                 if imgui.button(f"##Btn{subpanel}", btn_size):
                     self.active_panel = subpanel
@@ -1052,41 +1046,48 @@ class AIStudio(AppHud):
                 pmax = imgui.get_item_rect_max()
                 pmax = pmax[0] - fp[0], pmax[1] - fp[1]
                 dl.add_image(icon, pmin, pmax, col=col)
-                imgui.end_group()
+
             imgui.end_group()
-            imgui.pop_style_var(1)
 
         imgui.same_line()
-        imgui.pop_style_var(6)
 
         # Right
         if True:
+            imgui.begin_group()
             wx, wy = imgui.get_window_pos()
             ww, wh = imgui.get_window_size()
+            cx = imgui.get_cursor_pos_x()
 
-            lt = wx + left_w, wy
+            lt = wx + cx, wy + 0
             rb = wx + ww, wy + wh
             col = imgui.get_color_u32(Const.RP_R_BOX_BG)
             r = Const.LP_WINDOW_R + 4
             dl = imgui.get_window_draw_list()
             dl.add_rect_filled(lt, rb, col, r, imgui.DrawFlags.ROUND_CORNERS_RIGHT)
 
-            cx, cy = imgui.get_cursor_pos()
-            cx += Const.RP_R_WINDOW_P[0] + fp[0]
-            cy += Const.RP_R_WINDOW_P[1]
-            imgui.set_cursor_pos((cx, cy - cp[1]))
-            imgui.begin_table("##RightInner", 1, outer_size=(ww - left_w - Const.RP_R_WINDOW_P[0] * 2, 0))
+            fp = istyle.frame_padding
+            imgui.push_style_color(imgui.Col.FRAME_BG, Const.TRANSPARENT)
+            imgui.push_style_var(imgui.StyleVar.FRAME_PADDING, Const.LP_WINDOW_P)
+            imgui.set_cursor_pos_y(0)
+            with with_child("##Right", (rb[0] - lt[0], rb[1] - lt[1]), imgui.ChildFlags.FRAME_STYLE):
+                imgui.push_style_var(imgui.StyleVar.FRAME_PADDING, (0, 0))
+                imgui.push_id("##RightInner")
 
-            imgui.table_next_column()
-            imgui.begin_group()
-            self.draw_generation_panel()
-            self.draw_history_panel()
-            self.draw_setting_panel()
+                imgui.begin_group()
+                self.draw_generation_panel()
+                self.draw_history_panel()
+                self.draw_setting_panel()
+                imgui.end_group()
+
+                imgui.pop_id()
+                imgui.pop_style_var(1)
+            imgui.pop_style_color(1)
+            imgui.pop_style_var(1)
+
             imgui.end_group()
 
-            imgui.end_table()
-
         imgui.end()
+        imgui.pop_style_var(6)
         imgui.pop_style_color(4)
 
     def draw_generation_panel(self):
@@ -1165,14 +1166,10 @@ class AIStudio(AppHud):
 
             flags = 0
             flags |= imgui.ChildFlags.FRAME_STYLE
-            avail_rect = imgui.get_content_region_avail()
-            avail_height = avail_rect[1]
-            full_width = avail_rect[0]
-            wp = imgui.get_style().window_padding
             item_spacing = imgui.get_style().item_spacing
             gen_btn_height = 79
             imgui.push_style_color(imgui.Col.FRAME_BG, (48 / 255, 48 / 255, 48 / 255, 1))
-            with with_child("Outer", (0, avail_height - gen_btn_height - wp[1] - item_spacing[1]), flags):
+            with with_child("Outer", (0, -(gen_btn_height + item_spacing[1])), flags):
                 wrapper = self.clients_wrappers.get(self.active_client, StudioWrapper())
                 for widget in wrapper.get_widgets_by_category("Input"):
                     widget.col_bg = Const.WINDOW_BG
@@ -1187,13 +1184,9 @@ class AIStudio(AppHud):
 
             # 底部按钮
             if True:
-                avail_rect = imgui.get_content_region_avail()
-                cpos = imgui.get_cursor_pos()
-                imgui.set_cursor_pos_y(cpos[1] + avail_rect[1] - gen_btn_height - wp[1])
-
                 imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0.6)
                 imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, 15)
-
+                full_width = imgui.get_content_region_avail()[0]
                 self.font_manager.push_h1_font()
                 client = self.clients.get(self.active_client, StudioClient())
                 status = client.query_task_status()
@@ -1308,7 +1301,7 @@ class AIStudio(AppHud):
             return
         dummy_size = 0, 26 / 2
         imgui.push_style_var_x(imgui.StyleVar.CELL_PADDING, Const.LP_CELL_P[0])
-        imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, (0, 0))
+        imgui.push_style_var_y(imgui.StyleVar.ITEM_SPACING, 0)
 
         if True:
             self.font_manager.push_h1_font()
@@ -1377,11 +1370,8 @@ class AIStudio(AppHud):
 
             flags = 0
             flags |= imgui.ChildFlags.FRAME_STYLE
-            avail_rect = imgui.get_content_region_avail()
-            avail_height = avail_rect[1]
-            wp = imgui.get_style().window_padding
             imgui.push_style_color(imgui.Col.FRAME_BG, (48 / 255, 48 / 255, 48 / 255, 1))
-            with with_child("Outer", (0, avail_height - wp[1]), flags):
+            with with_child("Outer", (0, -1), flags):
                 history = StudioHistory.get_instance()
                 for item in history.items:
                     item.draw(self)
@@ -1397,7 +1387,7 @@ class AIStudio(AppHud):
             return
         dummy_size = 0, 26 / 2
         imgui.push_style_var_x(imgui.StyleVar.CELL_PADDING, Const.LP_CELL_P[0])
-        imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, (0, 0))
+        imgui.push_style_var_y(imgui.StyleVar.ITEM_SPACING, 0)
 
         if True:
             self.font_manager.push_h1_font()
@@ -1462,15 +1452,25 @@ class AIStudio(AppHud):
             imgui.push_style_color(imgui.Col.HEADER, Const.BUTTON)
             imgui.push_style_color(imgui.Col.HEADER_ACTIVE, Const.BUTTON_ACTIVE)
             imgui.push_style_color(imgui.Col.HEADER_HOVERED, Const.BUTTON_HOVERED)
-
-            for wrapper in self.clients_wrappers.values():
-                imgui.text(wrapper.display_name)
-                for widget in wrapper.get_widgets_by_category("Settings"):
-                    widget.col_bg = Const.WINDOW_BG
-                    widget.col_widget = Const.WINDOW_BG
-                    widget.display_begin(widget, self)
-                    widget.display(widget, self)
-                    widget.display_end(widget, self)
+            flags = 0
+            flags |= imgui.ChildFlags.FRAME_STYLE
+            self.font_manager.push_h1_font()
+            box_height = -imgui.get_text_line_height() * 3 - 26 * 2 - imgui.get_style().item_spacing[1] * 2
+            self.font_manager.pop_font()
+            imgui.push_style_color(imgui.Col.FRAME_BG, (48 / 255, 48 / 255, 48 / 255, 1))
+            with with_child("Outer", (0, box_height), flags):
+                for wrapper in self.clients_wrappers.values():
+                    widgets = wrapper.get_widgets_by_category("Settings")
+                    if not widgets:
+                        continue
+                    imgui.text(wrapper.display_name)
+                    for widget in widgets:
+                        widget.col_bg = Const.WINDOW_BG
+                        widget.col_widget = Const.WINDOW_BG
+                        widget.display_begin(widget, self)
+                        widget.display(widget, self)
+                        widget.display_end(widget, self)
+            imgui.pop_style_color(1)
 
             imgui.pop_style_var(6)
             imgui.pop_style_color(5)
