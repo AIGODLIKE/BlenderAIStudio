@@ -63,7 +63,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
                 for i, img in enumerate(self.value):
                     imgui.table_next_column()
                     imgui.push_id(f"##Image{i}")
-                    self.display_image_with_close(img, i)
+                    self.display_image_with_close(app, img, i)
                     imgui.pop_id()
 
                 if len(self.value) < self.widget_def.get("limit", 999):
@@ -105,7 +105,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
             self.adapter.on_image_action(self.widget_name, "upload_image")
         imgui.end_group()
 
-    def display_image_with_close(self, img_path: str = "", index=-1):
+    def display_image_with_close(self, app, img_path: str = "", index=-1):
         if not img_path:
             return
         bw = bh = imgui.get_content_region_avail()[0]
@@ -162,7 +162,24 @@ class StudioImagesDescriptor(WidgetDescriptor):
             file_name = Path(img_path).stem
             imgui.text(f"{file_name} [{tex.width}x{tex.height}]")
             imgui.dummy((0, imgui.get_style().frame_padding[1]))
-            imgui.invisible_button("FakeButton", (tex.width, tex.height))
+            canvas_tex_width = app.screen_scale * tex.width
+            canvas_tex_height = app.screen_scale * tex.height
+            canvas_width = app.screen_width * 0.7
+            canvas_height = app.screen_height * 0.7
+            if canvas_tex_width > canvas_width:
+                canvas_tex_scale = canvas_width / canvas_tex_width
+                canvas_tex_height *= canvas_tex_scale
+                canvas_tex_width *= canvas_tex_scale
+            if canvas_tex_height > canvas_height:
+                canvas_tex_scale = canvas_height / canvas_tex_height
+                canvas_tex_height *= canvas_tex_scale
+                canvas_tex_width *= canvas_tex_scale
+            aw = imgui.get_content_region_avail()[0]
+            if canvas_tex_width < aw:
+                canvas_tex_scale = aw / canvas_tex_width
+                canvas_tex_height *= canvas_tex_scale
+                canvas_tex_width *= canvas_tex_scale
+            imgui.invisible_button("FakeButton", (canvas_tex_width, canvas_tex_height))
             pmin = imgui.get_item_rect_min()
             pmax = imgui.get_item_rect_max()
             dl = imgui.get_window_draw_list()
@@ -281,7 +298,24 @@ class StudioHistoryItem:
                         file_name = Path(self.output_file).stem
                         imgui.text(f"{file_name} [{tex.width}x{tex.height}]")
                         imgui.dummy((0, 0))
-                        imgui.invisible_button("FakeButton", (tex.width, tex.height))
+                        canvas_tex_width = app.screen_scale * tex.width
+                        canvas_tex_height = app.screen_scale * tex.height
+                        canvas_width = app.screen_width * 0.7
+                        canvas_height = app.screen_height * 0.7
+                        if canvas_tex_width > canvas_width:
+                            canvas_tex_scale = canvas_width / canvas_tex_width
+                            canvas_tex_height *= canvas_tex_scale
+                            canvas_tex_width *= canvas_tex_scale
+                        if canvas_tex_height > canvas_height:
+                            canvas_tex_scale = canvas_height / canvas_tex_height
+                            canvas_tex_height *= canvas_tex_scale
+                            canvas_tex_width *= canvas_tex_scale
+                        aw = imgui.get_content_region_avail()[0]
+                        if canvas_tex_width < aw:
+                            canvas_tex_scale = aw / canvas_tex_width
+                            canvas_tex_height *= canvas_tex_scale
+                            canvas_tex_width *= canvas_tex_scale
+                        imgui.invisible_button("FakeButton", (canvas_tex_width, canvas_tex_height))
                         pmin = imgui.get_item_rect_min()
                         pmax = imgui.get_item_rect_max()
                         dl = imgui.get_window_draw_list()
