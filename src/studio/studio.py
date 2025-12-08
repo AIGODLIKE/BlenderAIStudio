@@ -1192,6 +1192,7 @@ class AIStudio(AppHud):
                     widget.col_widget = Const.FRAME_BG
                     widget.display_begin(widget, self)
                     widget.display(widget, self)
+                    self.draw_wrapper_widget_spec(wrapper, widget)
                     widget.display_end(widget, self)
                 client = wrapper.studio_client
                 if client.history.items:
@@ -1584,6 +1585,30 @@ class AIStudio(AppHud):
         pmax = imgui.get_item_rect_max()
         pmax = (pmax[0], pmax[1] - fp[1] - 1)
         dl.add_image(icon, pmin, pmax, col=col)
+
+    def draw_wrapper_widget_spec(self, wrapper, widget: WidgetDescriptor):
+        if widget.widget_name == "input_image_type" and imgui.is_item_hovered():
+            imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.WINDOW_R)
+            imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, Const.WINDOW_P)
+            imgui.set_next_window_size((630, 0))
+            imgui.begin_tooltip()
+            imgui.push_item_width(100)
+
+            self.font_manager.push_h1_font(24)
+            imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
+            imgui.text("首图模式")
+            imgui.pop_style_color()
+            self.font_manager.pop_font()
+
+            self.font_manager.push_h5_font(24)
+            imgui.text_wrapped("活动相机将被用于输出，请选择输出输出模式。")
+            imgui.text_wrapped("相机渲染=合并结果")
+            imgui.text_wrapped("相机深度=雾场（雾场效果可在世界环境>雾场通道设置）")
+            self.font_manager.pop_font()
+
+            imgui.pop_item_width()
+            imgui.end_tooltip()
+            imgui.pop_style_var(2)
 
 
 DescriptorFactory.register(StudioImagesDescriptor.ptype, StudioImagesDescriptor)
