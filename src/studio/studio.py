@@ -1307,6 +1307,26 @@ class AIStudio(AppHud):
                     if is_selected:
                         imgui.pop_style_color()
                 imgui.end_combo()
+            if imgui.is_item_hovered():
+                imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.WINDOW_R)
+                imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, Const.WINDOW_P)
+                imgui.set_next_window_size((759, 0))
+                imgui.begin_tooltip()
+                imgui.push_item_width(100)
+
+                self.font_manager.push_h1_font(24)
+                imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
+                imgui.text("选择生成式引擎")
+                imgui.pop_style_color()
+                self.font_manager.pop_font()
+
+                self.font_manager.push_h5_font(24)
+                imgui.text_wrapped("选择引擎并填写API，即可无缝在Blender中使用AI.注意：本工具仅具备连接服务功能，生成内容&费用以API提供方为准.")
+                self.font_manager.pop_font()
+
+                imgui.pop_item_width()
+                imgui.end_tooltip()
+                imgui.pop_style_var(2)
             imgui.pop_style_color(2)
             imgui.pop_style_var(4)
             imgui.pop_item_width()
