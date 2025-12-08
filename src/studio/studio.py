@@ -706,6 +706,7 @@ class NanoBanana(StudioClient):
             image_path=_temp_image_path,
             reference_images_path=self.reference_images,
             user_prompt=self.prompt,
+            resolution=self.resolution,
             width=resolution[0],
             height=resolution[1],
             aspect_ratio=size_config,

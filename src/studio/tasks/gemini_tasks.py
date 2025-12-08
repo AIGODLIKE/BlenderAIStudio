@@ -104,6 +104,7 @@ class GeminiImageGenerationTask(GeminiTaskBase):
             user_prompt: str,
             reference_images_path: list[str],
             is_color_render: bool = False,
+            resolution: str = "1K",
             width: int = 1024,
             height: int = 1024,
             aspect_ratio: str = "1:1",
@@ -128,6 +129,7 @@ class GeminiImageGenerationTask(GeminiTaskBase):
         self.user_prompt = user_prompt
         self.reference_images_path = reference_images_path
         self.is_color_render = is_color_render
+        self.resolution = resolution
         self.width = width
         self.height = height
         self.aspect_ratio = aspect_ratio
@@ -201,6 +203,7 @@ class GeminiImageGenerationTask(GeminiTaskBase):
                 metadata={
                     "prompt": self.user_prompt,
                     "is_color_render": self.is_color_render,
+                    "resolution": self.resolution,
                     "width": self.width,
                     "height": self.height,
                     "aspect_ratio": self.aspect_ratio,
