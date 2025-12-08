@@ -112,8 +112,7 @@ class AIStudioImagePanel(bpy.types.Panel):
         if is_draw_mask:
             box = layout.box()
             if is_paint_2d:  # 绘制笔刷大小和颜色
-                paint_settings = UnifiedPaintPanel.paint_settings(context).unified_paint_settings
-                if paint_settings:
+                if paint_settings := getattr(UnifiedPaintPanel.paint_settings(context), "unified_paint_settings", None):
                     box.prop(paint_settings, "size")
                     box.prop(paint_settings, "color")
             box.template_icon(get_custom_icon("draw_mask_example"), scale=6)
@@ -165,7 +164,7 @@ class AIStudioImagePanel(bpy.types.Panel):
 
         row = layout.row(align=True)
         row.scale_y = 1.5
-        rr =row.row(align=True)
+        rr = row.row(align=True)
         args = {
             "text": "Render",
             "icon": "SHADERFX"}  # 编辑图片操作符的参数
