@@ -39,7 +39,7 @@ def get_tool_panel_width():
 def edit_image_with_meta_and_context(file_path, meta, context):
     try:
         with bpy.context.temp_override(**context):
-            bpy.ops.bas.open_image_in_new_window(image_path=file_path, data=meta)
+            bpy.ops.bas.open_image_in_new_window("INVOKE_DEFAULT", image_path=file_path, data=meta)
     except Exception:
         print_exc()
 
@@ -460,7 +460,7 @@ class StudioHistory:
     def add_fake_item(self):
         history_item = StudioHistoryItem()
         history_item.result = {}
-        history_item.output_file = "/Users/karrycharon/Desktop/OutputImage/AIStudio/Output.png"
+        history_item.output_file = Path.home().joinpath("Desktop/OutputImage/AIStudio/Output.png").as_posix()
         history_item.metadata = {"prompt": "这是一个测试"}
         history_item.vendor = NanoBanana.VENDOR
         history_item.timestamp = time.time()
