@@ -1658,18 +1658,25 @@ class AIStudio(AppHud):
             psize = imgui.get_item_rect_size()
             pos = imgui.get_cursor_pos()
             imgui.set_cursor_pos_y(pos[1] - psize[1])
-            imgui.begin_child("##Ovrerlay")
+            imgui.begin_child("##Ovrerlay", (0, imgui.get_text_line_height_with_spacing()))
             lh = imgui.get_text_line_height() * 0.75
             imgui.invisible_button("##FakeButton", (-lh * 1.5 - wp[0], 1))
             imgui.same_line()
-            imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_SELECTED)
-            if wrapper.studio_client.use_internal_prompt:
-                imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON_SELECTED)
-            else:
-                imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
+            imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+            imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
+            imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
             if imgui.button("##Switcher", (lh * 1.5, lh)):
                 wrapper.studio_client.use_internal_prompt ^= True
-            imgui.pop_style_color(2)
+            imgui.pop_style_color(3)
+            dl = imgui.get_window_draw_list()
+            pmin = imgui.get_item_rect_min()
+            pmax = imgui.get_item_rect_max()
+            if wrapper.studio_client.use_internal_prompt:
+                icon_name = "internal_prompt_enable"
+            else:
+                icon_name = "internal_prompt_disable"
+            icon = TexturePool.get_tex_id(icon_name)
+            dl.add_image(icon, pmin, pmax)
 
             if imgui.is_item_hovered():
                 imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.WINDOW_R)
