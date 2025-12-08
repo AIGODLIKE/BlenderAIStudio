@@ -2,6 +2,7 @@ import time
 import bpy
 import webbrowser
 import tempfile
+import json
 from shutil import copyfile
 from datetime import datetime
 from enum import Enum
@@ -35,10 +36,10 @@ def get_tool_panel_width():
     return 0
 
 
-def edit_image_with_context(file_path, context):
+def edit_image_with_meta_and_context(file_path, meta, context):
     try:
         with bpy.context.temp_override(**context):
-            bpy.ops.bas.open_image_in_new_window(image_path=file_path)
+            bpy.ops.bas.open_image_in_new_window(image_path=file_path, data=meta)
     except Exception:
         print_exc()
 
@@ -193,6 +194,16 @@ class StudioHistoryItem:
         self.timestamp: float = 0
         self.show_detail: bool = False
 
+    def stringify(self) -> str:
+        data = {
+            "output_file": self.output_file,
+            "metadata": self.metadata,
+            "vendor": self.vendor,
+            "index": self.index,
+            "timestamp": self.timestamp,
+        }
+        return json.dumps(data)
+
     def draw(self, app: "AIStudio"):
         col_bg = Const.WINDOW_BG
         col_widget = Const.FRAME_BG
@@ -299,7 +310,10 @@ class StudioHistoryItem:
                             imgui.table_next_column()
                             if imgui.button("##编辑", (-imgui.FLT_MIN, bh)):
                                 print("编辑图片")
-                                Timer.put((edit_image_with_context, self.output_file, bpy.context.copy()))
+                                image = self.output_file
+                                meta = self.stringify()
+                                context = bpy.context.copy()
+                                Timer.put((edit_image_with_meta_and_context, image, meta, context))
                             dl = imgui.get_window_draw_list()
                             pmin = imgui.get_item_rect_min()
                             pmax = imgui.get_item_rect_max()
