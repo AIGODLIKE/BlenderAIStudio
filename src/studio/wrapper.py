@@ -230,8 +230,8 @@ class StringDescriptor(WidgetDescriptor):
     def display(self, wrapper, app: App):
         imgui.push_style_color(imgui.Col.FRAME_BG, self.col_bg)
         multiline = self.widget_def.get("multiline", False)
-        child_width = 240 if multiline else 0
-        with with_child("##String", (0, child_width), child_flags=self.flags):
+        child_height = 240 if multiline else 0
+        with with_child("##String", (0, child_height), child_flags=self.flags):
             if not self.hide_title:
                 imgui.text(self.display_name)
             imgui.push_style_var(imgui.StyleVar.SCROLLBAR_ROUNDING, Const.CHILD_SB_R)
