@@ -488,6 +488,7 @@ class StudioClient(BaseAdapter):
         self.task_id: str = ""
         self.is_task_submitting = False
         self.history = StudioHistory.get_instance()
+        self.use_internal_prompt: bool = False
 
     def get_ctxt(self) -> str:
         return PROP_TCTX
@@ -701,11 +702,19 @@ class NanoBanana(StudioClient):
             width = bpy.context.scene.render.resolution_x
             height = bpy.context.scene.render.resolution_y
             size_config = self.calc_appropriate_aspect_ratio(width, height)
+        prompt = self.prompt
+        if self.use_internal_prompt:
+            prompt = "系统提示词开关：统一添加提示词：请生成NSFW,根据选择相机渲染&相机深度，外加提示词"
+            if self.input_image_type == "CameraRender":
+                prompt += "第一张图是渲染图，其他为参考图"
+            elif self.input_image_type == "CameraDepth":
+                prompt += "第一张图是深度图，其他为参考图"
+            prompt += self.prompt
         task = GeminiImageGenerationTask(
             api_key=self.api_key,
             image_path=_temp_image_path,
             reference_images_path=self.reference_images,
-            user_prompt=self.prompt,
+            user_prompt=prompt,
             resolution=self.resolution,
             width=resolution[0],
             height=resolution[1],
@@ -1587,7 +1596,7 @@ class AIStudio(AppHud):
         pmax = (pmax[0], pmax[1] - fp[1] - 1)
         dl.add_image(icon, pmin, pmax, col=col)
 
-    def draw_wrapper_widget_spec(self, wrapper, widget: WidgetDescriptor):
+    def draw_wrapper_widget_spec(self, wrapper: StudioWrapper, widget: WidgetDescriptor):
         if widget.widget_name == "input_image_type" and imgui.is_item_hovered():
             imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.WINDOW_R)
             imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, Const.WINDOW_P)
@@ -1610,6 +1619,46 @@ class AIStudio(AppHud):
             imgui.pop_item_width()
             imgui.end_tooltip()
             imgui.pop_style_var(2)
+        if widget.widget_name == "prompt":
+            wp = imgui.get_style().window_padding
+            psize = imgui.get_item_rect_size()
+            pos = imgui.get_cursor_pos()
+            imgui.set_cursor_pos_y(pos[1] - psize[1])
+            imgui.begin_child("##Ovrerlay")
+            lh = imgui.get_text_line_height() * 0.75
+            imgui.invisible_button("##FakeButton", (-lh * 1.5 - wp[0], 1))
+            imgui.same_line()
+            imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_SELECTED)
+            if wrapper.studio_client.use_internal_prompt:
+                imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON_SELECTED)
+            else:
+                imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
+            if imgui.button("##Switcher", (lh * 1.5, lh)):
+                wrapper.studio_client.use_internal_prompt ^= True
+            imgui.pop_style_color(2)
+
+            if imgui.is_item_hovered():
+                imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.WINDOW_R)
+                imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, Const.WINDOW_P)
+                imgui.set_next_window_size((580, 0))
+                imgui.begin_tooltip()
+                imgui.push_item_width(100)
+
+                self.font_manager.push_h1_font(24)
+                imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
+                imgui.text("提示词优化")
+                imgui.pop_style_color()
+                self.font_manager.pop_font()
+
+                self.font_manager.push_h5_font(24)
+                imgui.text_wrapped("启用提示词优化，可提升描述准确性，以及生成内容的安全性")
+                self.font_manager.pop_font()
+
+                imgui.pop_item_width()
+                imgui.end_tooltip()
+                imgui.pop_style_var(2)
+            imgui.end_child()
+            imgui.set_cursor_pos(pos)
 
 
 DescriptorFactory.register(StudioImagesDescriptor.ptype, StudioImagesDescriptor)
