@@ -67,7 +67,7 @@ class AIStudioImagePanel(bpy.types.Panel):
         row = bb.row(align=True)
         row.label(text="", icon_value=get_custom_icon("resolution"))
         row.prop(ai, "resolution", text="")
-        bb.label(text=bpy.app.translations.pgettext("Out Resolution:") + f"{w} x {h}")
+        bb.label(text=bpy.app.translations.pgettext_iface("Out Resolution(px):") + f"{w} x {h}")
         bb = column.box()
         bb.label(text="AI Edit Prompt", icon='TEXT')
         row = bb.row(align=True)

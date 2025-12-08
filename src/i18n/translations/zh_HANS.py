@@ -17,6 +17,7 @@ translations = (
     ("History", "历史", None),
     ("Out Resolution", "输出分辨率", None),
     ("Out Resolution:", "输出分辨率:", None),
+    ("Out Resolution(px):", "输出分辨率(px):", None),
     ("Keep original resolution", "保持原分辨率", None),
     ("Reference Images", "参考图", None),
     ("Input Size", "输入大小", None),
