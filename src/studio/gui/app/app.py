@@ -150,6 +150,10 @@ class App:
         logger.debug(f"App {self._id} created")
 
     @property
+    def screen_scale(self):
+        return 1
+
+    @property
     def screen_width(self):
         return self.io.display_size[0]
 
