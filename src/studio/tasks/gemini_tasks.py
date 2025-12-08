@@ -201,6 +201,9 @@ class GeminiImageGenerationTask(GeminiTaskBase):
                 metadata={
                     "prompt": self.user_prompt,
                     "is_color_render": self.is_color_render,
+                    "width": self.width,
+                    "height": self.height,
+                    "aspect_ratio": self.aspect_ratio,
                     "has_reference": bool(self.reference_images_path),
                 },
             )
