@@ -1,11 +1,14 @@
+import json
 from pathlib import Path
 from uuid import uuid4
 
 import bpy
 from bpy_extras.io_utils import ImportHelper, ExportHelper
 
-from ..i18n import OPS_TCTX, PROP_TCTX
-from ..utils import get_text_generic_keymap, get_text_window, get_pref, save_image_to_temp_folder, png_name_suffix
+from ..i18n import OPS_TCTX
+from ..utils import (get_text_generic_keymap, get_text_window, get_pref, save_image_to_temp_folder, png_name_suffix,
+                     load_image,
+                     )
 
 
 class AIStudioEntry(bpy.types.Operator):
@@ -267,7 +270,7 @@ def add_reference_image(context, image, image_name=False):
     ai = context.scene.blender_ai_studio_property
     ri = ai.reference_images.add()
     ri.image = image
-    ri.name = f"{image.name}_REFERENCE"
+    ri.name = png_name_suffix(image.name, "REFERENCE")
     if image_name:
         image.name = ri.name
     image.preview_ensure()
@@ -739,30 +742,49 @@ class OpenImageInNewWindow(bpy.types.Operator):
     image_path: bpy.props.StringProperty()
     data: bpy.props.StringProperty()
 
-    def execute(self, context):
+    run_count: bpy.props.IntProperty(default=0)
+
+    @staticmethod
+    def get_image_window(context):
         wm = context.window_manager
 
         # 获取一个新窗口
-        image_window = None
         if len(wm.windows) > 1:
             last_window = wm.windows[-1]
             if len(last_window.screen.areas[:]) == 1:
                 last_area = last_window.screen.areas[0]
                 if last_area.type == "IMAGE_EDITOR":
-                    image_window = last_window
+                    return last_window
+        return None
 
+    def invoke(self, context, event):
+        self.load_data(context)
+        image_window = self.get_image_window(context)
+        if image_window:
+            return self.execute(context)
+        else:
+            bpy.ops.wm.window_new("EXEC_DEFAULT", False)
+            last_window = bpy.context.window_manager.windows[-1]
+            last_window.screen.areas[0].type = "IMAGE_EDITOR"
+
+            context.window_manager.modal_handler_add(self)
+            return {"RUNNING_MODAL"}
+
+    def load_data(self, context):
+        print("data", self.data)
+        data = json.loads(self.data)
+
+    def modal(self, context, event):
+        return self.execute(context)
+
+    def execute(self, context):
         try:
-            if image_window is None:
-                bpy.ops.wm.window_new("EXEC_DEFAULT", False)
-                last_window = bpy.context.window_manager.windows[-1]
-                last_window.screen.areas[0].type = "IMAGE_EDITOR"
-                image_window = last_window
-
+            image_window = self.get_image_window(context)
             if not image_window:
                 self.report({'ERROR'}, "No image window")
                 return {'CANCELLED'}
             if image_window:
-                image = bpy.data.images.load(self.image_path, check_existing=False)
+                image = load_image(self.image_path)
                 if image is None:
                     self.report({'ERROR'}, "No image" + self.image_path)
                     return {'CANCELLED'}
@@ -771,6 +793,16 @@ class OpenImageInNewWindow(bpy.types.Operator):
                         for space in area.spaces:
                             if space.type == "IMAGE_EDITOR":
                                 space.image = image
+                                space.show_region_ui = True
+                                region = area.regions[4]
+                                if region.active_panel_category == "UNSUPPORTED":  # 如果还是不支持说明还没被渲染或初始化,再等待多一会
+                                    self.run_count += 1
+                                    if self.run_count > 20:  # 最多等待20次
+                                        self.report({'ERROR'}, "No image area")
+                                        return {'CANCELLED'}
+                                    return {"RUNNING_MODAL"}
+                                region.active_panel_category = "AIStudio"  # 设置活动面板
+                                # bpy.ops.image.view_all() #崩溃会
                                 return {"FINISHED"}
                 self.report({'ERROR'}, "No image area")
         except Exception as e:
@@ -778,7 +810,6 @@ class OpenImageInNewWindow(bpy.types.Operator):
             import traceback
             traceback.print_exc()
             traceback.print_stack()
-
         return {'CANCELLED'}
 
 

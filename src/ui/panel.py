@@ -117,7 +117,7 @@ class AIStudioImagePanel(bpy.types.Panel):
                     box.prop(paint_settings, "color")
             box.template_icon(get_custom_icon("draw_mask_example"), scale=6)
             if not is_paint_2d:
-                ops = box.operator("wm.context_set_string", text="Paint 2D")
+                ops = box.operator("wm.context_set_string", text="Continue drawing")
                 ops.data_path = "space_data.ui_mode"
                 ops.value = "PAINT"
             row = box.row(align=True)

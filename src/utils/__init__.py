@@ -4,7 +4,13 @@ from .pkg_installer import PkgInstaller
 
 __all__ = [
     "PkgInstaller",
-    "get_custom_icon"
+    "get_custom_icon",
+    "get_text_generic_keymap",
+    "get_text_window",
+    "get_pref",
+    "save_image_to_temp_folder",
+    "png_name_suffix",
+    "load_image",
 ]
 
 
@@ -114,6 +120,13 @@ def png_name_suffix(name, suffix=None):
     if not suffix:
         suffix = ""
     return name + suffix + ".png"
+
+
+def load_image(image_path):
+    for i in bpy.data.images:
+        if i.filepath == image_path:
+            return i
+    return bpy.data.images.load(image_path, check_existing=False)
 
 
 def register():

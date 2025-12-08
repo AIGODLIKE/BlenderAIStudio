@@ -78,6 +78,7 @@ translations = (
     ("Render", "渲染", OPS_TCTX),
     ("Aspect Ratio:", "宽高比:", None),
     ("Image Info", "图片信息", None),
+    ("Continue drawing", "继续绘制", None),
     ("Generate History", "生成历史", None),
     ("Smart Fix - unifying colors, contrast, lighting...", "智能修复 - 统一颜色,对比度,灯光...", None),
     ("During task execution, parameters cannot be modified", "在任务执行过程中，参数不能修改", None),
