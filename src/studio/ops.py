@@ -771,8 +771,19 @@ class OpenImageInNewWindow(bpy.types.Operator):
             return {"RUNNING_MODAL"}
 
     def load_data(self, context):
-        print("data", self.data)
-        data = json.loads(self.data)
+        print("load_data", self.data)
+        try:
+            data = json.loads(self.data)
+            metadata = data.get("metadata", None)
+            if metadata:
+                aspect_ratio = metadata.get("aspect_ratio", "1:1")
+                oii = context.scene.blender_ai_studio_property
+                resolution = metadata.get("resolution", "1K")
+                oii.aspect_ratio = aspect_ratio
+                oii.resolution = resolution
+        except Exception as e:
+            print(e)
+            print("load_data error")
 
     def modal(self, context, event):
         return self.execute(context)
