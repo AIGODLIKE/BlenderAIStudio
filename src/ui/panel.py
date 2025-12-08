@@ -164,6 +164,8 @@ class AIStudioImagePanel(bpy.types.Panel):
         ai = context.scene.blender_ai_studio_property
 
         row = layout.row(align=True)
+        row.scale_y = 1.5
+        rr =row.row(align=True)
         args = {
             "text": "Render",
             "icon": "SHADERFX"}  # 编辑图片操作符的参数
@@ -173,10 +175,8 @@ class AIStudioImagePanel(bpy.types.Panel):
         elif ai.prompt == "":
             args["text"] = "Please enter the prompt"
             args["icon"] = "ERROR"
-            row.enabled = False
-
-        row.scale_y = 1.5
-        row.operator("bas.apply_ai_edit_image", **args)
+            rr.enabled = False
+        rr.operator("bas.apply_ai_edit_image", **args)
         row.menu("BAS_MT_render_button_menu", icon='DOWNARROW_HLT', text="")
 
     @staticmethod

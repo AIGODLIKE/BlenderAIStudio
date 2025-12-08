@@ -146,9 +146,10 @@ class DrawImageMask(bpy.types.Operator):
             asset_library_type='ESSENTIALS',
             asset_library_identifier="",
             relative_asset_identifier="brushes\\essentials_brushes-mesh_texture.blend\\Brush\\Paint Hard Pressure")
-        paint_settings = UnifiedPaintPanel.paint_settings(context).unified_paint_settings
-        paint_settings.size = 4
-        paint_settings.color = [1, 0, 0]
+
+        if paint_settings := getattr(UnifiedPaintPanel.paint_settings(context), "unified_paint_settings", None):
+            paint_settings.size = 4
+            paint_settings.color = [1, 0, 0]
         if space.ui_mode == "PAINT":
             space.uv_editor.show_uv = False
         bpy.ops.ed.undo_push(message="Push Undo")
