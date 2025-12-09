@@ -47,12 +47,10 @@ def edit_image_with_meta_and_context(file_path, meta, context):
 
 
 class AppHelperDraw:
-    def draw_tips_with_title(self: AppHud, title: str, tips: list[str]):
+    def draw_tips_with_title(self: AppHud, tips: list[str], title: str):
         imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.WINDOW_R)
         imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, Const.WINDOW_P)
-        imgui.set_next_window_size((759, 0))
         imgui.begin_tooltip()
-        imgui.push_item_width(100)
 
         self.font_manager.push_h1_font(24)
         imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
@@ -65,7 +63,6 @@ class AppHelperDraw:
             imgui.text_wrapped(tip)
         self.font_manager.pop_font()
 
-        imgui.pop_item_width()
         imgui.end_tooltip()
         imgui.pop_style_var(2)
 
@@ -1374,7 +1371,8 @@ class AIStudio(AppHud):
             if imgui.is_item_hovered():
                 title = "选择生成式引擎"
                 tip = "选择引擎并填写API，即可无缝在Blender中使用AI.注意：本工具仅具备连接服务功能，生成内容&费用以API提供方为准."
-                AppHelperDraw.draw_tips_with_title(self, title, [tip])
+                imgui.set_next_window_size((759, 0))
+                AppHelperDraw.draw_tips_with_title(self, [tip], title)
             imgui.pop_style_color(2)
             imgui.pop_style_var(4)
             imgui.pop_item_width()
@@ -1637,8 +1635,12 @@ class AIStudio(AppHud):
         if widget.widget_name == "input_image_type" and imgui.is_item_hovered():
             imgui.set_next_window_size((630, 0))
             title = "首图模式"
-            tips = ["活动相机将被用于输出，请选择输出输出模式。", "相机渲染=合并结果", "相机深度=雾场（雾场效果可在世界环境>雾场通道设置）"]
-            AppHelperDraw.draw_tips_with_title(self, title, tips)
+            tips = [
+                "活动相机将被用于输出，请选择输出输出模式。",
+                "相机渲染=合并结果",
+                "相机深度=雾场（雾场效果可在世界环境>雾场通道设置）",
+            ]
+            AppHelperDraw.draw_tips_with_title(self, tips, title)
         if widget.widget_name == "prompt":
             wp = imgui.get_style().window_padding
             psize = imgui.get_item_rect_size()
@@ -1668,7 +1670,7 @@ class AIStudio(AppHud):
                 imgui.set_next_window_size((580, 0))
                 title = "提示词优化"
                 tip = "启用提示词优化，可提升描述准确性，以及生成内容的安全性"
-                AppHelperDraw.draw_tips_with_title(self, title, [tip])
+                AppHelperDraw.draw_tips_with_title(self, [tip], title)
             imgui.end_child()
             imgui.set_cursor_pos(pos)
 
