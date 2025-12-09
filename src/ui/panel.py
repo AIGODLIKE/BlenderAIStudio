@@ -87,7 +87,7 @@ class AIStudioImagePanel(bpy.types.Panel):
             co.label(text="During task execution, parameters cannot be modified")
 
         layout.separator(factor=1)
-        self.draw_state(context, layout)
+        ai.draw_state(context, layout)
 
     @staticmethod
     def draw_mask(context, layout: bpy.types.UILayout):
@@ -188,33 +188,6 @@ class AIStudioImagePanel(bpy.types.Panel):
             rr.alert = True
         rr.operator("bas.apply_ai_edit_image", **args)
         # row.menu("BAS_MT_render_button_menu", icon='DOWNARROW_HLT', text="")
-
-    @staticmethod
-    def draw_state(context, layout: bpy.types.UILayout):
-        oii = context.scene.blender_ai_studio_property
-        column = layout.column(align=True)
-        for text in (
-                oii.running_operator,
-                oii.running_state.title(),
-                oii.running_message,
-        ):
-            if text:
-                column.label(text=text)
-        image = context.space_data.image
-        if image == oii.origin_image:
-            if gi := oii.generated_image:
-                box = column.box()
-                box.context_pointer_set("image", gi)
-                if gi.preview:
-                    box.template_icon(gi.preview.icon_id, scale=6)
-                box.operator("bas.view_image", text="View Generated Image")
-        elif image == oii.generated_image:
-            if oi := oii.origin_image:
-                box = column.box()
-                box.context_pointer_set("image", oi)
-                if oi.preview:
-                    box.template_icon(oi.preview.icon_id, scale=6)
-                box.operator("bas.view_image", text="View Origin Image")
 
 
 class AIStudioHistoryPanel(bpy.types.Panel):

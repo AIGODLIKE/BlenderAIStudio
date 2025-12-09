@@ -11,6 +11,7 @@ __all__ = [
     "save_image_to_temp_folder",
     "png_name_suffix",
     "load_image",
+    "time_diff_to_str",
 ]
 
 
@@ -127,6 +128,35 @@ def load_image(image_path):
         if i.filepath == image_path:
             return i
     return bpy.data.images.load(image_path, check_existing=False)
+
+
+def time_diff_to_str(time_diff=None, start=None, end=None):
+    """
+    将时间差转换为字符串
+    """
+    if time_diff is not None:
+        if isinstance(time_diff, (int, float)):
+            total_seconds = int(time_diff)
+        else:
+            total_seconds = int(time_diff.total_seconds())
+    elif start is not None and end is not None:
+        total_seconds = int((end - start).total_seconds())
+    else:
+        return "0s"
+
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+
+    # 构建结果字符串
+    result = []
+    if hours > 0:
+        result.append(f"{hours}h")
+    if minutes > 0:
+        result.append(f"{minutes}m")
+    if seconds > 0 or not result:
+        result.append(f"{seconds}s")
+    return "".join(result)
 
 
 def register():

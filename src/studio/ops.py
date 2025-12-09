@@ -424,6 +424,28 @@ class ApplyAiEditImage(bpy.types.Operator):
     bl_options = {"REGISTER"}
     running_operator: bpy.props.StringProperty(default=bl_label, options={"HIDDEN", "SKIP_SAVE"})
 
+    def invoke(self, context, event):
+        self.execute(context)
+        self._timer = context.window_manager.event_timer_add(1 / 60, window=context.window)
+        context.window_manager.modal_handler_add(self)
+        oii = context.scene.blender_ai_studio_property
+        oii.start_running()
+        return {"RUNNING_MODAL", "PASS_THROUGH"}
+
+    def modal(self, context, event):
+        oii = context.scene.blender_ai_studio_property
+        if context.area:
+            context.area.tag_redraw()
+
+        if oii.running_state in (
+                "completed",
+                "failed",
+                "cancelled",
+        ):
+            return {"FINISHED"}
+
+        return {"PASS_THROUGH"}
+
     def execute(self, context):
         print(self.bl_idname)
         pref = get_pref()
@@ -443,7 +465,6 @@ class ApplyAiEditImage(bpy.types.Operator):
             return {'CANCELLED'}
 
         oii.running_operator = self.running_operator
-        oii.origin_image = image
         generate_image_name = f"{image.name}_{self.running_operator}"
 
         # 将blender图片保存到临时文件夹
@@ -520,6 +541,7 @@ class ApplyAiEditImage(bpy.types.Operator):
             #     "width": 1024,
             #     "height": 1024,
             # }
+            oii.origin_image = image
             _task: Task = event_data["task"]
             result: TaskResult = event_data["result"]
             result_data: dict = result.data
@@ -545,6 +567,7 @@ class ApplyAiEditImage(bpy.types.Operator):
             else:
                 ut = bpy.app.translations.pgettext("Unable to load generated image!")
                 oii.running_message = ut + " " + str(save_file)
+            oii.stop_running()
             oii.save_to_history()
 
         def on_failed(event_data):
@@ -556,6 +579,7 @@ class ApplyAiEditImage(bpy.types.Operator):
                 oii.running_message = str(result.error)
             else:
                 oii.running_message = "Unknown error" + " " + str(result.data)
+            oii.stop_running()
 
         task.register_callback("state_changed", on_state_changed)
         task.register_callback("progress_updated", on_progress)
@@ -832,6 +856,7 @@ class OpenImageInNewWindow(bpy.types.Operator):
                                     return {"RUNNING_MODAL"}
                                 region.active_panel_category = "AIStudio"  # 设置活动面板
                                 # bpy.ops.image.view_all() #崩溃会
+                                bpy.ops.image.view_all(fit_view=True)
                                 return {"FINISHED"}
                 self.report({'ERROR'}, "No image area")
         except Exception as e:

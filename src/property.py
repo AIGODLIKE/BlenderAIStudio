@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import time
 from datetime import datetime
 
 import bpy
 
-from .utils import get_custom_icon
 from .i18n import PROP_TCTX
+from .utils import get_custom_icon, time_diff_to_str
 
 
 class ImageItem(bpy.types.PropertyGroup):
@@ -20,12 +21,180 @@ class ImageProperty(bpy.types.PropertyGroup):
     is_mask_image: bpy.props.BoolProperty(name="Is Mask Image", default=False)
 
 
-class SceneProperty(bpy.types.PropertyGroup):
+class History:
+    origin_image: bpy.props.PointerProperty(type=bpy.types.Image, name="原图图片")
+    generated_image: bpy.props.PointerProperty(type=bpy.types.Image, name="生成的图片")
+
+    generation_time: bpy.props.StringProperty()
+    generation_vendor: bpy.props.StringProperty()
+    history: bpy.props.CollectionProperty(type=SceneProperty)
+
+    start_time: bpy.props.IntProperty(name="开始时间")
+    end_time: bpy.props.IntProperty(name="结束时间")
+
+    def start_running(self, ):
+        """开始运行"""
+        self.generated_image = None
+        self.origin_image = None
+        self.start_time = int(time.time())
+        self.end_time = 0
+
+    def stop_running(self):
+        """停止运行"""
+        self.end_time = int(time.time())
+
+    def save_to_history(self):
+        nh = self.history.add()
+        nh.generation_time = nh.name = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        nh.generation_vendor = "NanoBanana生成"
+        nh.origin_image = self.origin_image
+        nh.generated_image = self.generated_image
+        nh.prompt = self.prompt
+        nh.mask_index = self.mask_index
+        nh.start_time = self.start_time
+        nh.end_time = self.end_time
+
+        for ri in self.reference_images:
+            nri = nh.reference_images.add()
+            nri.name = ri.name
+            nri.image = ri.image
+
+        for mi in self.mask_images:
+            nmi = nh.mask_images.add()
+            nmi.name = mi.name
+            nmi.image = mi.image
+        self.mask_images.clear()
+
+    def restore_history(self, context):
+        """恢复历史,将历史项里面的全部复制回来"""
+        oii = context.scene.blender_ai_studio_property
+        oii.origin_image = self.origin_image
+        oii.generated_image = self.generated_image
+        oii.prompt = self.prompt
+        oii.mask_index = self.mask_index
+
+        oii.reference_images.clear()
+        for ri in self.reference_images:
+            nri = oii.reference_images.add()
+            nri.name = ri.name
+            nri.image = ri.image
+
+        oii.mask_images.clear()
+        for mi in self.mask_images:
+            nmi = oii.mask_images.add()
+            nmi.name = mi.name
+            nmi.image = mi.image
+
+    def draw_history(self, layout: bpy.types.UILayout):
+        box = layout.box()
+
+        column = box.column()
+        row = column.row(align=True)
+        row.context_pointer_set("history", self)
+        row.prop(self, "expand_history", text=self.name,
+                 icon="RIGHTARROW" if not self.expand_history else "DOWNARROW_HLT",
+                 emboss=False,
+                 )
+
+        column.label(text=self.prompt)
+        if not self.expand_history:
+            row.context_pointer_set("history", self)
+            row.operator("bas.restore_history", icon="FILE_PARENT", text="",
+                         emboss=False,
+                         )
+            return
+
+        column = box.column()
+        gi = self.generated_image
+        if gi:
+            row = column.row()
+            w, h = gi.size
+            row.label(text=f"{w}*{h} px(72dpi)", icon_value=get_custom_icon("image_info_resolution"))
+        column.label(text=self.generation_vendor, icon_value=get_custom_icon("image_info_vendor"))
+        column.label(text=self.generation_time, icon_value=get_custom_icon("image_info_timestamp"))
+        text = bpy.app.translations.pgettext("%s reference images") % len(self.mask_images)
+        column.label(text=text)
+        # text = bpy.app.translations.pgettext("%s mask images") % len(self.reference_images)
+        # column.label(text=text)
+
+        if oi := self.origin_image:
+            row = box.row()
+            row.context_pointer_set("image", oi)
+            row.template_icon(oi.preview.icon_id, scale=2)
+            row.operator("bas.view_image", text="View Origin Image")
+        if gi := self.generated_image:
+            row = box.row()
+            row.context_pointer_set("image", gi)
+            row.template_icon(gi.preview.icon_id, scale=2)
+            row.operator("bas.view_image", text="View Generated Image")
+        box.context_pointer_set("history", self)
+        box.operator("bas.restore_history", icon="FILE_PARENT")
+
+    @property
+    def more_history_information(self) -> str:
+        r = bpy.app.translations.pgettext("%s reference images") % len(self.mask_images)
+        m = bpy.app.translations.pgettext("%s mask images") % len(self.reference_images)
+        prompt = bpy.app.translations.pgettext("Prompt", msgctxt=PROP_TCTX)
+        return (f"{self.generation_vendor}\n" +
+                f"{self.generation_time}\n" +
+                f"{r}\n" +
+                f"{m}\n" +
+                f"\n" +
+                f"{prompt}\n" +
+                f"{self.prompt}\n"
+                )
+
+
+class State:
+    running_operator: bpy.props.StringProperty()
+    running_state: bpy.props.StringProperty()
+    running_message: bpy.props.StringProperty()
+
+    def clear_running_state(self):
+        self.running_operator = ""
+        self.running_message = ""
+        self.running_state = ""
+
+    def draw_state(self, context, layout: bpy.types.UILayout):
+        oii = context.scene.blender_ai_studio_property
+        column = layout.column(align=True)
+        state_str = self.running_state
+        time_str = ""
+
+        if state_str == "running":
+            time_str = time_diff_to_str(time_diff=time.time() - oii.start_time)
+        elif state_str in ("completed", "failed"):
+            time_str = time_diff_to_str(time_diff=oii.end_time - oii.start_time)
+        if state_str == "failed":
+            column.alert = True
+        for text in (
+                self.running_operator,
+                bpy.app.translations.pgettext(state_str.title()) + "  " + time_str,
+                self.running_message,
+        ):
+            if text:
+                column.label(text=text)
+        image = context.space_data.image
+        if image == self.origin_image:
+            if gi := self.generated_image:
+                box = column.box()
+                box.context_pointer_set("image", gi)
+                if gi.preview:
+                    box.template_icon(gi.preview.icon_id, scale=6)
+                box.operator("bas.view_image", text="View Generated Image")
+        elif image == self.generated_image:
+            if oi := self.origin_image:
+                box = column.box()
+                box.context_pointer_set("image", oi)
+                if oi.preview:
+                    box.template_icon(oi.preview.icon_id, scale=6)
+                box.operator("bas.view_image", text="View Origin Image")
+
+
+class SceneProperty(bpy.types.PropertyGroup, History, State):
     """
     生成的属性
     """
-    origin_image: bpy.props.PointerProperty(type=bpy.types.Image, name="原图图片")
-    generated_image: bpy.props.PointerProperty(type=bpy.types.Image, name="生成的图片")
     reference_images: bpy.props.CollectionProperty(type=ImageItem, name="多张参考图", description="最大14张输入图片")
     mask_images: bpy.props.CollectionProperty(type=ImageItem, name="编辑的图片")
 
@@ -49,9 +218,6 @@ class SceneProperty(bpy.types.PropertyGroup):
         ],
         default="AUTO",
     )
-    running_operator: bpy.props.StringProperty()
-    running_state: bpy.props.StringProperty()
-    running_message: bpy.props.StringProperty()
 
     aspect_ratio: bpy.props.EnumProperty(
         name="Aspect Ratio",
@@ -68,10 +234,6 @@ class SceneProperty(bpy.types.PropertyGroup):
             ("21:9", "21:9", "21:9"),
         ]
     )
-
-    generation_time: bpy.props.StringProperty()
-    generation_vendor: bpy.props.StringProperty()
-    history: bpy.props.CollectionProperty(type=SceneProperty)
 
     def get_out_resolution(self, context) -> tuple[int, int]:
         """
@@ -132,51 +294,6 @@ class SceneProperty(bpy.types.PropertyGroup):
                     resolution_str = "2K"
                 return resolution_str
         return resolution
-
-    def clear_running_state(self):
-        self.running_operator = ""
-        self.running_message = ""
-        self.running_state = ""
-
-    def save_to_history(self):
-        nh = self.history.add()
-        nh.generation_time = nh.name = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        nh.generation_vendor = "NanoBanana生成"
-        nh.origin_image = self.origin_image
-        nh.generated_image = self.generated_image
-        nh.prompt = self.prompt
-        nh.mask_index = self.mask_index
-
-        for ri in self.reference_images:
-            nri = nh.reference_images.add()
-            nri.name = ri.name
-            nri.image = ri.image
-
-        for mi in self.mask_images:
-            nmi = nh.mask_images.add()
-            nmi.name = mi.name
-            nmi.image = mi.image
-        self.mask_images.clear()
-
-    def restore_history(self, context):
-        """恢复历史,将历史项里面的全部复制回来"""
-        oii = context.scene.blender_ai_studio_property
-        oii.origin_image = self.origin_image
-        oii.generated_image = self.generated_image
-        oii.prompt = self.prompt
-        oii.mask_index = self.mask_index
-
-        oii.reference_images.clear()
-        for ri in self.reference_images:
-            nri = oii.reference_images.add()
-            nri.name = ri.name
-            nri.image = ri.image
-
-        oii.mask_images.clear()
-        for mi in self.mask_images:
-            nmi = oii.mask_images.add()
-            nmi.name = mi.name
-            nmi.image = mi.image
 
     @property
     def all_references_images(self) -> list[bpy.types.Image]:
@@ -267,65 +384,6 @@ class SceneProperty(bpy.types.PropertyGroup):
             box.label(text="Click top right ops to reference")
 
     scale: bpy.props.FloatProperty(default=2.75)
-
-    def draw_history(self, layout: bpy.types.UILayout):
-        box = layout.box()
-
-        column = box.column()
-        row = column.row(align=True)
-        row.context_pointer_set("history", self)
-        row.prop(self, "expand_history", text=self.name,
-                 icon="RIGHTARROW" if not self.expand_history else "DOWNARROW_HLT",
-                 emboss=False,
-                 )
-
-        column.label(text=self.prompt)
-        if not self.expand_history:
-            row.context_pointer_set("history", self)
-            row.operator("bas.restore_history", icon="FILE_PARENT", text="",
-                         emboss=False,
-                         )
-            return
-
-        column = box.column()
-        gi = self.generated_image
-        if gi:
-            row = column.row()
-            w, h = gi.size
-            row.label(text=f"{w}*{h} px(72dpi)", icon_value=get_custom_icon("image_info_resolution"))
-        column.label(text=self.generation_vendor, icon_value=get_custom_icon("image_info_vendor"))
-        column.label(text=self.generation_time,icon_value=get_custom_icon("image_info_timestamp"))
-        text = bpy.app.translations.pgettext("%s reference images") % len(self.mask_images)
-        column.label(text=text)
-        # text = bpy.app.translations.pgettext("%s mask images") % len(self.reference_images)
-        # column.label(text=text)
-
-        if oi := self.origin_image:
-            row = box.row()
-            row.context_pointer_set("image", oi)
-            row.template_icon(oi.preview.icon_id, scale=2)
-            row.operator("bas.view_image", text="View Origin Image")
-        if gi := self.generated_image:
-            row = box.row()
-            row.context_pointer_set("image", gi)
-            row.template_icon(gi.preview.icon_id, scale=2)
-            row.operator("bas.view_image", text="View Generated Image")
-        box.context_pointer_set("history", self)
-        box.operator("bas.restore_history", icon="FILE_PARENT")
-
-    @property
-    def more_history_information(self) -> str:
-        r = bpy.app.translations.pgettext("%s reference images") % len(self.mask_images)
-        m = bpy.app.translations.pgettext("%s mask images") % len(self.reference_images)
-        prompt = bpy.app.translations.pgettext("Prompt", msgctxt=PROP_TCTX)
-        return (f"{self.generation_vendor}\n" +
-                f"{self.generation_time}\n" +
-                f"{r}\n" +
-                f"{m}\n" +
-                f"\n" +
-                f"{prompt}\n" +
-                f"{self.prompt}\n"
-                )
 
 
 class_list = [
