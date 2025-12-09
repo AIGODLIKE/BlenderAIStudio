@@ -604,7 +604,7 @@ class SmartFixImage(bpy.types.Operator):
         oii.prompt = "[智能修复]"
 
         self.report({'INFO'}, "Smart Fix - unifying colors, contrast, lighting...")
-        bpy.ops.bas.apply_ai_edit_image(running_operator=self.bl_label)
+        bpy.ops.bas.apply_ai_edit_image("INVOKE_DEFAULT", running_operator=self.bl_label)
         return {"FINISHED"}
 
 
@@ -631,7 +631,7 @@ class ReRenderImage(bpy.types.Operator):
         last = oii.history[-1]
         oii.prompt = last.prompt
 
-        bpy.ops.bas.apply_ai_edit_image(running_operator=self.bl_label)
+        bpy.ops.bas.apply_ai_edit_image("INVOKE_DEFAULT", running_operator=self.bl_label)
         self.report({'INFO'}, "Re-rendering with previous settings...")
         return {"FINISHED"}
 
