@@ -83,7 +83,7 @@ class GeminiTaskBase(Task):
 
         # 检查文件大小（可选）
         file_size = path.stat().st_size
-        max_size = 20 * 1024 * 1024  # 20MB
+        max_size = 30 * 1024 * 1024  # 30MB
         if file_size > max_size:
             self.update_progress(message=f"{param_name}过大: {file_size / 1024 / 1024:.1f}MB")
             return False
