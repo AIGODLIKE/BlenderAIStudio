@@ -4,6 +4,7 @@ OPS_TCTX = "BlenderAIStudioOperatorTCTX"
 
 translations = (
     ("AI Studio Entry", "AI Studio 入口", OPS_TCTX),
+    ( "AI Studio is already opened", "AI Studio 已经打开", None),
     ("Input Image", "输入图", PROP_TCTX),
     ("Reference Images", "参考图(可选)", PROP_TCTX),
     ("Prompt", "提示词", PROP_TCTX),

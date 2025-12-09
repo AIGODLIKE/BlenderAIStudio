@@ -16,12 +16,17 @@ class AIStudioEntry(bpy.types.Operator):
     bl_description = "Open AI Studio"
     bl_translation_context = OPS_TCTX
     bl_label = "AI Studio Entry"
+    entry_pool: dict = {}
 
     def invoke(self, context, event):
         from .studio import AIStudio
         self.area = bpy.context.area
+        if self.area.as_pointer() in self.entry_pool:
+            self.report({'ERROR'}, "AI Studio is already opened")
+            return {'FINISHED'}
         self.app = AIStudio()
         self.app.draw_call_add(self.app.handler_draw)
+        self.entry_pool[self.area.as_pointer()] = self.app
 
         self._timer = context.window_manager.event_timer_add(1 / 60, window=context.window)
         context.window_manager.modal_handler_add(self)
@@ -38,6 +43,8 @@ class AIStudioEntry(bpy.types.Operator):
         if self.app.should_exit():
             self.app.shutdown()
         if self.app.is_closed():
+            print("AI Studio closed")
+            self.entry_pool.pop(self.area.as_pointer(), None)
             return {"FINISHED"}
         self.app.push_event(event)
         if self.app.should_pass_event():
