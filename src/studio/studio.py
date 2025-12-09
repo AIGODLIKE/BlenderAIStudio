@@ -1272,8 +1272,8 @@ class AIStudio(AppHud):
                     label = "  任务提交中"
                 if task_state == "running":
                     is_rendering = True
-                    elapsed_time = int(client.query_task_elapsed_time())
-                    label = f"  渲染中({elapsed_time})s"
+                    elapsed_time = client.query_task_elapsed_time()
+                    label = f"  渲染中({elapsed_time:.1f})s"
                     rmin = imgui.get_cursor_screen_pos()
                     rmax = (rmin[0] + full_width, rmin[1] + gen_btn_height)
                     if imgui.is_mouse_hovering_rect(rmin, rmax):
