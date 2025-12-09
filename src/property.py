@@ -172,7 +172,7 @@ class State:
                 bpy.app.translations.pgettext(state_str.title()) + "  " + time_str,
                 self.running_message,
         ):
-            if text:
+            if text.strip():
                 column.label(text=text)
         image = context.space_data.image
         if image == self.origin_image:
