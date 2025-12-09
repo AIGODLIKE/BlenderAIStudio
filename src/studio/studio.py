@@ -1101,7 +1101,7 @@ class AIStudio(AppHud):
                     self.active_panel = subpanel
                 col = Const.CLOSE_BUTTON_NORMAL
                 if imgui.is_item_active():
-                    col = Const.CLOSE_BUTTON_ACTIVE
+                    col = Const.BUTTON_ACTIVE
                 elif imgui.is_item_hovered():
                     col = Const.CLOSE_BUTTON_HOVERED
                 if subpanel == self.active_panel:
