@@ -1651,6 +1651,7 @@ class AIStudio(AppHud):
                 "相机深度=雾场（雾场效果可在世界环境>雾场通道设置）",
             ]
             AppHelperDraw.draw_tips_with_title(self, tips, title)
+            return
         if widget.widget_name == "prompt":
             wp = imgui.get_style().window_padding
             psize = imgui.get_item_rect_size()
@@ -1683,6 +1684,21 @@ class AIStudio(AppHud):
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             imgui.end_child()
             imgui.set_cursor_pos(pos)
+            return
+        if widget.widget_name == "size_config":
+            if imgui.is_item_hovered():
+                imgui.set_next_window_size((450, 0))
+                title = "图像比例"
+                tip = "设置生成图像的长宽比，以满足生成需求"
+                AppHelperDraw.draw_tips_with_title(self, [tip], title)
+            return
+        if widget.widget_name == "resolution":
+            if imgui.is_item_hovered():
+                imgui.set_next_window_size((710, 0))
+                title = "图像分辨率"
+                tip = "结合图像比例，设置分辨率，分辨率越大需要更多的生成时间/资源"
+                AppHelperDraw.draw_tips_with_title(self, [tip], title)
+            return
 
 
 DescriptorFactory.register(StudioImagesDescriptor.ptype, StudioImagesDescriptor)
