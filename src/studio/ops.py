@@ -868,7 +868,7 @@ class OpenImageInNewWindow(bpy.types.Operator):
                                     return {"RUNNING_MODAL"}
                                 region.active_panel_category = "AIStudio"  # 设置活动面板
                                 # bpy.ops.image.view_all() #崩溃会
-                                bpy.ops.image.view_all(fit_view=True)
+                                # bpy.ops.image.view_all(fit_view=True)
                                 return {"FINISHED"}
                 self.report({'ERROR'}, "No image area")
         except Exception as e:
