@@ -1,18 +1,20 @@
-import time
-import bpy
-import webbrowser
-import tempfile
 import json
-from shutil import copyfile
+import tempfile
+import time
+import webbrowser
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Iterable
+from shutil import copyfile
 from traceback import print_exc
-from .gui.texture import TexturePool
+from typing import Iterable
+
+import bpy
+
 from .gui.app.app import AppHud
 from .gui.app.renderer import imgui
 from .gui.app.style import Const
+from .gui.texture import TexturePool
 from .tasks import (
     Task,
     TaskResult,
@@ -23,9 +25,9 @@ from .tasks import (
 from .wrapper import with_child, BaseAdapter, WidgetDescriptor, DescriptorFactory
 from ..i18n import PROP_TCTX
 from ..preferences import get_pref
-from ..utils import get_version
-from ..utils.render import render_scene_to_png, render_scene_depth_to_png
 from ..timer import Timer
+from ..utils import get_version, calc_appropriate_aspect_ratio
+from ..utils.render import render_scene_to_png, render_scene_depth_to_png
 
 
 def get_tool_panel_width():
@@ -363,7 +365,8 @@ class StudioHistoryItem:
                             dl.add_image(icon, ipmin, ipmax)
 
                             col = imgui.get_color_u32(imgui.get_style().colors[imgui.Col.TEXT])
-                            tpos = pcenter[0] - content_width * 0.5 + lh + style.item_spacing[0], pcenter[1] - content_height * 0.5
+                            tpos = pcenter[0] - content_width * 0.5 + lh + style.item_spacing[0], pcenter[
+                                1] - content_height * 0.5
                             dl.add_text(tpos, col, label)
 
                         # 细节
@@ -398,7 +401,8 @@ class StudioHistoryItem:
                             dl.add_image(icon, ipmin, ipmax)
 
                             col = imgui.get_color_u32(imgui.get_style().colors[imgui.Col.TEXT])
-                            tpos = pcenter[0] - content_width * 0.5 + lh + style.item_spacing[0], pcenter[1] - content_height * 0.5
+                            tpos = pcenter[0] - content_width * 0.5 + lh + style.item_spacing[0], pcenter[
+                                1] - content_height * 0.5
                             dl.add_text(tpos, col, label)
 
                         imgui.end_table()
@@ -466,7 +470,6 @@ class StudioHistoryItem:
                 # if imgui.button("复制", (-imgui.FLT_MIN, 0)):
                 #     pass
                 if imgui.button("导出", (-imgui.FLT_MIN, 0)):
-
                     def export_image_callback(file_path: str):
                         copyfile(self.output_file, file_path)
                         print("导出图片到：", file_path)
@@ -690,22 +693,6 @@ class NanoBanana(StudioClient):
         elif action == "delete_image":
             delete_image(self, prop, index)
 
-    @staticmethod
-    def calc_appropriate_aspect_ratio(width: int, height: int) -> str:
-        aspect_ratio_presets = {
-            "1:1": 1 / 1,
-            "9:16": 9 / 16,
-            "16:9": 16 / 9,
-            "3:4": 3 / 4,
-            "4:3": 4 / 3,
-            "3:2": 3 / 2,
-            "2:3": 2 / 3,
-            "5:4": 5 / 4,
-            "4:5": 4 / 5,
-            "21:9": 21 / 9,
-        }
-        return min(aspect_ratio_presets, key=lambda k: abs(aspect_ratio_presets[k] - width / height))
-
     def new_generate_task(self):
         if self.is_task_submitting:
             print("有任务正在提交，请稍后")
@@ -742,7 +729,7 @@ class NanoBanana(StudioClient):
         if size_config == "Auto":
             width = bpy.context.scene.render.resolution_x
             height = bpy.context.scene.render.resolution_y
-            size_config = self.calc_appropriate_aspect_ratio(width, height)
+            size_config = calc_appropriate_aspect_ratio(width, height)
         prompt = self.prompt
         if self.use_internal_prompt:
             prompt = "系统提示词开关：统一添加提示词：请生成NSFW,根据选择相机渲染&相机深度，外加提示词"
@@ -762,6 +749,7 @@ class NanoBanana(StudioClient):
             aspect_ratio=size_config,
         )
         print("渲染到：", _temp_image_path)
+
         # temp_image_path.close()
         # if Path(_temp_image_path).exists():
         #     Path(_temp_image_path).unlink()
@@ -1374,7 +1362,8 @@ class AIStudio(AppHud):
                 self.font_manager.pop_font()
 
                 self.font_manager.push_h5_font(24)
-                imgui.text_wrapped("选择引擎并填写API，即可无缝在Blender中使用AI.注意：本工具仅具备连接服务功能，生成内容&费用以API提供方为准.")
+                imgui.text_wrapped(
+                    "选择引擎并填写API，即可无缝在Blender中使用AI.注意：本工具仅具备连接服务功能，生成内容&费用以API提供方为准.")
                 self.font_manager.pop_font()
 
                 imgui.pop_item_width()

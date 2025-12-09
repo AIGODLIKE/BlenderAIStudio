@@ -6,7 +6,7 @@ from datetime import datetime
 import bpy
 
 from .i18n import PROP_TCTX
-from .utils import get_custom_icon, time_diff_to_str
+from .utils import get_custom_icon, time_diff_to_str, calc_appropriate_aspect_ratio, refresh_image_preview
 
 
 class ImageItem(bpy.types.PropertyGroup):
@@ -44,11 +44,14 @@ class History:
         self.end_time = int(time.time())
 
     def save_to_history(self):
+        oi = self.origin_image
+        gi = self.generated_image
+
         nh = self.history.add()
         nh.generation_time = nh.name = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         nh.generation_vendor = "NanoBanana生成"
-        nh.origin_image = self.origin_image
-        nh.generated_image = self.generated_image
+        nh.origin_image = oi
+        nh.generated_image = gi
         nh.prompt = self.prompt
         nh.mask_index = self.mask_index
         nh.start_time = self.start_time
@@ -64,6 +67,9 @@ class History:
             nmi.name = mi.name
             nmi.image = mi.image
         self.mask_images.clear()
+
+        refresh_image_preview(oi)
+        refresh_image_preview(gi)
 
     def restore_history(self, context):
         """恢复历史,将历史项里面的全部复制回来"""
@@ -211,7 +217,7 @@ class SceneProperty(bpy.types.PropertyGroup, History, State):
     resolution: bpy.props.EnumProperty(
         name="Out Resolution",
         items=[
-            ("AUTO", "Auto (Match Input)", "Keep original resolution"),
+            ("AUTO", "Auto", "Keep original resolution"),
             ("1K", "1k", "1k resolution"),
             ("2K", "2k", "2k resolution"),
             ("4K", "4k", "4k resolution"),
@@ -222,6 +228,7 @@ class SceneProperty(bpy.types.PropertyGroup, History, State):
     aspect_ratio: bpy.props.EnumProperty(
         name="Aspect Ratio",
         items=[
+            ("AUTO", "Auto", "Auto"),
             ("1:1", "1:1", "1:1"),
             ("2:3", "2:3", "2:3"),
             ("3:2", "3:2", "3:2"),
@@ -235,8 +242,23 @@ class SceneProperty(bpy.types.PropertyGroup, History, State):
         ]
     )
 
-    def get_out_resolution(self, context) -> tuple[int, int]:
+    def get_out_aspect_ratio(self, context):
+        """获取输出比例,如果context.space_data中有image,并且是AUTO这个属性,就按这个来获取最佳的比例
+        错误时反回1:1
         """
+        aspect_ratio = self.aspect_ratio
+        if aspect_ratio == "AUTO":
+            if image := getattr(context.space_data, "image", None):
+                w, h = image.size
+                if w == 0 or h == 0:  # 图片没有尺寸,就返回1:1
+                    return "1:1"
+                return calc_appropriate_aspect_ratio(w, h)
+            return "1:1"  # 图片没有找到,就返回1:1
+        return aspect_ratio
+
+    def get_out_resolution_px_by_aspect_ratio_and_resolution(self, context) -> tuple[int, int]:
+        """
+        获取输出分辨率(px) 从 图像比例 及分辨率(1k,2k,4k)
         1:1	1024x1024	1210	2048x2048	1210	4096x4096	2000
         2:3	848x1264	1210	1696x2528	1210	3392x5056	2000
         3:2	1264x848	1210	2528x1696	1210	5056x3392	2000
@@ -249,6 +271,7 @@ class SceneProperty(bpy.types.PropertyGroup, History, State):
         21:9	1584x672	1210	3168x1344	1210	6336x2688	2000
         https://ai.google.dev/gemini-api/docs/image-generation?hl=zh-cn#aspect_ratios_and_image_size
         """
+
         return {
             ("1:1", "1K"): (1024, 1024),
             ("1:1", "2K"): (2048, 2048),
@@ -280,9 +303,9 @@ class SceneProperty(bpy.types.PropertyGroup, History, State):
             ("21:9", "1K"): (1584, 672),
             ("21:9", "2K"): (3168, 1344),
             ("21:9", "4K"): (6336, 2688),
-        }.get((self.aspect_ratio, self.get_resolution_str(context)), (0, 0))
+        }.get((self.get_out_aspect_ratio(context), self.get_out_resolution(context)), (0, 0))
 
-    def get_resolution_str(self, context) -> str:
+    def get_out_resolution(self, context) -> str:
         resolution = self.resolution
         if resolution == "AUTO":
             if image := context.space_data.image:

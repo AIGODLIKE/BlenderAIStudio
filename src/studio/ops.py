@@ -7,7 +7,7 @@ from bpy_extras.io_utils import ImportHelper, ExportHelper
 
 from ..i18n import OPS_TCTX
 from ..utils import (get_text_generic_keymap, get_text_window, get_pref, save_image_to_temp_folder, png_name_suffix,
-                     load_image,
+                     load_image, refresh_image_preview,
                      )
 
 
@@ -206,7 +206,7 @@ class ApplyImageMask(bpy.types.Operator):
         image = getattr(space, "image")
         print(self.bl_idname, image)
         bpy.ops.image.save("EXEC_DEFAULT", False)
-        image.preview_ensure()
+        refresh_image_preview(image)
         image.use_fake_user = True
         if image.preview:
             image.preview.reload()
@@ -299,7 +299,7 @@ def add_reference_image(context, image, image_name=False):
     ri.name = png_name_suffix(image.name, "_reference")
     if image_name:
         image.name = ri.name
-    image.preview_ensure()
+    refresh_image_preview(image)
 
 
 class SelectReferenceImageByFile(bpy.types.Operator, ImportHelper):
@@ -454,11 +454,13 @@ class ApplyAiEditImage(bpy.types.Operator):
         return {"PASS_THROUGH"}
 
     def execute(self, context):
-        print(self.bl_idname)
+        print(self.bl_idname, "start")
         pref = get_pref()
         oii = context.scene.blender_ai_studio_property
         space_data = context.space_data
         image = space_data.image
+        aspect_ratio = oii.get_out_aspect_ratio(context)
+        resolution = oii.get_out_resolution(context)
         if not image:
             self.report({'ERROR'}, "No image")
             return {'CANCELLED'}
@@ -503,6 +505,9 @@ class ApplyAiEditImage(bpy.types.Operator):
 
         print("temp", temp_folder)
         print("reference_images_path", reference_images_path)
+        print("mask_image_path", mask_image_path)
+        print("aspect_ratio", aspect_ratio)
+        print("resolution", resolution)
         from .tasks import GeminiImageEditTask, Task, TaskState, TaskResult, TaskManager
         task = GeminiImageEditTask(
             api_key=pref.nano_banana_api,
@@ -510,8 +515,8 @@ class ApplyAiEditImage(bpy.types.Operator):
             edit_prompt=oii.prompt,
             mask_path=mask_image_path,
             reference_images_path=reference_images_path,
-            aspect_ratio=oii.aspect_ratio,
-            resolution=oii.resolution,
+            aspect_ratio=aspect_ratio,
+            resolution=resolution,
             max_retries=1,
         )
         oii.running_message = "Start..."
@@ -825,7 +830,7 @@ class OpenImageInNewWindow(bpy.types.Operator):
             data = json.loads(self.data)
             metadata = data.get("metadata", None)
             if metadata:
-                aspect_ratio = metadata.get("aspect_ratio", "1:1")
+                aspect_ratio = metadata.get("aspect_ratio", "AUTO")
                 oii = context.scene.blender_ai_studio_property
                 resolution = metadata.get("resolution", "1K")
                 oii.aspect_ratio = aspect_ratio

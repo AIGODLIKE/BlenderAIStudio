@@ -12,6 +12,9 @@ __all__ = [
     "png_name_suffix",
     "load_image",
     "time_diff_to_str",
+    "get_version",
+    "calc_appropriate_aspect_ratio",
+    "refresh_image_preview",
 ]
 
 
@@ -157,6 +160,30 @@ def time_diff_to_str(time_diff=None, start=None, end=None):
     if seconds > 0 or not result:
         result.append(f"{seconds}s")
     return "".join(result)
+
+
+def calc_appropriate_aspect_ratio(width: int, height: int) -> str:
+    aspect_ratio_presets = {
+        "1:1": 1 / 1,
+        "2:3": 2 / 3,
+        "3:2": 3 / 2,
+        "3:4": 3 / 4,
+        "4:3": 4 / 3,
+        "5:4": 5 / 4,
+        "4:5": 4 / 5,
+        "9:16": 9 / 16,
+        "16:9": 16 / 9,
+        "21:9": 21 / 9,
+    }
+    return min(aspect_ratio_presets, key=lambda k: abs(aspect_ratio_presets[k] - width / height))
+
+
+def refresh_image_preview(image: bpy.types.Image):
+    if image:
+        if image.preview:
+            image.preview.reload()
+        else:
+            image.preview_ensure()
 
 
 def register():

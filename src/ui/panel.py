@@ -56,7 +56,7 @@ class AIStudioImagePanel(bpy.types.Panel):
 
         self.draw_image_info(context, layout)
         is_not_run = ai.running_state != "running"
-        w, h = ai.get_out_resolution(context)
+        w, h = ai.get_out_resolution_px_by_aspect_ratio_and_resolution(context)
         column = layout.column(align=True)
         column.enabled = is_not_run  # 在运行中时不允许修改
         bb = column.box()
