@@ -365,8 +365,7 @@ class StudioHistoryItem:
                             dl.add_image(icon, ipmin, ipmax)
 
                             col = imgui.get_color_u32(imgui.get_style().colors[imgui.Col.TEXT])
-                            tpos = pcenter[0] - content_width * 0.5 + lh + style.item_spacing[0], pcenter[
-                                1] - content_height * 0.5
+                            tpos = pcenter[0] - content_width * 0.5 + lh + style.item_spacing[0], pcenter[1] - content_height * 0.5
                             dl.add_text(tpos, col, label)
 
                         # 细节
@@ -401,8 +400,7 @@ class StudioHistoryItem:
                             dl.add_image(icon, ipmin, ipmax)
 
                             col = imgui.get_color_u32(imgui.get_style().colors[imgui.Col.TEXT])
-                            tpos = pcenter[0] - content_width * 0.5 + lh + style.item_spacing[0], pcenter[
-                                1] - content_height * 0.5
+                            tpos = pcenter[0] - content_width * 0.5 + lh + style.item_spacing[0], pcenter[1] - content_height * 0.5
                             dl.add_text(tpos, col, label)
 
                         imgui.end_table()
@@ -470,6 +468,7 @@ class StudioHistoryItem:
                 # if imgui.button("复制", (-imgui.FLT_MIN, 0)):
                 #     pass
                 if imgui.button("导出", (-imgui.FLT_MIN, 0)):
+
                     def export_image_callback(file_path: str):
                         copyfile(self.output_file, file_path)
                         print("导出图片到：", file_path)
@@ -1362,8 +1361,7 @@ class AIStudio(AppHud):
                 self.font_manager.pop_font()
 
                 self.font_manager.push_h5_font(24)
-                imgui.text_wrapped(
-                    "选择引擎并填写API，即可无缝在Blender中使用AI.注意：本工具仅具备连接服务功能，生成内容&费用以API提供方为准.")
+                imgui.text_wrapped("选择引擎并填写API，即可无缝在Blender中使用AI.注意：本工具仅具备连接服务功能，生成内容&费用以API提供方为准.")
                 self.font_manager.pop_font()
 
                 imgui.pop_item_width()
