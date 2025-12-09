@@ -371,6 +371,11 @@ class StudioHistoryItem:
                                 meta = self.stringify()
                                 context = bpy.context.copy()
                                 Timer.put((edit_image_with_meta_and_context, image, meta, context))
+                            if imgui.is_item_hovered():
+                                title = "编辑图像"
+                                tip = "打开图像编辑器，编辑当前图像。（可执行重绘、融图等编辑操作）"
+                                imgui.set_next_window_size((720, 0))
+                                AppHelperDraw.draw_tips_with_title(app, [tip], title)
                             dl = imgui.get_window_draw_list()
                             pmin = imgui.get_item_rect_min()
                             pmax = imgui.get_item_rect_max()
@@ -402,6 +407,11 @@ class StudioHistoryItem:
                                 imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON_SELECTED)
                             if imgui.button("##详情", (-imgui.FLT_MIN, bh)):
                                 self.show_detail = not self.show_detail
+                            if imgui.is_item_hovered():
+                                title = "图像详情"
+                                tip = "查看图像生成信息，例如提示词、生成时间等内容"
+                                imgui.set_next_window_size((550, 0))
+                                AppHelperDraw.draw_tips_with_title(app, [tip], title)
                             if old_show_detail:
                                 imgui.pop_style_color(1)
                             imgui.pop_style_color(1)
