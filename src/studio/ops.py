@@ -823,7 +823,7 @@ class OpenImageInNewWindow(bpy.types.Operator):
             last_window.screen.areas[0].type = "IMAGE_EDITOR"
 
             context.window_manager.modal_handler_add(self)
-            return {"RUNNING_MODAL"}
+            return {"RUNNING_MODAL", "PASS_THROUGH"}
 
     def load_data(self, context):
         try:
@@ -860,6 +860,8 @@ class OpenImageInNewWindow(bpy.types.Operator):
                                 space.image = image
                                 space.show_region_ui = True
                                 region = area.regions[4]
+                                # if not context.region:
+                                #     return {"PASS_THROUGH"}
                                 if region.active_panel_category == "UNSUPPORTED":  # 如果还是不支持说明还没被渲染或初始化,再等待多一会
                                     self.run_count += 1
                                     if self.run_count > 20:  # 最多等待20次
@@ -867,8 +869,8 @@ class OpenImageInNewWindow(bpy.types.Operator):
                                         return {'CANCELLED'}
                                     return {"RUNNING_MODAL"}
                                 region.active_panel_category = "AIStudio"  # 设置活动面板
-                                # bpy.ops.image.view_all() #崩溃会
-                                # bpy.ops.image.view_all(fit_view=True)
+                                with context.temp_override(window=image_window, area=area, region=region):
+                                    bpy.ops.image.view_all(fit_view=False)
                                 return {"FINISHED"}
                 self.report({'ERROR'}, "No image area")
         except Exception as e:
