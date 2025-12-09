@@ -46,6 +46,30 @@ def edit_image_with_meta_and_context(file_path, meta, context):
         print_exc()
 
 
+class AppHelperDraw:
+    def draw_tips_with_title(self: AppHud, title: str, tips: list[str]):
+        imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.WINDOW_R)
+        imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, Const.WINDOW_P)
+        imgui.set_next_window_size((759, 0))
+        imgui.begin_tooltip()
+        imgui.push_item_width(100)
+
+        self.font_manager.push_h1_font(24)
+        imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
+        imgui.text(title)
+        imgui.pop_style_color()
+        self.font_manager.pop_font()
+
+        self.font_manager.push_h5_font(24)
+        for tip in tips:
+            imgui.text_wrapped(tip)
+        self.font_manager.pop_font()
+
+        imgui.pop_item_width()
+        imgui.end_tooltip()
+        imgui.pop_style_var(2)
+
+
 class StudioImagesDescriptor(WidgetDescriptor):
     ptype = "STUDIO_IMAGES"
 
@@ -1348,25 +1372,9 @@ class AIStudio(AppHud):
                         imgui.pop_style_color()
                 imgui.end_combo()
             if imgui.is_item_hovered():
-                imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.WINDOW_R)
-                imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, Const.WINDOW_P)
-                imgui.set_next_window_size((759, 0))
-                imgui.begin_tooltip()
-                imgui.push_item_width(100)
-
-                self.font_manager.push_h1_font(24)
-                imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
-                imgui.text("选择生成式引擎")
-                imgui.pop_style_color()
-                self.font_manager.pop_font()
-
-                self.font_manager.push_h5_font(24)
-                imgui.text_wrapped("选择引擎并填写API，即可无缝在Blender中使用AI.注意：本工具仅具备连接服务功能，生成内容&费用以API提供方为准.")
-                self.font_manager.pop_font()
-
-                imgui.pop_item_width()
-                imgui.end_tooltip()
-                imgui.pop_style_var(2)
+                title = "选择生成式引擎"
+                tip = "选择引擎并填写API，即可无缝在Blender中使用AI.注意：本工具仅具备连接服务功能，生成内容&费用以API提供方为准."
+                AppHelperDraw.draw_tips_with_title(self, title, [tip])
             imgui.pop_style_color(2)
             imgui.pop_style_var(4)
             imgui.pop_item_width()
@@ -1627,27 +1635,10 @@ class AIStudio(AppHud):
 
     def draw_wrapper_widget_spec(self, wrapper: StudioWrapper, widget: WidgetDescriptor):
         if widget.widget_name == "input_image_type" and imgui.is_item_hovered():
-            imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.WINDOW_R)
-            imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, Const.WINDOW_P)
             imgui.set_next_window_size((630, 0))
-            imgui.begin_tooltip()
-            imgui.push_item_width(100)
-
-            self.font_manager.push_h1_font(24)
-            imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
-            imgui.text("首图模式")
-            imgui.pop_style_color()
-            self.font_manager.pop_font()
-
-            self.font_manager.push_h5_font(24)
-            imgui.text_wrapped("活动相机将被用于输出，请选择输出输出模式。")
-            imgui.text_wrapped("相机渲染=合并结果")
-            imgui.text_wrapped("相机深度=雾场（雾场效果可在世界环境>雾场通道设置）")
-            self.font_manager.pop_font()
-
-            imgui.pop_item_width()
-            imgui.end_tooltip()
-            imgui.pop_style_var(2)
+            title = "首图模式"
+            tips = ["活动相机将被用于输出，请选择输出输出模式。", "相机渲染=合并结果", "相机深度=雾场（雾场效果可在世界环境>雾场通道设置）"]
+            AppHelperDraw.draw_tips_with_title(self, title, tips)
         if widget.widget_name == "prompt":
             wp = imgui.get_style().window_padding
             psize = imgui.get_item_rect_size()
@@ -1674,25 +1665,10 @@ class AIStudio(AppHud):
             dl.add_image(icon, pmin, pmax)
 
             if imgui.is_item_hovered():
-                imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.WINDOW_R)
-                imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, Const.WINDOW_P)
                 imgui.set_next_window_size((580, 0))
-                imgui.begin_tooltip()
-                imgui.push_item_width(100)
-
-                self.font_manager.push_h1_font(24)
-                imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
-                imgui.text("提示词优化")
-                imgui.pop_style_color()
-                self.font_manager.pop_font()
-
-                self.font_manager.push_h5_font(24)
-                imgui.text_wrapped("启用提示词优化，可提升描述准确性，以及生成内容的安全性")
-                self.font_manager.pop_font()
-
-                imgui.pop_item_width()
-                imgui.end_tooltip()
-                imgui.pop_style_var(2)
+                title = "提示词优化"
+                tip = "启用提示词优化，可提升描述准确性，以及生成内容的安全性"
+                AppHelperDraw.draw_tips_with_title(self, title, [tip])
             imgui.end_child()
             imgui.set_cursor_pos(pos)
 
