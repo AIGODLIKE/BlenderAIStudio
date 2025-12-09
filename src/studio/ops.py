@@ -474,7 +474,7 @@ class ApplyAiEditImage(bpy.types.Operator):
             return {'CANCELLED'}
 
         oii.running_operator = self.running_operator
-        generate_image_name = f"{image.name}_{self.running_operator}"
+        generate_image_name = png_name_suffix(image.name, f"_{self.running_operator}")
 
         # 将blender图片保存到临时文件夹
         import tempfile
