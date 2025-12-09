@@ -336,7 +336,7 @@ class SceneProperty(bpy.types.PropertyGroup, History, State):
                     )
         rr.operator("bas.select_reference_image_by_file", text="",
                     emboss=False,
-                    icon_value=get_custom_icon("select_references_by_bl_image"),
+                    icon_value=get_custom_icon("select_references_by_file"),
                     )
         if not self.expand_ui:
             return
