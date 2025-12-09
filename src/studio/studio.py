@@ -46,6 +46,27 @@ def edit_image_with_meta_and_context(file_path, meta, context):
         print_exc()
 
 
+class AppHelperDraw:
+    def draw_tips_with_title(self: AppHud, tips: list[str], title: str):
+        imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.WINDOW_R)
+        imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, Const.WINDOW_P)
+        imgui.begin_tooltip()
+
+        self.font_manager.push_h1_font(24)
+        imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
+        imgui.text(title)
+        imgui.pop_style_color()
+        self.font_manager.pop_font()
+
+        self.font_manager.push_h5_font(24)
+        for tip in tips:
+            imgui.text_wrapped(tip)
+        self.font_manager.pop_font()
+
+        imgui.end_tooltip()
+        imgui.pop_style_var(2)
+
+
 class StudioImagesDescriptor(WidgetDescriptor):
     ptype = "STUDIO_IMAGES"
 
@@ -350,6 +371,11 @@ class StudioHistoryItem:
                                 meta = self.stringify()
                                 context = bpy.context.copy()
                                 Timer.put((edit_image_with_meta_and_context, image, meta, context))
+                            if imgui.is_item_hovered():
+                                title = "编辑图像"
+                                tip = "打开图像编辑器，编辑当前图像。（可执行重绘、融图等编辑操作）"
+                                imgui.set_next_window_size((720, 0))
+                                AppHelperDraw.draw_tips_with_title(app, [tip], title)
                             dl = imgui.get_window_draw_list()
                             pmin = imgui.get_item_rect_min()
                             pmax = imgui.get_item_rect_max()
@@ -365,8 +391,7 @@ class StudioHistoryItem:
                             dl.add_image(icon, ipmin, ipmax)
 
                             col = imgui.get_color_u32(imgui.get_style().colors[imgui.Col.TEXT])
-                            tpos = pcenter[0] - content_width * 0.5 + lh + style.item_spacing[0], pcenter[
-                                1] - content_height * 0.5
+                            tpos = pcenter[0] - content_width * 0.5 + lh + style.item_spacing[0], pcenter[1] - content_height * 0.5
                             dl.add_text(tpos, col, label)
 
                         # 细节
@@ -382,6 +407,11 @@ class StudioHistoryItem:
                                 imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON_SELECTED)
                             if imgui.button("##详情", (-imgui.FLT_MIN, bh)):
                                 self.show_detail = not self.show_detail
+                            if imgui.is_item_hovered():
+                                title = "图像详情"
+                                tip = "查看图像生成信息，例如提示词、生成时间等内容"
+                                imgui.set_next_window_size((550, 0))
+                                AppHelperDraw.draw_tips_with_title(app, [tip], title)
                             if old_show_detail:
                                 imgui.pop_style_color(1)
                             imgui.pop_style_color(1)
@@ -401,8 +431,7 @@ class StudioHistoryItem:
                             dl.add_image(icon, ipmin, ipmax)
 
                             col = imgui.get_color_u32(imgui.get_style().colors[imgui.Col.TEXT])
-                            tpos = pcenter[0] - content_width * 0.5 + lh + style.item_spacing[0], pcenter[
-                                1] - content_height * 0.5
+                            tpos = pcenter[0] - content_width * 0.5 + lh + style.item_spacing[0], pcenter[1] - content_height * 0.5
                             dl.add_text(tpos, col, label)
 
                         imgui.end_table()
@@ -470,6 +499,7 @@ class StudioHistoryItem:
                 # if imgui.button("复制", (-imgui.FLT_MIN, 0)):
                 #     pass
                 if imgui.button("导出", (-imgui.FLT_MIN, 0)):
+
                     def export_image_callback(file_path: str):
                         copyfile(self.output_file, file_path)
                         print("导出图片到：", file_path)
@@ -1349,26 +1379,10 @@ class AIStudio(AppHud):
                         imgui.pop_style_color()
                 imgui.end_combo()
             if imgui.is_item_hovered():
-                imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.WINDOW_R)
-                imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, Const.WINDOW_P)
+                title = "选择生成式引擎"
+                tip = "选择引擎并填写API，即可无缝在Blender中使用AI.注意：本工具仅具备连接服务功能，生成内容&费用以API提供方为准."
                 imgui.set_next_window_size((759, 0))
-                imgui.begin_tooltip()
-                imgui.push_item_width(100)
-
-                self.font_manager.push_h1_font(24)
-                imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
-                imgui.text("选择生成式引擎")
-                imgui.pop_style_color()
-                self.font_manager.pop_font()
-
-                self.font_manager.push_h5_font(24)
-                imgui.text_wrapped(
-                    "选择引擎并填写API，即可无缝在Blender中使用AI.注意：本工具仅具备连接服务功能，生成内容&费用以API提供方为准.")
-                self.font_manager.pop_font()
-
-                imgui.pop_item_width()
-                imgui.end_tooltip()
-                imgui.pop_style_var(2)
+                AppHelperDraw.draw_tips_with_title(self, [tip], title)
             imgui.pop_style_color(2)
             imgui.pop_style_var(4)
             imgui.pop_item_width()
@@ -1629,27 +1643,15 @@ class AIStudio(AppHud):
 
     def draw_wrapper_widget_spec(self, wrapper: StudioWrapper, widget: WidgetDescriptor):
         if widget.widget_name == "input_image_type" and imgui.is_item_hovered():
-            imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.WINDOW_R)
-            imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, Const.WINDOW_P)
             imgui.set_next_window_size((630, 0))
-            imgui.begin_tooltip()
-            imgui.push_item_width(100)
-
-            self.font_manager.push_h1_font(24)
-            imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
-            imgui.text("首图模式")
-            imgui.pop_style_color()
-            self.font_manager.pop_font()
-
-            self.font_manager.push_h5_font(24)
-            imgui.text_wrapped("活动相机将被用于输出，请选择输出输出模式。")
-            imgui.text_wrapped("相机渲染=合并结果")
-            imgui.text_wrapped("相机深度=雾场（雾场效果可在世界环境>雾场通道设置）")
-            self.font_manager.pop_font()
-
-            imgui.pop_item_width()
-            imgui.end_tooltip()
-            imgui.pop_style_var(2)
+            title = "首图模式"
+            tips = [
+                "活动相机将被用于输出，请选择输出输出模式。",
+                "相机渲染=合并结果",
+                "相机深度=雾场（雾场效果可在世界环境>雾场通道设置）",
+            ]
+            AppHelperDraw.draw_tips_with_title(self, tips, title)
+            return
         if widget.widget_name == "prompt":
             wp = imgui.get_style().window_padding
             psize = imgui.get_item_rect_size()
@@ -1676,27 +1678,27 @@ class AIStudio(AppHud):
             dl.add_image(icon, pmin, pmax)
 
             if imgui.is_item_hovered():
-                imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.WINDOW_R)
-                imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, Const.WINDOW_P)
                 imgui.set_next_window_size((580, 0))
-                imgui.begin_tooltip()
-                imgui.push_item_width(100)
-
-                self.font_manager.push_h1_font(24)
-                imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
-                imgui.text("提示词优化")
-                imgui.pop_style_color()
-                self.font_manager.pop_font()
-
-                self.font_manager.push_h5_font(24)
-                imgui.text_wrapped("启用提示词优化，可提升描述准确性，以及生成内容的安全性")
-                self.font_manager.pop_font()
-
-                imgui.pop_item_width()
-                imgui.end_tooltip()
-                imgui.pop_style_var(2)
+                title = "提示词优化"
+                tip = "启用提示词优化，可提升描述准确性，以及生成内容的安全性"
+                AppHelperDraw.draw_tips_with_title(self, [tip], title)
             imgui.end_child()
             imgui.set_cursor_pos(pos)
+            return
+        if widget.widget_name == "size_config":
+            if imgui.is_item_hovered():
+                imgui.set_next_window_size((450, 0))
+                title = "图像比例"
+                tip = "设置生成图像的长宽比，以满足生成需求"
+                AppHelperDraw.draw_tips_with_title(self, [tip], title)
+            return
+        if widget.widget_name == "resolution":
+            if imgui.is_item_hovered():
+                imgui.set_next_window_size((710, 0))
+                title = "图像分辨率"
+                tip = "结合图像比例，设置分辨率，分辨率越大需要更多的生成时间/资源"
+                AppHelperDraw.draw_tips_with_title(self, [tip], title)
+            return
 
 
 DescriptorFactory.register(StudioImagesDescriptor.ptype, StudioImagesDescriptor)
