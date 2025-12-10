@@ -1058,7 +1058,8 @@ class AIStudio(AppHud):
 
     def draw_studio_panel(self):
         window_size = 540, 1359
-        window_pos = get_tool_panel_width() / self.screen_scale, 400 / self.screen_scale
+        ui_offset = get_pref().ui_offset
+        window_pos = (get_tool_panel_width() + ui_offset[0]) / self.screen_scale, get_pref().ui_offset[1] / self.screen_scale
         imgui.set_next_window_pos(window_pos, imgui.Cond.ALWAYS)
         imgui.set_next_window_size(window_size, imgui.Cond.ALWAYS)
         flags = 0

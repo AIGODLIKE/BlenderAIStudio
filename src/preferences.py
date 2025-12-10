@@ -16,6 +16,15 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences):
         max=10,
         **translation_context,
     )
+    ui_offset: bpy.props.FloatVectorProperty(
+        name="UI Offset",
+        default=(0, 200),
+        min=0,
+        max=4096,
+        step=1,
+        size=2,
+        **translation_context,
+    )
     nano_banana_api: bpy.props.StringProperty(
         name="Nano Banana API Key",
         subtype="PASSWORD",
@@ -24,6 +33,7 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences):
     def draw(self, context):
         layout = self.layout
         layout.prop(self, "ui_pre_scale")
+        layout.prop(self, "ui_offset")
         layout.label(text="Blender AI Studio Preferences")
         layout.prop(self, "nano_banana_api")
 
