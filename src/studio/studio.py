@@ -555,7 +555,7 @@ class StudioClient(BaseAdapter):
         self.task_id: str = ""
         self.is_task_submitting = False
         self.history = StudioHistory.get_instance()
-        self.use_internal_prompt: bool = False
+        self.use_internal_prompt: bool = True
 
     def get_ctxt(self) -> str:
         return PROP_TCTX
