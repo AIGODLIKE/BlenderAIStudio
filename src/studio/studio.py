@@ -80,21 +80,21 @@ class StudioImagesDescriptor(WidgetDescriptor):
                 imgui.push_style_var(imgui.StyleVar.CELL_PADDING, imgui.get_style().item_spacing)
                 imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, (0, 0))
                 imgui.push_style_color(imgui.Col.TABLE_BORDER_STRONG, Const.TRANSPARENT)
-                imgui.begin_table("##Table", 3, imgui.TableFlags.BORDERS)
-                for i in range(3):
-                    imgui.table_setup_column(f"##Column{i}", imgui.TableColumnFlags.WIDTH_STRETCH, 0, i)
-                for i, img in enumerate(self.value):
-                    imgui.table_next_column()
-                    imgui.push_id(f"##Image{i}")
-                    self.display_image_with_close(app, img, i)
-                    imgui.pop_id()
+                if imgui.begin_table("##Table", 3, imgui.TableFlags.BORDERS):
+                    for i in range(3):
+                        imgui.table_setup_column(f"##Column{i}", imgui.TableColumnFlags.WIDTH_STRETCH, 0, i)
+                    for i, img in enumerate(self.value):
+                        imgui.table_next_column()
+                        imgui.push_id(f"##Image{i}")
+                        self.display_image_with_close(app, img, i)
+                        imgui.pop_id()
 
-                if len(self.value) < self.widget_def.get("limit", 999):
-                    imgui.table_next_column()
-                    imgui.push_id("##Upload")
-                    self.display_upload_image()
-                    imgui.pop_id()
-                imgui.end_table()
+                    if len(self.value) < self.widget_def.get("limit", 999):
+                        imgui.table_next_column()
+                        imgui.push_id("##Upload")
+                        self.display_upload_image()
+                        imgui.pop_id()
+                    imgui.end_table()
 
                 imgui.pop_style_var(2)
                 imgui.pop_style_color(1)
@@ -1058,7 +1058,7 @@ class AIStudio(AppHud):
 
     def draw_studio_panel(self):
         window_size = 540, 1359
-        window_pos = get_tool_panel_width(), 400
+        window_pos = get_tool_panel_width() / self.screen_scale, 400 / self.screen_scale
         imgui.set_next_window_pos(window_pos, imgui.Cond.ALWAYS)
         imgui.set_next_window_size(window_size, imgui.Cond.ALWAYS)
         flags = 0
@@ -1200,9 +1200,8 @@ class AIStudio(AppHud):
             imgui.dummy(dummy_size)
 
         # 生成面板
-        if True:
-            imgui.dummy(dummy_size)
-            imgui.begin_table("#Engine", 4)
+        imgui.dummy(dummy_size)
+        if imgui.begin_table("#Engine", 4):
             imgui.table_setup_column("#EngineEle1", imgui.TableColumnFlags.WIDTH_FIXED, 0, 0)
             imgui.table_setup_column("#EngineEle2", imgui.TableColumnFlags.WIDTH_FIXED, 0, 1)
             imgui.table_setup_column("#EngineEle3", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 2)
@@ -1413,9 +1412,8 @@ class AIStudio(AppHud):
             imgui.dummy(dummy_size)
 
         # 设置面板
-        if True:
-            imgui.dummy(dummy_size)
-            imgui.begin_table("#Engine", 4)
+        imgui.dummy(dummy_size)
+        if imgui.begin_table("#Engine", 4):
             imgui.table_setup_column("#EngineEle1", imgui.TableColumnFlags.WIDTH_FIXED, 0, 0)
             imgui.table_setup_column("#EngineEle2", imgui.TableColumnFlags.WIDTH_FIXED, 0, 1)
             imgui.table_setup_column("#EngineEle3", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 2)
@@ -1499,9 +1497,8 @@ class AIStudio(AppHud):
             imgui.dummy(dummy_size)
 
         # 设置面板
-        if True:
-            imgui.dummy(dummy_size)
-            imgui.begin_table("#Engine", 4)
+        imgui.dummy(dummy_size)
+        if imgui.begin_table("#Engine", 4):
             imgui.table_setup_column("#EngineEle1", imgui.TableColumnFlags.WIDTH_FIXED, 0, 0)
             imgui.table_setup_column("#EngineEle2", imgui.TableColumnFlags.WIDTH_FIXED, 0, 1)
             imgui.table_setup_column("#EngineEle3", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 2)
