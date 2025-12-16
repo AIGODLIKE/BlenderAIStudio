@@ -1060,11 +1060,10 @@ class AIStudio(AppHud):
         window_size = 540, 1359
         ui_offset = get_pref().ui_offset
         window_pos = (get_tool_panel_width() + ui_offset[0]) / self.screen_scale, get_pref().ui_offset[1] / self.screen_scale
-        imgui.set_next_window_pos(window_pos, imgui.Cond.ALWAYS)
+        imgui.set_next_window_pos(window_pos, imgui.Cond.ONCE)
         imgui.set_next_window_size(window_size, imgui.Cond.ALWAYS)
         flags = 0
         flags |= imgui.WindowFlags.NO_RESIZE
-        flags |= imgui.WindowFlags.NO_MOVE
         flags |= imgui.WindowFlags.NO_COLLAPSE
         flags |= imgui.WindowFlags.NO_TITLE_BAR
         flags |= imgui.WindowFlags.NO_SCROLL_WITH_MOUSE
@@ -1154,8 +1153,9 @@ class AIStudio(AppHud):
             fp = istyle.frame_padding
             imgui.push_style_color(imgui.Col.FRAME_BG, Const.TRANSPARENT)
             imgui.push_style_var(imgui.StyleVar.FRAME_PADDING, Const.LP_WINDOW_P)
-            imgui.set_cursor_pos_y(0)
-            with with_child("##Right", (rb[0] - lt[0], rb[1] - lt[1]), imgui.ChildFlags.FRAME_STYLE):
+            if True:
+                imgui.set_cursor_pos_x(cx + fp[0])
+                imgui.begin_group()
                 imgui.push_style_var(imgui.StyleVar.FRAME_PADDING, (0, 0))
                 imgui.push_id("##RightInner")
 
@@ -1167,6 +1167,7 @@ class AIStudio(AppHud):
 
                 imgui.pop_id()
                 imgui.pop_style_var(1)
+                imgui.end_group()
             imgui.pop_style_color(1)
             imgui.pop_style_var(1)
 
@@ -1198,7 +1199,6 @@ class AIStudio(AppHud):
             imgui.same_line()
             self.draw_panel_close_button()
             self.font_manager.pop_font()
-            imgui.dummy(dummy_size)
 
         # 生成面板
         imgui.dummy(dummy_size)
@@ -1410,7 +1410,6 @@ class AIStudio(AppHud):
             imgui.same_line()
             self.draw_panel_close_button()
             self.font_manager.pop_font()
-            imgui.dummy(dummy_size)
 
         # 设置面板
         imgui.dummy(dummy_size)
@@ -1495,7 +1494,6 @@ class AIStudio(AppHud):
             imgui.same_line()
             self.draw_panel_close_button()
             self.font_manager.pop_font()
-            imgui.dummy(dummy_size)
 
         # 设置面板
         imgui.dummy(dummy_size)
