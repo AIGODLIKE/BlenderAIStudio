@@ -1059,7 +1059,7 @@ class AIStudio(AppHud):
     def draw_studio_panel(self):
         window_size = 540, 1359
         ui_offset = get_pref().ui_offset
-        window_pos = (get_tool_panel_width() + ui_offset[0]) / self.screen_scale, get_pref().ui_offset[1] / self.screen_scale
+        window_pos = (get_tool_panel_width() + ui_offset[0]) / self.screen_scale, ui_offset[1] / self.screen_scale
         imgui.set_next_window_pos(window_pos, imgui.Cond.ONCE)
         imgui.set_next_window_size(window_size, imgui.Cond.ALWAYS)
         flags = 0
@@ -1087,6 +1087,7 @@ class AIStudio(AppHud):
         item_spacing = istyle.item_spacing
 
         imgui.begin("##AIStudioPanel", False, flags)
+        self.record_window_pos()
         # Left
         if True:
             imgui.begin_group()
@@ -1176,6 +1177,14 @@ class AIStudio(AppHud):
         imgui.end()
         imgui.pop_style_var(6)
         imgui.pop_style_color(4)
+
+    def record_window_pos(self):
+        # Record Window Position
+        if imgui.is_window_hovered() and self.is_mouse_dragging():
+            pos = imgui.get_window_pos()
+            tool_panel_width = get_tool_panel_width()
+            offset = pos[0] * self.screen_scale - tool_panel_width, pos[1] * self.screen_scale
+            get_pref().set_ui_offset(offset)
 
     def draw_generation_panel(self):
         if self.active_panel != AIStudioPanelType.GENERATION:

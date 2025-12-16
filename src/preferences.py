@@ -40,6 +40,10 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences):
         if self.nano_banana_api == "":
             layout.label(text="Please input your API Key")
 
+    def set_ui_offset(self, value):
+        self.ui_offset = value
+        bpy.context.preferences.use_preferences_save = True
+
 
 def get_pref() -> BlenderAIStudioPref:
     return bpy.context.preferences.addons[base_name].preferences
