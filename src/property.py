@@ -416,9 +416,16 @@ class_list = [
 ]
 register_class, unregister_class = bpy.utils.register_classes_factory(class_list)
 
+from bpy.app.handlers import persistent
+
 
 def clear_run():
     bpy.context.scene.blender_ai_studio_property.clear_running_state()
+
+
+@persistent
+def load_post(a, b):
+    clear_run()
 
 
 def register():
@@ -427,6 +434,7 @@ def register():
     bpy.types.Image.blender_ai_studio_property = bpy.props.PointerProperty(type=ImageProperty)
     bpy.types.Text.blender_ai_studio_prompt_hash = bpy.props.StringProperty()
     bpy.app.timers.register(clear_run, persistent=True)
+    bpy.app.handlers.load_post.append(load_post)
 
 
 def unregister():
@@ -434,3 +442,4 @@ def unregister():
     del bpy.types.Image.blender_ai_studio_property
     del bpy.types.Text.blender_ai_studio_prompt_hash
     unregister_class()
+    bpy.app.handlers.load_post.remove(load_post)
