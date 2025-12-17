@@ -80,21 +80,21 @@ class StudioImagesDescriptor(WidgetDescriptor):
                 imgui.push_style_var(imgui.StyleVar.CELL_PADDING, imgui.get_style().item_spacing)
                 imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, (0, 0))
                 imgui.push_style_color(imgui.Col.TABLE_BORDER_STRONG, Const.TRANSPARENT)
-                imgui.begin_table("##Table", 3, imgui.TableFlags.BORDERS)
-                for i in range(3):
-                    imgui.table_setup_column(f"##Column{i}", imgui.TableColumnFlags.WIDTH_STRETCH, 0, i)
-                for i, img in enumerate(self.value):
-                    imgui.table_next_column()
-                    imgui.push_id(f"##Image{i}")
-                    self.display_image_with_close(app, img, i)
-                    imgui.pop_id()
+                if imgui.begin_table("##Table", 3, imgui.TableFlags.BORDERS):
+                    for i in range(3):
+                        imgui.table_setup_column(f"##Column{i}", imgui.TableColumnFlags.WIDTH_STRETCH, 0, i)
+                    for i, img in enumerate(self.value):
+                        imgui.table_next_column()
+                        imgui.push_id(f"##Image{i}")
+                        self.display_image_with_close(app, img, i)
+                        imgui.pop_id()
 
-                if len(self.value) < self.widget_def.get("limit", 999):
-                    imgui.table_next_column()
-                    imgui.push_id("##Upload")
-                    self.display_upload_image()
-                    imgui.pop_id()
-                imgui.end_table()
+                    if len(self.value) < self.widget_def.get("limit", 999):
+                        imgui.table_next_column()
+                        imgui.push_id("##Upload")
+                        self.display_upload_image()
+                        imgui.pop_id()
+                    imgui.end_table()
 
                 imgui.pop_style_var(2)
                 imgui.pop_style_color(1)
@@ -555,7 +555,7 @@ class StudioClient(BaseAdapter):
         self.task_id: str = ""
         self.is_task_submitting = False
         self.history = StudioHistory.get_instance()
-        self.use_internal_prompt: bool = False
+        self.use_internal_prompt: bool = True
 
     def get_ctxt(self) -> str:
         return PROP_TCTX
@@ -1058,12 +1058,12 @@ class AIStudio(AppHud):
 
     def draw_studio_panel(self):
         window_size = 540, 1359
-        window_pos = get_tool_panel_width(), 400
-        imgui.set_next_window_pos(window_pos, imgui.Cond.ALWAYS)
+        ui_offset = get_pref().ui_offset
+        window_pos = (get_tool_panel_width() + ui_offset[0]) / self.screen_scale, ui_offset[1] / self.screen_scale
+        imgui.set_next_window_pos(window_pos, imgui.Cond.ONCE)
         imgui.set_next_window_size(window_size, imgui.Cond.ALWAYS)
         flags = 0
         flags |= imgui.WindowFlags.NO_RESIZE
-        flags |= imgui.WindowFlags.NO_MOVE
         flags |= imgui.WindowFlags.NO_COLLAPSE
         flags |= imgui.WindowFlags.NO_TITLE_BAR
         flags |= imgui.WindowFlags.NO_SCROLL_WITH_MOUSE
@@ -1087,6 +1087,7 @@ class AIStudio(AppHud):
         item_spacing = istyle.item_spacing
 
         imgui.begin("##AIStudioPanel", False, flags)
+        self.record_window_pos()
         # Left
         if True:
             imgui.begin_group()
@@ -1153,8 +1154,9 @@ class AIStudio(AppHud):
             fp = istyle.frame_padding
             imgui.push_style_color(imgui.Col.FRAME_BG, Const.TRANSPARENT)
             imgui.push_style_var(imgui.StyleVar.FRAME_PADDING, Const.LP_WINDOW_P)
-            imgui.set_cursor_pos_y(0)
-            with with_child("##Right", (rb[0] - lt[0], rb[1] - lt[1]), imgui.ChildFlags.FRAME_STYLE):
+            if True:
+                imgui.set_cursor_pos_x(cx + fp[0])
+                imgui.begin_group()
                 imgui.push_style_var(imgui.StyleVar.FRAME_PADDING, (0, 0))
                 imgui.push_id("##RightInner")
 
@@ -1166,6 +1168,7 @@ class AIStudio(AppHud):
 
                 imgui.pop_id()
                 imgui.pop_style_var(1)
+                imgui.end_group()
             imgui.pop_style_color(1)
             imgui.pop_style_var(1)
 
@@ -1174,6 +1177,14 @@ class AIStudio(AppHud):
         imgui.end()
         imgui.pop_style_var(6)
         imgui.pop_style_color(4)
+
+    def record_window_pos(self):
+        # Record Window Position
+        if imgui.is_window_hovered() and self.is_mouse_dragging():
+            pos = imgui.get_window_pos()
+            tool_panel_width = get_tool_panel_width()
+            offset = pos[0] * self.screen_scale - tool_panel_width, pos[1] * self.screen_scale
+            get_pref().set_ui_offset(offset)
 
     def draw_generation_panel(self):
         if self.active_panel != AIStudioPanelType.GENERATION:
@@ -1197,12 +1208,10 @@ class AIStudio(AppHud):
             imgui.same_line()
             self.draw_panel_close_button()
             self.font_manager.pop_font()
-            imgui.dummy(dummy_size)
 
         # 生成面板
-        if True:
-            imgui.dummy(dummy_size)
-            imgui.begin_table("#Engine", 4)
+        imgui.dummy(dummy_size)
+        if imgui.begin_table("#Engine", 4):
             imgui.table_setup_column("#EngineEle1", imgui.TableColumnFlags.WIDTH_FIXED, 0, 0)
             imgui.table_setup_column("#EngineEle2", imgui.TableColumnFlags.WIDTH_FIXED, 0, 1)
             imgui.table_setup_column("#EngineEle3", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 2)
@@ -1410,12 +1419,10 @@ class AIStudio(AppHud):
             imgui.same_line()
             self.draw_panel_close_button()
             self.font_manager.pop_font()
-            imgui.dummy(dummy_size)
 
         # 设置面板
-        if True:
-            imgui.dummy(dummy_size)
-            imgui.begin_table("#Engine", 4)
+        imgui.dummy(dummy_size)
+        if imgui.begin_table("#Engine", 4):
             imgui.table_setup_column("#EngineEle1", imgui.TableColumnFlags.WIDTH_FIXED, 0, 0)
             imgui.table_setup_column("#EngineEle2", imgui.TableColumnFlags.WIDTH_FIXED, 0, 1)
             imgui.table_setup_column("#EngineEle3", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 2)
@@ -1496,12 +1503,10 @@ class AIStudio(AppHud):
             imgui.same_line()
             self.draw_panel_close_button()
             self.font_manager.pop_font()
-            imgui.dummy(dummy_size)
 
         # 设置面板
-        if True:
-            imgui.dummy(dummy_size)
-            imgui.begin_table("#Engine", 4)
+        imgui.dummy(dummy_size)
+        if imgui.begin_table("#Engine", 4):
             imgui.table_setup_column("#EngineEle1", imgui.TableColumnFlags.WIDTH_FIXED, 0, 0)
             imgui.table_setup_column("#EngineEle2", imgui.TableColumnFlags.WIDTH_FIXED, 0, 1)
             imgui.table_setup_column("#EngineEle3", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 2)
