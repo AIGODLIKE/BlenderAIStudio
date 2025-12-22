@@ -1705,5 +1705,42 @@ class AIStudio(AppHud):
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             return
 
+    def test_webp_animation(self):
+        for i, image in enumerate(Path.home().joinpath("Desktop/webp").glob("*.webp")):
+            icon = TexturePool.get_animated_tex_id(image.as_posix(), time.time() + i)
+            imgui.image(icon, (387, 217))
+            if imgui.is_item_hovered():
+                imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.CHILD_R)
+                imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, (12, 12))
+                imgui.begin_tooltip()
+                tex = TexturePool.get_tex(icon)
+                file_name = image.stem
+                imgui.text(f"{file_name} [{tex.width}x{tex.height}]")
+                imgui.dummy((0, 0))
+                canvas_tex_width = self.screen_scale * tex.width
+                canvas_tex_height = self.screen_scale * tex.height
+                canvas_width = self.screen_width * 0.7
+                canvas_height = self.screen_height * 0.7
+                if canvas_tex_width > canvas_width:
+                    canvas_tex_scale = canvas_width / canvas_tex_width
+                    canvas_tex_height *= canvas_tex_scale
+                    canvas_tex_width *= canvas_tex_scale
+                if canvas_tex_height > canvas_height:
+                    canvas_tex_scale = canvas_height / canvas_tex_height
+                    canvas_tex_height *= canvas_tex_scale
+                    canvas_tex_width *= canvas_tex_scale
+                aw = imgui.get_content_region_avail()[0]
+                if canvas_tex_width < aw:
+                    canvas_tex_scale = aw / canvas_tex_width
+                    canvas_tex_height *= canvas_tex_scale
+                    canvas_tex_width *= canvas_tex_scale
+                imgui.invisible_button("FakeButton", (canvas_tex_width, canvas_tex_height))
+                pmin = imgui.get_item_rect_min()
+                pmax = imgui.get_item_rect_max()
+                dl = imgui.get_window_draw_list()
+                dl.add_image_rounded(icon, pmin, pmax, (0, 0), (1, 1), 0xFFFFFFFF, Const.CHILD_R * 0.8)
+                imgui.end_tooltip()
+                imgui.pop_style_var(2)
+
 
 DescriptorFactory.register(StudioImagesDescriptor.ptype, StudioImagesDescriptor)
