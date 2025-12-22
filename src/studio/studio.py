@@ -15,6 +15,7 @@ from .gui.app.app import AppHud
 from .gui.app.renderer import imgui
 from .gui.app.style import Const
 from .gui.texture import TexturePool
+from .gui.widgets import CustomWidgets
 from .tasks import (
     Task,
     TaskResult,
@@ -933,10 +934,16 @@ class AIStudioPanelType(Enum):
     HISTORY = "history"
 
 
+class AIStudioAuthMode(Enum):
+    ACCOUNT = "账号模式(推荐)"
+    API = "API模式"
+
+
 class AIStudio(AppHud):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.active_panel = AIStudioPanelType.GENERATION
+        self.client_auth_mode: AIStudioAuthMode = AIStudioAuthMode.ACCOUNT
         self.clients = {c.VENDOR: c() for c in StudioClient.__subclasses__()}
         self.fill_fake_clients()
         self.active_client = NanoBanana.VENDOR
@@ -1535,6 +1542,8 @@ class AIStudio(AppHud):
             self.draw_help_button()
 
             imgui.end_table()
+        # 显示API/账号
+        if True:
             imgui.dummy((dummy_size[0], dummy_size[1] - 8))
 
             imgui.push_style_var_y(imgui.StyleVar.WINDOW_PADDING, 24)
@@ -1542,36 +1551,23 @@ class AIStudio(AppHud):
             imgui.push_style_var(imgui.StyleVar.FRAME_PADDING, Const.CHILD_P)
             imgui.push_style_var(imgui.StyleVar.FRAME_BORDER_SIZE, Const.CHILD_BS)
             imgui.push_style_var(imgui.StyleVar.POPUP_ROUNDING, 24)
-            imgui.push_style_var_y(imgui.StyleVar.ITEM_SPACING, 15)
+            imgui.push_style_var_y(imgui.StyleVar.ITEM_SPACING, Const.CHILD_P[0])
 
             imgui.push_style_color(imgui.Col.FRAME_BG, Const.WINDOW_BG)
             imgui.push_style_color(imgui.Col.POPUP_BG, Const.POPUP_BG)
             imgui.push_style_color(imgui.Col.HEADER, Const.BUTTON)
             imgui.push_style_color(imgui.Col.HEADER_ACTIVE, Const.BUTTON_ACTIVE)
             imgui.push_style_color(imgui.Col.HEADER_HOVERED, Const.BUTTON_HOVERED)
-            flags = 0
-            flags |= imgui.ChildFlags.FRAME_STYLE
-            self.font_manager.push_h1_font()
-            box_height = -imgui.get_text_line_height() * 3 - 26 * 2 - imgui.get_style().item_spacing[1] * 2
-            self.font_manager.pop_font()
-            imgui.push_style_color(imgui.Col.FRAME_BG, (48 / 255, 48 / 255, 48 / 255, 1))
-            with with_child("Outer", (0, box_height), flags):
-                for wrapper in self.clients_wrappers.values():
-                    widgets = wrapper.get_widgets_by_category("Settings")
-                    if not widgets:
-                        continue
-                    imgui.text(wrapper.display_name)
-                    for widget in widgets:
-                        widget.col_bg = Const.WINDOW_BG
-                        widget.col_widget = Const.WINDOW_BG
-                        widget.display_begin(widget, self)
-                        widget.display(widget, self)
-                        widget.display_end(widget, self)
-            imgui.pop_style_color(1)
+            self.draw_auth()
+            self.draw_setting_account()
+            self.draw_setting_api()
 
             imgui.pop_style_var(6)
             imgui.pop_style_color(5)
 
+        # 其他内容
+        imgui.dummy(dummy_size)
+        if True:
             imgui.push_style_var_y(imgui.StyleVar.ITEM_SPACING, 26)
             self.font_manager.push_h1_font()
             imgui.text("免责声明")
@@ -1615,6 +1611,103 @@ class AIStudio(AppHud):
         self.font_manager.pop_font()
         imgui.pop_style_color(3)
         imgui.pop_style_var(2)
+
+    def draw_auth(self):
+        flags = 0
+        flags |= imgui.ChildFlags.FRAME_STYLE
+        flags |= imgui.ChildFlags.AUTO_RESIZE_Y
+        flags |= imgui.ChildFlags.ALWAYS_AUTO_RESIZE
+        imgui.push_style_color(imgui.Col.FRAME_BG, Const.WINDOW_BG)
+        with with_child("##Auth", (0, 0), child_flags=flags):
+            imgui.push_item_width(-1)
+            imgui.push_style_var_x(imgui.StyleVar.FRAME_PADDING, Const.RP_FRAME_P[0])
+            imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.RP_FRAME_INNER_R)
+            imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, Const.RP_CHILD_IS)
+            imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0)
+            imgui.push_style_color(imgui.Col.FRAME_BG, Const.FRAME_BG)
+            imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+            items = AIStudioAuthMode
+            aw = imgui.get_content_region_avail()[0]
+            if imgui.begin_combo("##Item", self.client_auth_mode.value):
+                for item in items:
+                    is_selected = self.client_auth_mode == item
+                    if is_selected:
+                        imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
+                    if imgui.button(item.value, (aw, 0)):
+                        self.client_auth_mode = item
+                        imgui.close_current_popup()
+                    if is_selected:
+                        imgui.pop_style_color()
+                imgui.end_combo()
+            imgui.pop_style_color(2)
+            imgui.pop_style_var(4)
+            imgui.pop_item_width()
+        imgui.pop_style_color(1)
+
+    def draw_setting_account(self):
+        if self.client_auth_mode != AIStudioAuthMode.ACCOUNT:
+            return
+
+        with with_child("Outer", (0, 0), imgui.ChildFlags.FRAME_STYLE | imgui.ChildFlags.AUTO_RESIZE_Y):
+            bh = 45
+            fpx = imgui.get_style().frame_padding[0]
+            isize = 24
+            aw = imgui.get_content_region_avail()[0]
+            imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R * 0.5)
+            imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, imgui.get_style().frame_padding)
+
+            # --- 表格 1: 邮箱 + 登出
+            bw = aw - bh - imgui.get_style().item_spacing[0]
+            CustomWidgets.icon_label_button("account_email", "1132692358@qq.com", "BETWEEN", (bw, bh), isize, fpx * 2)
+            imgui.same_line()
+            if CustomWidgets.icon_label_button("account_logout", "", "CENTER", (bh, bh), isize):
+                print("登出")
+
+            # --- 表格 2: Token + 刷新
+            bw = aw - bh - imgui.get_style().item_spacing[0]
+            CustomWidgets.icon_label_button("account_token", "34565143125213", "BETWEEN", (bw, bh), isize, fpx * 2)
+            imgui.same_line()
+            if CustomWidgets.icon_label_button("account_refresh", "", "CENTER", (bh, bh), isize):
+                print("刷新 Token")
+
+            # --- 表格 3: 功能按钮 (50% + 50%) ---
+            bw = (aw - imgui.get_style().item_spacing[0]) * 0.5
+            if CustomWidgets.icon_label_button("account_buy", "获取冰糕", "CENTER", (bw, bh), isize):
+                print("获取冰糕")
+            imgui.same_line()
+            if CustomWidgets.icon_label_button("account_certificate", "兑换冰糕", "CENTER", (bw, bh), isize):
+                print("兑换冰糕")
+            imgui.pop_style_var(2)
+
+        # --- 底部: 警告信息 (单行全宽) ---
+        imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)
+        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.WINDOW_BG)
+        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.WINDOW_BG)
+        CustomWidgets.icon_label_button("account_warning", "收益将 100% 用于支持开源开发", "CENTER", (0, 54), isize)
+        imgui.pop_style_color(3)
+
+    def draw_setting_api(self):
+        if self.client_auth_mode != AIStudioAuthMode.API:
+            return
+        flags = 0
+        flags |= imgui.ChildFlags.FRAME_STYLE
+        self.font_manager.push_h1_font()
+        box_height = -imgui.get_text_line_height() * 3 - 26 * 2.5 - imgui.get_style().item_spacing[1] * 2
+        self.font_manager.pop_font()
+        imgui.push_style_color(imgui.Col.FRAME_BG, (48 / 255, 48 / 255, 48 / 255, 1))
+        with with_child("Outer", (0, box_height), flags):
+            for wrapper in self.clients_wrappers.values():
+                widgets = wrapper.get_widgets_by_category("Settings")
+                if not widgets:
+                    continue
+                imgui.text(wrapper.display_name)
+                for widget in widgets:
+                    widget.col_bg = Const.WINDOW_BG
+                    widget.col_widget = Const.WINDOW_BG
+                    widget.display_begin(widget, self)
+                    widget.display(widget, self)
+                    widget.display_end(widget, self)
+        imgui.pop_style_color(1)
 
     def draw_panel_close_button(self):
         # 关闭按钮
