@@ -1,6 +1,7 @@
 import bpy
 import gpu
 import numpy as np
+from typing import Optional
 from .texture import TexturePool
 from .app.renderer import imgui
 
@@ -100,3 +101,67 @@ class CustomWidgets:
             imgui.pop_clip_rect()
 
         imgui.end_group()
+
+    @staticmethod
+    def icon_label_button(
+        icon: str,
+        label: str,
+        align: str = "LEFT",
+        size: tuple[float, float] = (0, 40),
+        isize: Optional[float] = None,
+        padding: Optional[float] = None,
+    ) -> bool:
+        """
+        自定义图标+文字按钮
+        :param icon: 图标名称 (从 TexturePool 获取)
+        :param label: 按钮文字
+        :param align: 对齐方式 "LEFT", "CENTER", "RIGHT", "BETWEEN"
+        :param size: 按钮尺寸 (宽, 高)，宽为 0 时自动拉伸
+        :return: 是否被点击
+        """
+        # 1. 基础尺寸与位置计算
+        width = size[0] if size[0] > 0 else imgui.get_content_region_avail()[0]
+        height = size[1]
+        screen_pos = imgui.get_cursor_screen_pos()
+
+        clicked = imgui.button(f"##btn_{icon}_{label}", (width, height))
+
+        dl = imgui.get_window_draw_list()
+        tex_id = TexturePool.get_tex_id(icon)
+
+        padding = padding or imgui.get_style().frame_padding[0]
+        icon_w = isize or imgui.get_text_line_height()
+        gap = icon_w * 0.25 if label else 0  # 图标与文字间距
+
+        text_size = imgui.calc_text_size(label)
+
+        if align == "CENTER":
+            # 整体居中: ..[Icon + Text]..
+            content_w = icon_w + gap + text_size[0]
+            start_x = screen_pos[0] + (width - content_w) / 2
+            icon_x = start_x
+            text_x = start_x + icon_w + gap
+        elif align == "RIGHT":
+            # 整体靠右: ....[Icon + Text]
+            content_w = icon_w + gap + text_size[0]
+            start_x = screen_pos[0] + width - padding - content_w
+            icon_x = start_x
+            text_x = start_x + icon_w + gap
+        elif align == "LEFT":  # LEFT
+            # 靠左排列: [Icon][Text]....
+            icon_x = screen_pos[0] + padding
+            text_x = icon_x + icon_w + gap
+        else:
+            # 两端分布: [Icon] .... [Text] (图标最左, 文字最右)
+            icon_x = screen_pos[0] + padding
+            text_x = screen_pos[0] + width - padding - text_size[0]
+
+        icon_y = screen_pos[1] + (height - icon_w) / 2
+        dl.add_image(tex_id, (icon_x, icon_y), (icon_x + icon_w, icon_y + icon_w))
+
+        if label:
+            text_y = screen_pos[1] + (height - text_size[1]) / 2
+            col = imgui.get_color_u32((1, 1, 1, 1))
+            dl.add_text((text_x, text_y), col, label)
+
+        return clicked
