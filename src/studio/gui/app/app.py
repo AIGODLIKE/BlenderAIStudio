@@ -473,15 +473,14 @@ class AppHud(App):
         此函数涉及调用 area 和 region_data, 因此XR模式下不能在draw中调用
         会导致ACCESS_VIOLATION
         """
-        area = bpy.context.area
         region = bpy.context.region
-        self.screen_width = region.width / self.screen_scale
-        self.screen_height = region.height / self.screen_scale
+        w, h = region.width, region.height
+        self.screen_width = w / self.screen_scale
+        self.screen_height = h / self.screen_scale
         # Keep HD displaying
         dfs = max(1, round(self.screen_scale))
         self.io.display_framebuffer_scale = dfs, dfs
 
-        w, h = area.width, area.height
         self.P = Matrix(
             (
                 (2 / w, 0, 0, -1),
@@ -497,7 +496,7 @@ class AppHud(App):
         self.M = Matrix(
             (
                 (1 * self.screen_scale, 0, 0, 0),
-                (0, -1 * self.screen_scale, 0, region.height),
+                (0, -1 * self.screen_scale, 0, h),
                 (0, 0, 1, 0),
                 (0, 0, 0, 1),
             )
