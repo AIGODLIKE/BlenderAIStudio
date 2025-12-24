@@ -32,6 +32,7 @@ class Const:
 
     # COLORS
     WINDOW_BG = (40 / 255, 40 / 255, 40 / 255, 1)
+    MODAL_WINDOW_DIM_BG = (0, 0, 0, 0.7)
     FRAME_BG = (56 / 255, 56 / 255, 56 / 255, 1)
     POPUP_BG = WINDOW_BG
     TRANSPARENT = (0, 0, 0, 0)
