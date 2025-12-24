@@ -65,7 +65,7 @@ class ImguiFrameWrapper:
 
 
 class App:
-    def __init__(self, rtype="WINDOW", dtype="POST_VIEW", space: bpy.types.Space = bpy.types.SpaceView3D):
+    def __init__(self, rtype="WINDOW", dtype="POST_PIXEL", space: bpy.types.Space = bpy.types.SpaceView3D):
         # 默认设置当前上下文
         self.context: bpy.types.Context | FakeContext | None = FakeContext(bpy.context)
         self._id = uuid4().hex
