@@ -103,6 +103,32 @@ class CustomWidgets:
         imgui.end_group()
 
     @staticmethod
+    def colored_image_button(label, icon, size) -> bool:
+        # 关闭按钮
+        style = imgui.get_style()
+        fp = style.frame_padding
+        imgui.push_style_color(imgui.Col.BUTTON, (0, 0, 0, 0))
+        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, (0, 0, 0, 0))
+        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, (0, 0, 0, 0))
+
+        clicked = imgui.button(label, size)
+        imgui.pop_style_color(3)
+        col = style.colors[imgui.Col.BUTTON]
+        if imgui.is_item_active():
+            col = style.colors[imgui.Col.BUTTON_ACTIVE]
+        elif imgui.is_item_hovered():
+            col = style.colors[imgui.Col.BUTTON_HOVERED]
+        col = imgui.get_color_u32(col)
+        icon = TexturePool.get_tex_id(icon)
+        dl = imgui.get_window_draw_list()
+        pmin = imgui.get_item_rect_min()
+        pmin = (pmin[0] + fp[1] * 2 + 2, pmin[1] + fp[1] + 1)
+        pmax = imgui.get_item_rect_max()
+        pmax = (pmax[0], pmax[1] - fp[1] - 1)
+        dl.add_image(icon, pmin, pmax, col=col)
+        return clicked
+
+    @staticmethod
     def icon_label_button(
         icon: str,
         label: str,
