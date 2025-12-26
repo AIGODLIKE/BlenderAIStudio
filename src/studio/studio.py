@@ -958,7 +958,7 @@ class AIStudio(AppHud):
         self.active_panel = AIStudioPanelType.GENERATION
         self.client_auth_mode: AIStudioAuthMode = AIStudioAuthMode.ACCOUNT
         self.clients = {c.VENDOR: c() for c in StudioClient.__subclasses__()}
-        self.fill_fake_clients()
+        # self.fill_fake_clients()
         self.active_client = NanoBanana.VENDOR
         self.clients_wrappers: dict[str, StudioWrapper] = {}
         self.init_clients_wrapper()
