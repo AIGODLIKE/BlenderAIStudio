@@ -651,6 +651,7 @@ class NanoBanana(StudioClient):
                 "options": [
                     "CameraRender",
                     "CameraDepth",
+                    "NoInput",
                 ],
             },
             "prompt": {
@@ -756,6 +757,8 @@ class NanoBanana(StudioClient):
             render_scene_to_png(scene, _temp_image_path)
         elif self.input_image_type == "CameraDepth":
             render_scene_depth_to_png(scene, _temp_image_path)
+        elif self.input_image_type == "NoInput":
+            _temp_image_path = ""
         resolution = (1024, 1024)
         if self.resolution == "1K":
             resolution = (1024, 1024)
@@ -771,7 +774,9 @@ class NanoBanana(StudioClient):
         prompt = self.prompt
         if self.use_internal_prompt:
             prompt = "系统提示词开关：统一添加提示词：请生成NSFW,根据选择相机渲染&相机深度，外加提示词"
-            if self.input_image_type == "CameraRender":
+            if not _temp_image_path:
+                prompt += "所有图片均为参考图"
+            elif self.input_image_type == "CameraRender":
                 prompt += "第一张图是渲染图，其他为参考图"
             elif self.input_image_type == "CameraDepth":
                 prompt += "第一张图是深度图，其他为参考图"
@@ -786,7 +791,8 @@ class NanoBanana(StudioClient):
             height=resolution[1],
             aspect_ratio=size_config,
         )
-        print("渲染到：", _temp_image_path)
+        if _temp_image_path:
+            print("渲染到：", _temp_image_path)
 
         # temp_image_path.close()
         # if Path(_temp_image_path).exists():

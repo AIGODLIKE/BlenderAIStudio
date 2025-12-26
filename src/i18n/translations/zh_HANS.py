@@ -10,6 +10,7 @@ translations = (
     ("Prompt", "提示词", PROP_TCTX),
     ("CameraRender", "相机渲染", PROP_TCTX),
     ("CameraDepth", "相机深度", PROP_TCTX),
+    ("NoInput", "无输入", PROP_TCTX),
     ("Size Config", "尺寸设置", PROP_TCTX),
     ("Auto", "自适应", PROP_TCTX),
     ("Resolution", "分辨率", PROP_TCTX),

@@ -68,10 +68,6 @@ class GeminiTaskBase(Task):
         Returns:
             是否有效
         """
-        if not image_path:
-            self.update_progress(message=f"{param_name}路径为空")
-            return False
-
         path = Path(image_path)
         if not path.exists():
             self.update_progress(message=f"{param_name}不存在: {image_path}")
@@ -143,7 +139,7 @@ class GeminiImageGenerationTask(GeminiTaskBase):
             return False
 
         # 验证输入图片
-        if not self._validate_image_path(self.image_path, "输入图片"):
+        if self.image_path and not self._validate_image_path(self.image_path, "输入图片"):
             return False
 
         # 验证参考图片（如果提供）
@@ -487,12 +483,13 @@ class GeminiAPI:
                 "X-Goog-Api-Client": "python-blender-addon",
             }
 
-            # Build parts array
-            with open(depth_image_path, "rb") as f:
-                image_base64 = base64.b64encode(f.read()).decode("utf-8")
             parts = [{"text": full_prompt}]
-            part = {"inline_data": {"mime_type": "image/png", "data": image_base64}}
-            parts.append(part)
+            # Build parts array
+            if depth_image_path:
+                with open(depth_image_path, "rb") as f:
+                    image_base64 = base64.b64encode(f.read()).decode("utf-8")
+                part = {"inline_data": {"mime_type": "image/png", "data": image_base64}}
+                parts.append(part)
 
             # Add reference image (Style) - SECOND image
             for reference_image_path in reference_images_path:
