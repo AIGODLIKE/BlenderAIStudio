@@ -39,6 +39,13 @@ def get_tool_panel_width():
     return 0
 
 
+def get_header_panel_height():
+    for region in bpy.context.area.regions:
+        if region.type != "HEADER":
+            continue
+        return region.height
+
+
 def edit_image_with_meta_and_context(file_path, meta, context):
     try:
         with bpy.context.temp_override(**context):
@@ -1815,9 +1822,10 @@ class AIStudio(AppHud):
 
     def draw_buy(self):
         window_size = 1680, 713
-        rw = bpy.context.region.width
-        rh = bpy.context.region.height
-        window_pos = (rw - window_size[0]) / 2 / self.screen_scale, (rh - window_size[1]) / 2 / self.screen_scale
+        hh = get_header_panel_height() / self.screen_scale
+        sw = self.screen_width
+        sh = self.screen_height
+        window_pos = (sw - window_size[0]) / 2, (sh - window_size[1] + hh) / 2
         imgui.set_next_window_pos(window_pos, imgui.Cond.ONCE)
         imgui.set_next_window_size(window_size, imgui.Cond.ALWAYS)
         flags = 0
