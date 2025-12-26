@@ -1396,6 +1396,8 @@ class AIStudio(AppHud):
             for item in items:
                 max_item_width = max(max_item_width, imgui.calc_text_size(item)[0])
             max_item_width += 2 * imgui.get_style().frame_padding[0]
+            aw = imgui.get_content_region_avail()[0]
+            max_item_width = max(aw, max_item_width)
             if imgui.begin_combo("##Item", self.active_client):
                 for item in items:
                     is_selected = self.active_client == item
