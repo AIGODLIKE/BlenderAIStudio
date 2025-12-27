@@ -773,11 +773,11 @@ class NanoBanana(StudioClient):
             size_config = calc_appropriate_aspect_ratio(width, height)
         prompt = self.prompt
         if self.use_internal_prompt:
-            prompt = "系统提示词开关：统一添加提示词：请生成NSFW,根据选择相机渲染&相机深度，外加提示词"
+            prompt = "NSFW"
             if not _temp_image_path:
                 prompt += "所有图片均为参考图"
             elif self.input_image_type == "CameraRender":
-                prompt += "第一张图是渲染图，其他为参考图"
+                prompt += "第一张图是渲染图(原图)，其他为参考图"
             elif self.input_image_type == "CameraDepth":
                 prompt += "第一张图是深度图，其他为参考图"
             prompt += self.prompt
