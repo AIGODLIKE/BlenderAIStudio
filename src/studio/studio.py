@@ -952,6 +952,313 @@ class AIStudioAuthMode(Enum):
     API = "API模式"
 
 
+class RedeemPanel:
+    def __init__(self, app: "AIStudio"):
+        self.app = app
+        self.redeem_code = ""
+        self.should_draw_redeem = False
+        self.should_draw_redeem_confirm = False
+        self.should_draw_redeem_success = False
+        self.should_draw_redeem_error = False
+
+    def begin_redeem(self):
+        self.redeem_code = ""
+        self.should_draw_redeem = True
+        self.should_draw_redeem_confirm = False
+        self.should_draw_redeem_success = False
+        self.should_draw_redeem_error = False
+
+    def clear_redeem(self):
+        self.redeem_code = ""
+        self.should_draw_redeem = False
+        self.should_draw_redeem_confirm = False
+        self.should_draw_redeem_success = False
+        self.should_draw_redeem_error = False
+
+    def draw(self):
+        imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, Const.LP_WINDOW_P)
+        imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.WINDOW_R)
+
+        imgui.push_style_color(imgui.Col.WINDOW_BG, Const.RP_L_BOX_BG)
+        imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
+        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
+        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
+        imgui.push_style_color(imgui.Col.MODAL_WINDOW_DIM_BG, Const.MODAL_WINDOW_DIM_BG)
+
+        self.draw_redeem()
+        self.draw_redeem_confirm()
+        self.draw_redeem_ok()
+        self.draw_redeem_error()
+
+        imgui.pop_style_var(2)
+        imgui.pop_style_color(5)
+
+    def draw_redeem(self):
+        if self.should_draw_redeem:
+            imgui.open_popup("##Redeem", imgui.PopupFlags.NO_REOPEN)
+        imgui.set_next_window_size((575, -imgui.FLT_MIN), imgui.Cond.ALWAYS)
+        flags = 0
+        flags |= imgui.WindowFlags.NO_RESIZE
+        flags |= imgui.WindowFlags.NO_COLLAPSE
+        flags |= imgui.WindowFlags.NO_TITLE_BAR
+        flags |= imgui.WindowFlags.NO_SCROLL_WITH_MOUSE
+        flags |= imgui.WindowFlags.NO_SCROLLBAR
+        flags |= imgui.WindowFlags.NO_SAVED_SETTINGS
+
+        style = imgui.get_style()
+        if imgui.begin_popup_modal("##Redeem", False, flags)[0]:
+            imgui.push_style_var(imgui.StyleVar.CELL_PADDING, (style.window_padding[0] * 0.5, 0))
+            # 标题
+            if True:
+                self.app.font_manager.push_h1_font()
+
+                imgui.push_style_var_y(imgui.StyleVar.FRAME_PADDING, 0)
+                imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+                imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
+                imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
+                imgui.push_style_var_x(imgui.StyleVar.FRAME_PADDING, 0)
+                imgui.button("使用兑换券")
+                imgui.pop_style_var(1)
+                imgui.same_line()
+
+                icon = TexturePool.get_tex_id("settings_header")
+                tex = TexturePool.get_tex(icon)
+                scale = imgui.get_text_line_height() / tex.height
+                imgui.image_button("Redeem", icon, (tex.width * scale, tex.height * scale), tint_col=Const.BUTTON_SELECTED)
+                imgui.pop_style_color(3)
+                imgui.same_line()
+
+                h = imgui.get_frame_height()
+                aw = imgui.get_content_region_avail()[0]
+                imgui.dummy((aw - style.item_spacing[0] - h, 0))
+                imgui.same_line()
+                imgui.push_style_color(imgui.Col.BUTTON, Const.CLOSE_BUTTON_NORMAL)
+                imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.CLOSE_BUTTON_ACTIVE)
+                imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.CLOSE_BUTTON_HOVERED)
+                if CustomWidgets.colored_image_button("##CloseBtn", "close", (h, h)):
+                    imgui.close_current_popup()
+                    self.clear_redeem()
+                imgui.pop_style_var(1)
+                imgui.pop_style_color(3)
+                self.app.font_manager.pop_font()
+
+            imgui.dummy((0, style.window_padding[0] - style.item_spacing[1] * 2))
+            imgui.text("请输入兑换码")
+            imgui.dummy((0, style.window_padding[0] - style.item_spacing[1] * 2))
+            # 兑换规格
+            imgui.push_style_color(imgui.Col.FRAME_BG, Const.FRAME_BG)
+            imgui.push_style_var_x(imgui.StyleVar.CELL_PADDING, Const.CELL_P[0] / 2)
+            if imgui.begin_table("##BuyTable", 2, imgui.TableFlags.SIZING_STRETCH_SAME):
+                imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 0)
+                imgui.table_setup_column("##Ele2", imgui.TableColumnFlags.WIDTH_FIXED, 0, 1)
+
+                imgui.table_next_column()
+                imgui.push_item_width(-imgui.FLT_MIN)
+                _, self.redeem_code = imgui.input_text("##RedeemCode", self.redeem_code)
+                imgui.pop_item_width()
+
+                imgui.table_next_column()
+                if imgui.button("兑换", (101, 0)):
+                    imgui.close_current_popup()
+                    self.should_draw_redeem = False
+                    self.should_draw_redeem_confirm = True
+                self.draw_redeem_confirm()
+
+                imgui.end_table()
+            imgui.pop_style_color(1)
+            imgui.pop_style_var(1)
+
+            imgui.pop_style_var(1)
+            imgui.end_popup()
+
+    def draw_redeem_confirm(self):
+        if self.should_draw_redeem_confirm:
+            imgui.open_popup("##RedeemConfirm", imgui.PopupFlags.NO_REOPEN)
+        imgui.set_next_window_size((575, -imgui.FLT_MIN), imgui.Cond.ALWAYS)
+        flags = 0
+        flags |= imgui.WindowFlags.NO_RESIZE
+        flags |= imgui.WindowFlags.NO_COLLAPSE
+        flags |= imgui.WindowFlags.NO_TITLE_BAR
+        flags |= imgui.WindowFlags.NO_SCROLL_WITH_MOUSE
+        flags |= imgui.WindowFlags.NO_SCROLLBAR
+        flags |= imgui.WindowFlags.NO_SAVED_SETTINGS
+        style = imgui.get_style()
+        if imgui.begin_popup_modal("##RedeemConfirm", False, flags)[0]:
+            # 标题
+            if True:
+                self.app.font_manager.push_h1_font()
+
+                imgui.push_style_var_y(imgui.StyleVar.FRAME_PADDING, 0)
+                imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+                imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
+                imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
+
+                imgui.push_style_var_x(imgui.StyleVar.FRAME_PADDING, 0)
+                imgui.button("确认兑换？")
+                imgui.pop_style_var(1)
+
+                imgui.pop_style_color(3)
+                imgui.same_line()
+
+                h = imgui.get_frame_height()
+                aw = imgui.get_content_region_avail()[0]
+                imgui.dummy((aw - style.item_spacing[0] - h, 0))
+                imgui.same_line()
+                imgui.push_style_color(imgui.Col.BUTTON, Const.CLOSE_BUTTON_NORMAL)
+                imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.CLOSE_BUTTON_ACTIVE)
+                imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.CLOSE_BUTTON_HOVERED)
+                if CustomWidgets.colored_image_button("##CloseBtn", "close", (h, h)):
+                    imgui.close_current_popup()
+                    self.clear_redeem()
+                imgui.pop_style_color(3)
+
+                imgui.pop_style_var(1)
+                self.app.font_manager.pop_font()
+
+            imgui.dummy((0, style.window_padding[0] - style.item_spacing[1] * 2))
+            redeem_value = self.get_redeem_value()
+            imgui.text(f"兑换后，您将获得{redeem_value}冰糕(积分)")
+            imgui.dummy((0, style.window_padding[0] - style.item_spacing[1] * 2))
+
+            imgui.table_next_column()
+            if imgui.button("确定", (101, 0)):
+                imgui.close_current_popup()
+                self.should_draw_redeem_confirm = False
+                if self.is_redeem_code_valid():
+                    self.should_draw_redeem_success = True
+                    print("兑换成功")
+                else:
+                    self.should_draw_redeem_error = True
+                    print("兑换码无效")
+
+            self.draw_redeem_ok()
+            self.draw_redeem_error()
+
+            imgui.same_line()
+
+            if imgui.button("取消", (101, 0)):
+                imgui.close_current_popup()
+                self.clear_redeem()
+
+            imgui.end_popup()
+
+    def draw_redeem_ok(self):
+        if self.should_draw_redeem_success:
+            imgui.open_popup("##RedeemOk", imgui.PopupFlags.NO_REOPEN)
+        imgui.set_next_window_size((575, -imgui.FLT_MIN), imgui.Cond.ALWAYS)
+        flags = 0
+        flags |= imgui.WindowFlags.NO_RESIZE
+        flags |= imgui.WindowFlags.NO_COLLAPSE
+        flags |= imgui.WindowFlags.NO_TITLE_BAR
+        flags |= imgui.WindowFlags.NO_SCROLL_WITH_MOUSE
+        flags |= imgui.WindowFlags.NO_SCROLLBAR
+        flags |= imgui.WindowFlags.NO_SAVED_SETTINGS
+        style = imgui.get_style()
+        if imgui.begin_popup_modal("##RedeemOk", False, flags)[0]:
+            # 标题
+            if True:
+                self.app.font_manager.push_h1_font()
+
+                imgui.push_style_var_y(imgui.StyleVar.FRAME_PADDING, 0)
+                imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+                imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
+                imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
+                imgui.push_style_var_x(imgui.StyleVar.FRAME_PADDING, 0)
+                imgui.button("兑换成功~")
+                imgui.pop_style_var(1)
+                imgui.pop_style_color(3)
+                imgui.same_line()
+
+                h = imgui.get_frame_height()
+                aw = imgui.get_content_region_avail()[0]
+                imgui.dummy((aw - style.item_spacing[0] - h, 0))
+                imgui.same_line()
+                imgui.push_style_color(imgui.Col.BUTTON, Const.CLOSE_BUTTON_NORMAL)
+                imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.CLOSE_BUTTON_ACTIVE)
+                imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.CLOSE_BUTTON_HOVERED)
+                if CustomWidgets.colored_image_button("##CloseBtn", "close", (h, h)):
+                    imgui.close_current_popup()
+                    self.clear_redeem()
+                imgui.pop_style_var(1)
+                imgui.pop_style_color(3)
+                self.app.font_manager.pop_font()
+
+            imgui.dummy((0, style.window_padding[0] - style.item_spacing[1] * 2))
+            redeem_value = self.get_redeem_value()
+            imgui.text(f"您已获得{redeem_value}冰糕(积分)，注意刷新")
+            imgui.dummy((0, style.window_padding[0] - style.item_spacing[1] * 2))
+            if imgui.button("知道啦"):
+                self.should_draw_redeem_success = False
+                imgui.close_current_popup()
+                self.clear_redeem()
+
+            imgui.end_popup()
+
+    def draw_redeem_error(self):
+        if self.should_draw_redeem_error:
+            imgui.open_popup("##RedeemError", imgui.PopupFlags.NO_REOPEN)
+        imgui.set_next_window_size((575, -imgui.FLT_MIN), imgui.Cond.ALWAYS)
+        flags = 0
+        flags |= imgui.WindowFlags.NO_RESIZE
+        flags |= imgui.WindowFlags.NO_COLLAPSE
+        flags |= imgui.WindowFlags.NO_TITLE_BAR
+        flags |= imgui.WindowFlags.NO_SCROLL_WITH_MOUSE
+        flags |= imgui.WindowFlags.NO_SCROLLBAR
+        flags |= imgui.WindowFlags.NO_SAVED_SETTINGS
+        style = imgui.get_style()
+        if imgui.begin_popup_modal("##RedeemError", False, flags)[0]:
+            # 标题
+            if True:
+                self.app.font_manager.push_h1_font()
+
+                imgui.push_style_var_y(imgui.StyleVar.FRAME_PADDING, 0)
+                imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+                imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
+                imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
+                imgui.push_style_var_x(imgui.StyleVar.FRAME_PADDING, 0)
+                imgui.button("兑换失败~QAQ")
+                imgui.pop_style_var(1)
+                imgui.pop_style_color(3)
+                imgui.same_line()
+
+                h = imgui.get_frame_height()
+                aw = imgui.get_content_region_avail()[0]
+                imgui.dummy((aw - style.item_spacing[0] - h, 0))
+                imgui.same_line()
+                imgui.push_style_color(imgui.Col.BUTTON, Const.CLOSE_BUTTON_NORMAL)
+                imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.CLOSE_BUTTON_ACTIVE)
+                imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.CLOSE_BUTTON_HOVERED)
+                if CustomWidgets.colored_image_button("##CloseBtn", "close", (h, h)):
+                    imgui.close_current_popup()
+                    self.clear_redeem()
+                imgui.pop_style_var(1)
+                imgui.pop_style_color(3)
+                self.app.font_manager.pop_font()
+
+            imgui.text("兑换码错误或已被使用，请检查或联系客服")
+            if imgui.button("退出", (101, 0)):
+                imgui.close_current_popup()
+                self.clear_redeem()
+            imgui.end_popup()
+
+    def get_redeem_value(self) -> int:
+        if not self.is_redeem_code_valid():
+            return 0
+        redeem_value = 0
+        if self.redeem_code.startswith("BD006"):
+            redeem_value = 6
+        elif self.redeem_code.startswith("BD030"):
+            redeem_value = 30
+        elif self.redeem_code.startswith("BD060"):
+            redeem_value = 60
+        elif self.redeem_code.startswith("BD100"):
+            redeem_value = 100
+        return redeem_value
+
+    def is_redeem_code_valid(self) -> bool:
+        return self.redeem_code.startswith(("BD006", "BD030", "BD060", "BD100"))
+
+
 class AIStudio(AppHud):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -959,6 +1266,7 @@ class AIStudio(AppHud):
         self.client_auth_mode: AIStudioAuthMode = AIStudioAuthMode.ACCOUNT
         self.clients = {c.VENDOR: c() for c in StudioClient.__subclasses__()}
         # self.fill_fake_clients()
+        self.redeem_panel = RedeemPanel(self)
         self.active_client = NanoBanana.VENDOR
         self.clients_wrappers: dict[str, StudioWrapper] = {}
         self.init_clients_wrapper()
@@ -1693,7 +2001,8 @@ class AIStudio(AppHud):
             self.draw_buy()
             imgui.same_line()
             if CustomWidgets.icon_label_button("account_certificate", "兑换冰糕", "CENTER", (bw, bh), isize):
-                print("兑换冰糕")
+                self.redeem_panel.should_draw_redeem = True
+            self.redeem_panel.draw()
             imgui.pop_style_var(2)
 
         # --- 底部: 警告信息 (单行全宽) ---
