@@ -22,6 +22,7 @@ from .tasks import (
     TaskState,
     TaskManager,
     GeminiImageGenerationTask,
+    AccountGeminiImageGenerateTask,
 )
 from .wrapper import with_child, BaseAdapter, WidgetDescriptor, DescriptorFactory
 from ..i18n import PROP_TCTX
@@ -732,17 +733,17 @@ class NanoBanana(StudioClient):
         elif action == "delete_image":
             delete_image(self, prop, index)
 
-    def new_generate_task(self):
+    def new_generate_task(self, auth_mode: "AIStudioAuthMode"):
         if self.is_task_submitting:
             print("有任务正在提交，请稍后")
             return
         self.is_task_submitting = True
-        Timer.put(self.job)
+        Timer.put((self.job, auth_mode))
 
     def cancel_generate_task(self):
         self.task_manager.cancel_task(self.task_id)
 
-    def job(self):
+    def job(self, auth_mode: "AIStudioAuthMode"):
         self.is_task_submitting = False
         # 1. 创建任务
         # path_dir = Path.home().joinpath("Desktop/OutputImage/AIStudio")
@@ -781,7 +782,8 @@ class NanoBanana(StudioClient):
             elif self.input_image_type == "CameraDepth":
                 prompt += "第一张图是深度图，其他为参考图"
             prompt += self.prompt
-        task = GeminiImageGenerationTask(
+        TaskType = AccountGeminiImageGenerateTask if auth_mode == AIStudioAuthMode.ACCOUNT else GeminiImageGenerationTask
+        task = TaskType(
             api_key=self.api_key,
             image_path=_temp_image_path,
             reference_images_path=self.reference_images,

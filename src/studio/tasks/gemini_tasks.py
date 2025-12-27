@@ -213,6 +213,14 @@ class GeminiImageGenerationTask(GeminiTaskBase):
             return TaskResult.failure_result(e, error_msg)
 
 
+class AccountGeminiImageGenerateTask(GeminiImageGenerationTask):
+    def prepare(self) -> bool:
+        if not super().prepare():
+            return False
+        self.api_client = AccountGeminiAPI()
+        return True
+
+
 class GeminiImageEditTask(GeminiTaskBase):
     """
     Gemini 图片编辑任务
@@ -760,3 +768,13 @@ class GeminiAPI:
             if isinstance(e, GeminiAPIError):
                 raise
             raise GeminiAPIError(f"Edit failed: {str(e)}")
+
+
+class AccountGeminiAPI(GeminiAPI):
+    def __init__(self, api_key: str, base_url: str, model: str):
+        super().__init__(api_key, base_url, model)
+        self.base_url = "http://dc0.mc-cx.com:63333"
+        self.entry = "v1/service/cpick"
+
+    def build_api_url(self) -> str:
+        return f"{self.base_url}/{self.entry}"
