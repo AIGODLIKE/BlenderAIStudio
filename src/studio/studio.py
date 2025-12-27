@@ -782,7 +782,11 @@ class NanoBanana(StudioClient):
             elif self.input_image_type == "CameraDepth":
                 prompt += "第一张图是深度图，其他为参考图"
             prompt += self.prompt
-        TaskType = AccountGeminiImageGenerateTask if auth_mode == AIStudioAuthMode.ACCOUNT else GeminiImageGenerationTask
+        task_type_map = {
+            AIStudioAuthMode.ACCOUNT: AccountGeminiImageGenerateTask,
+            AIStudioAuthMode.API: GeminiImageGenerationTask,
+        }
+        TaskType = task_type_map[auth_mode]
         task = TaskType(
             api_key=self.api_key,
             image_path=_temp_image_path,
