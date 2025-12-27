@@ -94,17 +94,17 @@ class GeminiImageGenerationTask(GeminiTaskBase):
     """
 
     def __init__(
-            self,
-            api_key: str,
-            image_path: str,
-            user_prompt: str,
-            reference_images_path: list[str],
-            is_color_render: bool = False,
-            resolution: str = "1K",
-            width: int = 1024,
-            height: int = 1024,
-            aspect_ratio: str = "1:1",
-            max_retries: int = 3,
+        self,
+        api_key: str,
+        image_path: str,
+        user_prompt: str,
+        reference_images_path: list[str],
+        is_color_render: bool = False,
+        resolution: str = "1K",
+        width: int = 1024,
+        height: int = 1024,
+        aspect_ratio: str = "1:1",
+        max_retries: int = 3,
     ):
         """
         初始化图片生成任务
@@ -221,15 +221,15 @@ class GeminiImageEditTask(GeminiTaskBase):
     """
 
     def __init__(
-            self,
-            api_key: str,
-            image_path: str,
-            edit_prompt: str,
-            mask_path: Optional[str] = None,
-            reference_images_path: Optional[str] | list[str] = None,
-            resolution: str = "1K",
-            aspect_ratio: str = "1:1",
-            max_retries: int = 3,
+        self,
+        api_key: str,
+        image_path: str,
+        edit_prompt: str,
+        mask_path: Optional[str] = None,
+        reference_images_path: Optional[str] | list[str] = None,
+        resolution: str = "1K",
+        aspect_ratio: str = "1:1",
+        max_retries: int = 3,
     ):
         """
         初始化图片编辑任务
@@ -330,14 +330,14 @@ class GeminiStyleTransferTask(GeminiTaskBase):
     """
 
     def __init__(
-            self,
-            api_key: str,
-            target_image_path: str,
-            style_image_path: str,
-            style_prompt: str = "",
-            resolution="1K",
-            aspect_ratio="1:1",
-            max_retries: int = 3,
+        self,
+        api_key: str,
+        target_image_path: str,
+        style_image_path: str,
+        style_prompt: str = "",
+        resolution="1K",
+        aspect_ratio="1:1",
+        max_retries: int = 3,
     ):
         """
         初始化风格迁移任务
@@ -429,10 +429,10 @@ class GeminiAPI:
         self.model = model
 
     def _build_generate_prompt(
-            self,
-            user_prompt: str,
-            has_reference: bool = False,
-            is_color_render: bool = False,
+        self,
+        user_prompt: str,
+        has_reference: bool = False,
+        is_color_render: bool = False,
     ) -> str:
         if is_color_render:
             if has_reference:
@@ -448,15 +448,18 @@ class GeminiAPI:
             return f"{base_prompt}\n\nUSER PROMPT (EXECUTE THIS): {user_prompt.strip()}"
         return base_prompt
 
+    def build_api_url(self) -> str:
+        return f"{self.base_url}/{self.model}:generateContent"
+
     def generate_image(
-            self,
-            depth_image_path: str,
-            user_prompt: str,
-            reference_images_path: list[str],
-            is_color_render: bool = False,
-            width: int = 1024,
-            height: int = 1024,
-            aspect_ratio: str = "1:1",
+        self,
+        depth_image_path: str,
+        user_prompt: str,
+        reference_images_path: list[str],
+        is_color_render: bool = False,
+        width: int = 1024,
+        height: int = 1024,
+        aspect_ratio: str = "1:1",
     ) -> Tuple[bytes, str]:
         """
         由深度图和提示词生成图像(可选使用参考图作为 风格化/材质)
@@ -476,7 +479,7 @@ class GeminiAPI:
             # 控制输出分辨率
             full_prompt += f"\n\nCRITICAL OUTPUT SETTING: Generate image EXACTLY at {width}x{height} pixels."
 
-            url = f"{self.base_url}/{self.model}:generateContent"
+            url = self.build_api_url()
             headers = {
                 "x-goog-api-key": self.api_key,
                 "Content-Type": "application/json",
@@ -610,13 +613,13 @@ class GeminiAPI:
             return png_data
 
     def edit_image(
-            self,
-            image_path: str,
-            edit_prompt: str,
-            mask_path: str = None,
-            reference_image_path: str = None,
-            resolution: str = "1K",
-            aspect_ratio: str = "1:1",
+        self,
+        image_path: str,
+        edit_prompt: str,
+        mask_path: str = None,
+        reference_image_path: str = None,
+        resolution: str = "1K",
+        aspect_ratio: str = "1:1",
     ) -> Tuple[bytes, str]:
         """
         基于提示词(和遮罩, 可选)编辑现有图像
@@ -643,8 +646,7 @@ class GeminiAPI:
                 has_mask=bool(mask_path),
                 has_reference=bool(reference_image_path),
             )
-            return self._edit_with_rest(image_path, full_prompt, mask_path, reference_image_path, resolution,
-                                        aspect_ratio)
+            return self._edit_with_rest(image_path, full_prompt, mask_path, reference_image_path, resolution, aspect_ratio)
 
         except Exception as e:
             if isinstance(e, GeminiAPIError):
@@ -660,7 +662,7 @@ class GeminiAPI:
         """
 
         if user_prompt == "[智能修复]":  # 智能修复的提示词
-            base_prompt =EDIT_SMART_REPAIR
+            base_prompt = EDIT_SMART_REPAIR
             return base_prompt
 
         if has_mask and has_reference:  # 有遮罩和参考图片
@@ -679,13 +681,13 @@ class GeminiAPI:
             return base_prompt
 
     def _edit_with_rest(
-            self,
-            image_path: str,
-            prompt: str,
-            mask_path: str = None,
-            reference_path: str = None,
-            resolution="1K",
-            aspect_ratio: str = "1:1",
+        self,
+        image_path: str,
+        prompt: str,
+        mask_path: str = None,
+        reference_path: str = None,
+        resolution="1K",
+        aspect_ratio: str = "1:1",
     ) -> Tuple[bytes, str]:
         """
         图片顺序很重要
@@ -713,7 +715,7 @@ class GeminiAPI:
                         add_part(ref_path)
                 else:
                     add_part(reference_path)
-            url = f"{self.base_url}/{self.model}:generateContent"
+            url = self.build_api_url()
             headers = {
                 "x-goog-api-key": self.api_key,
                 "Content-Type": "application/json",
