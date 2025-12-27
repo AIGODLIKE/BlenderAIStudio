@@ -217,7 +217,7 @@ class AccountGeminiImageGenerateTask(GeminiImageGenerationTask):
     def prepare(self) -> bool:
         if not super().prepare():
             return False
-        self.api_client = AccountGeminiAPI()
+        self.api_client = AccountGeminiAPI(self.api_key)
         return True
 
 
@@ -459,6 +459,70 @@ class GeminiAPI:
     def build_api_url(self) -> str:
         return f"{self.base_url}/{self.model}:generateContent"
 
+    def build_headers(self) -> dict:
+        return {
+            "x-goog-api-key": self.api_key,
+            "Content-Type": "application/json",
+            "X-Goog-Api-Client": "python-blender-addon",
+        }
+
+    def build_payload(
+        self,
+        depth_image_path: str,
+        user_prompt: str,
+        reference_images_path: list[str],
+        is_color_render: bool = False,
+        width: int = 1024,
+        height: int = 1024,
+        aspect_ratio: str = "1:1",
+    ) -> dict:
+        # 构建完整提示词
+        full_prompt = self._build_generate_prompt(
+            user_prompt,
+            has_reference=bool(reference_images_path),
+            is_color_render=is_color_render,
+        )
+
+        # 控制输出分辨率
+        full_prompt += f"\n\nCRITICAL OUTPUT SETTING: Generate image EXACTLY at {width}x{height} pixels."
+
+        parts = [{"text": full_prompt}]
+        # Build parts array
+        if depth_image_path:
+            with open(depth_image_path, "rb") as f:
+                image_base64 = base64.b64encode(f.read()).decode("utf-8")
+            part = {"inline_data": {"mime_type": "image/png", "data": image_base64}}
+            parts.append(part)
+
+        # Add reference image (Style) - SECOND image
+        for reference_image_path in reference_images_path:
+            with open(reference_image_path, "rb") as f:
+                reference_base64 = base64.b64encode(f.read()).decode("utf-8")
+            part = {"inline_data": {"mime_type": "image/png", "data": reference_base64}}
+            parts.append(part)
+
+        # Map resolution to string format expected by API
+        resolution_str = "1K"
+        if width >= 4096 or height >= 4096:
+            resolution_str = "4K"
+        elif width >= 2048 or height >= 2048:
+            resolution_str = "2K"
+
+        payload = {
+            "contents": [{"parts": parts}],
+            "generationConfig": {
+                "temperature": 0.8,
+                "maxOutputTokens": 32768,
+                "candidateCount": 1,
+                "responseModalities": ["IMAGE"],
+                "imageConfig": {
+                    "imageSize": resolution_str,
+                    "aspectRatio": aspect_ratio,
+                },
+            },
+        }
+        return payload
+
     def generate_image(
         self,
         depth_image_path: str,
@@ -477,58 +541,17 @@ class GeminiAPI:
         Returns: (image_data, format)
         """
         try:
-            # 构建完整提示词
-            full_prompt = self._build_generate_prompt(
-                user_prompt,
-                has_reference=bool(reference_images_path),
-                is_color_render=is_color_render,
-            )
-
-            # 控制输出分辨率
-            full_prompt += f"\n\nCRITICAL OUTPUT SETTING: Generate image EXACTLY at {width}x{height} pixels."
-
             url = self.build_api_url()
-            headers = {
-                "x-goog-api-key": self.api_key,
-                "Content-Type": "application/json",
-                "X-Goog-Api-Client": "python-blender-addon",
-            }
-
-            parts = [{"text": full_prompt}]
-            # Build parts array
-            if depth_image_path:
-                with open(depth_image_path, "rb") as f:
-                    image_base64 = base64.b64encode(f.read()).decode("utf-8")
-                part = {"inline_data": {"mime_type": "image/png", "data": image_base64}}
-                parts.append(part)
-
-            # Add reference image (Style) - SECOND image
-            for reference_image_path in reference_images_path:
-                with open(reference_image_path, "rb") as f:
-                    reference_base64 = base64.b64encode(f.read()).decode("utf-8")
-                part = {"inline_data": {"mime_type": "image/png", "data": reference_base64}}
-                parts.append(part)
-
-            # Map resolution to string format expected by API
-            resolution_str = "1K"
-            if width >= 4096 or height >= 4096:
-                resolution_str = "4K"
-            elif width >= 2048 or height >= 2048:
-                resolution_str = "2K"
-
-            payload = {
-                "contents": [{"parts": parts}],
-                "generationConfig": {
-                    "temperature": 0.8,
-                    "maxOutputTokens": 32768,
-                    "candidateCount": 1,
-                    "responseModalities": ["IMAGE"],
-                    "imageConfig": {
-                        "imageSize": resolution_str,
-                        "aspectRatio": aspect_ratio,
-                    },
-                },
-            }
+            headers = self.build_headers()
+            payload = self.build_payload(
+                depth_image_path=depth_image_path,
+                user_prompt=user_prompt,
+                reference_images_path=reference_images_path,
+                is_color_render=is_color_render,
+                width=width,
+                height=height,
+                aspect_ratio=aspect_ratio,
+            )
 
             response = requests.post(url, headers=headers, json=payload, timeout=300)
             self._check_response_status(response)
@@ -771,10 +794,15 @@ class GeminiAPI:
 
 
 class AccountGeminiAPI(GeminiAPI):
-    def __init__(self, api_key: str, base_url: str, model: str):
-        super().__init__(api_key, base_url, model)
+    def __init__(self, api_key: str, model: str = ""):
+        super().__init__(api_key, model)
         self.base_url = "http://dc0.mc-cx.com:63333"
         self.entry = "v1/service/cpick"
 
     def build_api_url(self) -> str:
         return f"{self.base_url}/{self.entry}"
+
+    def build_headers(self) -> dict:
+        return {
+            "Content-Type": "application/json",
+        }

@@ -16,6 +16,7 @@ from .gui.app.renderer import imgui
 from .gui.app.style import Const
 from .gui.texture import TexturePool
 from .gui.widgets import CustomWidgets
+from .state import AuthMode, State
 from .tasks import (
     Task,
     TaskResult,
@@ -590,7 +591,7 @@ class StudioClient(BaseAdapter):
     def add_history(self, item: StudioHistoryItem):
         self.history.add(item)
 
-    def new_generate_task(self):
+    def new_generate_task(self, app_state: "State"):
         pass
 
     def cancel_generate_task(self):
@@ -733,17 +734,17 @@ class NanoBanana(StudioClient):
         elif action == "delete_image":
             delete_image(self, prop, index)
 
-    def new_generate_task(self, auth_mode: "AIStudioAuthMode"):
+    def new_generate_task(self, app_state: "State"):
         if self.is_task_submitting:
             print("有任务正在提交，请稍后")
             return
         self.is_task_submitting = True
-        Timer.put((self.job, auth_mode))
+        Timer.put((self.job, app_state))
 
     def cancel_generate_task(self):
         self.task_manager.cancel_task(self.task_id)
 
-    def job(self, auth_mode: "AIStudioAuthMode"):
+    def job(self, app_state: "State"):
         self.is_task_submitting = False
         # 1. 创建任务
         # path_dir = Path.home().joinpath("Desktop/OutputImage/AIStudio")
@@ -783,12 +784,13 @@ class NanoBanana(StudioClient):
                 prompt += "第一张图是深度图，其他为参考图"
             prompt += self.prompt
         task_type_map = {
-            AIStudioAuthMode.ACCOUNT: AccountGeminiImageGenerateTask,
-            AIStudioAuthMode.API: GeminiImageGenerationTask,
+            AuthMode.ACCOUNT: AccountGeminiImageGenerateTask,
+            AuthMode.API: GeminiImageGenerationTask,
         }
-        TaskType = task_type_map[auth_mode]
+        TaskType = task_type_map[app_state.auth_mode]
+        api_key = self.api_key if app_state.auth_mode == AuthMode.API else app_state.api_key
         task = TaskType(
-            api_key=self.api_key,
+            api_key=api_key,
             image_path=_temp_image_path,
             reference_images_path=self.reference_images,
             user_prompt=prompt,
@@ -951,11 +953,6 @@ class AIStudioPanelType(Enum):
     GENERATION = "generation"
     SETTINGS = "settings"
     HISTORY = "history"
-
-
-class AIStudioAuthMode(Enum):
-    ACCOUNT = "账号模式(推荐)"
-    API = "API模式"
 
 
 class RedeemPanel:
@@ -1269,7 +1266,7 @@ class AIStudio(AppHud):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.active_panel = AIStudioPanelType.GENERATION
-        self.client_auth_mode: AIStudioAuthMode = AIStudioAuthMode.ACCOUNT
+        self.state = State.get_instance()
         self.clients = {c.VENDOR: c() for c in StudioClient.__subclasses__()}
         # self.fill_fake_clients()
         self.redeem_panel = RedeemPanel(self)
@@ -1659,7 +1656,7 @@ class AIStudio(AppHud):
                 label_size = imgui.calc_text_size(label)
                 if imgui.button("##开始AI渲染", (full_width, gen_btn_height)):
                     if not is_rendering:
-                        client.new_generate_task()
+                        client.new_generate_task(self.state)
                     elif show_stop_btn:
                         client.cancel_generate_task()
 
@@ -1955,15 +1952,15 @@ class AIStudio(AppHud):
             imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0)
             imgui.push_style_color(imgui.Col.FRAME_BG, Const.FRAME_BG)
             imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
-            items = AIStudioAuthMode
+            items = AuthMode
             aw = imgui.get_content_region_avail()[0]
-            if imgui.begin_combo("##Item", self.client_auth_mode.value):
+            if imgui.begin_combo("##Item", self.state.auth_mode.value):
                 for item in items:
-                    is_selected = self.client_auth_mode == item
+                    is_selected = self.state.auth_mode == item
                     if is_selected:
                         imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
                     if imgui.button(item.value, (aw, 0)):
-                        self.client_auth_mode = item
+                        self.state.auth_mode = item
                         imgui.close_current_popup()
                     if is_selected:
                         imgui.pop_style_color()
@@ -1974,7 +1971,7 @@ class AIStudio(AppHud):
         imgui.pop_style_color(1)
 
     def draw_setting_account(self):
-        if self.client_auth_mode != AIStudioAuthMode.ACCOUNT:
+        if self.state.auth_mode != AuthMode.ACCOUNT:
             return
 
         with with_child("Outer", (0, 0), imgui.ChildFlags.FRAME_STYLE | imgui.ChildFlags.AUTO_RESIZE_Y):
@@ -1987,14 +1984,14 @@ class AIStudio(AppHud):
 
             # --- 表格 1: 邮箱 + 登出
             bw = aw - bh - imgui.get_style().item_spacing[0]
-            CustomWidgets.icon_label_button("account_email", "1132692358@qq.com", "BETWEEN", (bw, bh), isize, fpx * 2)
+            CustomWidgets.icon_label_button("account_email", self.state.acount_name, "BETWEEN", (bw, bh), isize, fpx * 2)
             imgui.same_line()
             if CustomWidgets.icon_label_button("account_logout", "", "CENTER", (bh, bh), isize):
                 print("登出")
 
             # --- 表格 2: Token + 刷新
             bw = aw - bh - imgui.get_style().item_spacing[0]
-            CustomWidgets.icon_label_button("account_token", "34565143125213", "BETWEEN", (bw, bh), isize, fpx * 2)
+            CustomWidgets.icon_label_button("account_token", str(self.state.credits), "BETWEEN", (bw, bh), isize, fpx * 2)
             imgui.same_line()
             if CustomWidgets.icon_label_button("account_refresh", "", "CENTER", (bh, bh), isize):
                 print("刷新 Token")
@@ -2019,7 +2016,7 @@ class AIStudio(AppHud):
         imgui.pop_style_color(3)
 
     def draw_setting_api(self):
-        if self.client_auth_mode != AIStudioAuthMode.API:
+        if self.state.auth_mode != AuthMode.API:
             return
         imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)
         imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.WINDOW_BG)
