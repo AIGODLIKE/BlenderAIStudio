@@ -164,7 +164,6 @@ def _create_placeholder_image() -> Tuple[bytes, str]:
         raise GeminiAPIError(f"Failed to create placeholder: {str(e)}")
 
 
-@staticmethod
 def _create_empty_image(width: int, height: int, color: tuple) -> bytes:
     with tempfile.NamedTemporaryFile(suffix=".png") as f:
         spec = oiio.ImageSpec(width, height, len(color), oiio.UINT8)
