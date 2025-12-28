@@ -6,9 +6,15 @@ import bpy
 from bpy_extras.io_utils import ImportHelper, ExportHelper
 
 from ..i18n import OPS_TCTX
-from ..utils import (get_text_generic_keymap, get_text_window, get_pref, save_image_to_temp_folder, png_name_suffix,
-                     load_image, refresh_image_preview,
-                     )
+from ..utils import (
+    get_text_generic_keymap,
+    get_text_window,
+    get_pref,
+    save_image_to_temp_folder,
+    png_name_suffix,
+    load_image,
+    refresh_image_preview,
+)
 
 
 class AIStudioEntry(bpy.types.Operator):
@@ -20,10 +26,11 @@ class AIStudioEntry(bpy.types.Operator):
 
     def invoke(self, context, event):
         from .studio import AIStudio
+
         self.area = bpy.context.area
         if self.area.as_pointer() in self.entry_pool:
-            self.report({'ERROR'}, "AI Studio is already opened")
-            return {'FINISHED'}
+            self.report({"ERROR"}, "AI Studio is already opened")
+            return {"FINISHED"}
         self.app = AIStudio()
         self.app.draw_call_add(self.app.handler_draw)
         self.entry_pool[self.area.as_pointer()] = self.app
@@ -168,6 +175,7 @@ class DrawImageMask(bpy.types.Operator):
 
     def modal(self, context, event):
         from bl_ui.properties_paint_common import UnifiedPaintPanel
+
         space = context.space_data
         if space.ui_mode == "PAINT":
             space.uv_editor.show_uv = False
@@ -175,16 +183,17 @@ class DrawImageMask(bpy.types.Operator):
             bpy.ops.brush.asset_activate(
                 "EXEC_DEFAULT",
                 False,
-                asset_library_type='ESSENTIALS',
+                asset_library_type="ESSENTIALS",
                 asset_library_identifier="",
-                relative_asset_identifier=r"brushes\\essentials_brushes-mesh_texture.blend\\Brush\\Paint Hard Pressure")
+                relative_asset_identifier=r"brushes\\essentials_brushes-mesh_texture.blend\\Brush\\Paint Hard Pressure",
+            )
             paint_settings.size = 4
             paint_settings.color = [1, 0, 0]
             bpy.ops.ed.undo_push(message="Push Undo")
             return {"FINISHED"}
 
         if self.run_count > 20:  # 最多等待20次
-            return {'CANCELLED'}
+            return {"CANCELLED"}
         self.run_count += 1
         return {"RUNNING_MODAL"}
 
@@ -312,7 +321,7 @@ class SelectReferenceImageByFile(bpy.types.Operator, ImportHelper):
     filename_ext = ""
     filter_glob: bpy.props.StringProperty(
         default="*.jpg;*.jpeg;*.png;*.bmp;*.tif;*.tiff;*.tga;*.exr;*.hdr",
-        options={'HIDDEN'}
+        options={"HIDDEN"},
     )
 
     def execute(self, context):
@@ -336,7 +345,7 @@ class SelectReferenceImageByImage(bpy.types.Operator):
             if not i.preview:
                 i.preview_ensure()
         wm = context.window_manager
-        return wm.invoke_props_dialog(**{'operator': self, 'width': 300})
+        return wm.invoke_props_dialog(**{"operator": self, "width": 300})
 
     def execute(self, context):
         image = getattr(context, "image", None)
@@ -378,7 +387,7 @@ class ReplaceReferenceImage(bpy.types.Operator):
             if not i.preview:
                 i.preview_ensure()
         wm = context.window_manager
-        return wm.invoke_props_dialog(**{'operator': self, 'width': 300})
+        return wm.invoke_props_dialog(**{"operator": self, "width": 300})
 
     def execute(self, context):
         image = getattr(context, "image", None)
@@ -403,9 +412,11 @@ class ReplaceReferenceImage(bpy.types.Operator):
                     row.template_icon(i.preview.icon_id, scale=self.icon_scale)
                     col = row.column()
                     col.operator(self.bl_idname, text=i.name, translate=False, emboss=False).index = self.index
-                    col.operator(self.bl_idname, icon="RESTRICT_SELECT_OFF",
-                                 text=bpy.app.translations.pgettext_iface("Replace References"),
-                                 ).index = self.index
+                    col.operator(
+                        self.bl_idname,
+                        icon="RESTRICT_SELECT_OFF",
+                        text=bpy.app.translations.pgettext_iface("Replace References"),
+                    ).index = self.index
                 else:
                     i.preview_ensure()
 
@@ -445,9 +456,9 @@ class ApplyAiEditImage(bpy.types.Operator):
             context.area.tag_redraw()
 
         if oii.running_state in (
-                "completed",
-                "failed",
-                "cancelled",
+            "completed",
+            "failed",
+            "cancelled",
         ):
             return {"FINISHED"}
 
@@ -462,46 +473,47 @@ class ApplyAiEditImage(bpy.types.Operator):
         aspect_ratio = oii.get_out_aspect_ratio(context)
         resolution = oii.get_out_resolution(context)
         if not image:
-            self.report({'ERROR'}, "No image")
-            return {'CANCELLED'}
+            self.report({"ERROR"}, "No image")
+            return {"CANCELLED"}
 
         if not oii.prompt.strip() and not len(oii.reference_images):  # 检查提示词和参考图片
-            self.report({'ERROR'}, "Enter ai edit prompt or select reference images")
-            return {'CANCELLED'}
+            self.report({"ERROR"}, "Enter ai edit prompt or select reference images")
+            return {"CANCELLED"}
 
         if not pref.nano_banana_api:
-            self.report({'ERROR'}, "NANO API key not set, Enter it in addon preferences")
-            return {'CANCELLED'}
+            self.report({"ERROR"}, "NANO API key not set, Enter it in addon preferences")
+            return {"CANCELLED"}
 
         oii.running_operator = self.running_operator
         generate_image_name = png_name_suffix(image.name, f"_{self.running_operator}")
 
         # 将blender图片保存到临时文件夹
         import tempfile
+
         temp_folder = tempfile.mkdtemp(prefix="bas_nano_banana_ai_image_")
         origin_image_file_path = save_image_to_temp_folder(image, temp_folder)
         reference_images_path = []
         mask_image_path = None
 
         if not origin_image_file_path:
-            self.report({'ERROR'}, "Can't save image")
-            return {'CANCELLED'}
+            self.report({"ERROR"}, "Can't save image")
+            return {"CANCELLED"}
         for ri in oii.reference_images:
             if ri.image:
                 if rii := save_image_to_temp_folder(ri.image, temp_folder):
                     reference_images_path.append(rii)
                 else:
-                    self.report({'ERROR'}, "Can't save reference image")
-                    return {'CANCELLED'}
+                    self.report({"ERROR"}, "Can't save reference image")
+                    return {"CANCELLED"}
             else:
-                self.report({'ERROR'}, "Can't save reference image")
-                return {'CANCELLED'}
+                self.report({"ERROR"}, "Can't save reference image")
+                return {"CANCELLED"}
         if oii.active_mask:
             if mask_path := save_image_to_temp_folder(oii.active_mask, temp_folder):
                 mask_image_path = mask_path
             else:
-                self.report({'ERROR'}, "Can't save mask image")
-                return {'CANCELLED'}
+                self.report({"ERROR"}, "Can't save mask image")
+                return {"CANCELLED"}
 
         print("temp", temp_folder)
         print("reference_images_path", reference_images_path)
@@ -509,6 +521,7 @@ class ApplyAiEditImage(bpy.types.Operator):
         print("aspect_ratio", aspect_ratio)
         print("resolution", resolution)
         from .tasks import GeminiImageEditTask, Task, TaskState, TaskResult, TaskManager
+
         task = GeminiImageEditTask(
             api_key=pref.nano_banana_api,
             image_path=origin_image_file_path,
@@ -541,7 +554,7 @@ class ApplyAiEditImage(bpy.types.Operator):
             progress: dict = event_data["progress"]
             percent = progress["percentage"]
             message = progress["message"]
-            p = bpy.app.translations.pgettext('Progress')
+            p = bpy.app.translations.pgettext("Progress")
             text = f"{p}: {percent * 100}% - {message}"
             print(text)
             oii.running_message = text
@@ -565,6 +578,7 @@ class ApplyAiEditImage(bpy.types.Operator):
             oii.running_message = "Running completed"
 
             import bpy
+
             if gi := bpy.data.images.load(str(save_file), check_existing=False):
                 oii.generated_image = gi
                 gi.preview_ensure()
@@ -574,6 +588,7 @@ class ApplyAiEditImage(bpy.types.Operator):
                 except Exception as e:
                     print("error", e)
                     import traceback
+
                     traceback.print_exc()
                     traceback.print_stack()
             else:
@@ -615,7 +630,7 @@ class SmartFixImage(bpy.types.Operator):
         oii = context.scene.blender_ai_studio_property
         oii.prompt = "[智能修复]"
 
-        self.report({'INFO'}, "Smart Fix - unifying colors, contrast, lighting...")
+        self.report({"INFO"}, "Smart Fix - unifying colors, contrast, lighting...")
         bpy.ops.bas.apply_ai_edit_image("INVOKE_DEFAULT", running_operator=self.bl_label)
         return {"FINISHED"}
 
@@ -634,17 +649,17 @@ class ReRenderImage(bpy.types.Operator):
         image = context.space_data.image
 
         if not image:
-            self.report({'ERROR'}, "No image in editor")
-            return {'CANCELLED'}
+            self.report({"ERROR"}, "No image in editor")
+            return {"CANCELLED"}
 
         if len(oii.history) == 0:
-            self.report({'INFO'}, "No history - use 'Apply AI Edit' first")
-            return {'CANCELLED'}
+            self.report({"INFO"}, "No history - use 'Apply AI Edit' first")
+            return {"CANCELLED"}
         last = oii.history[-1]
         oii.prompt = last.prompt
 
         bpy.ops.bas.apply_ai_edit_image("INVOKE_DEFAULT", running_operator=self.bl_label)
-        self.report({'INFO'}, "Re-rendering with previous settings...")
+        self.report({"INFO"}, "Re-rendering with previous settings...")
         return {"FINISHED"}
 
 
@@ -668,8 +683,8 @@ def get_text_data(context) -> bpy.types.Text:
 
 
 class PromptEdit(bpy.types.Operator):
-    bl_idname = 'bas.prompt_edit'
-    bl_label = 'Prompt Edit'
+    bl_idname = "bas.prompt_edit"
+    bl_label = "Prompt Edit"
 
     @staticmethod
     def add_save_key(context):
@@ -680,7 +695,7 @@ class PromptEdit(bpy.types.Operator):
     def execute(self, context):
         get_text_window(context, get_text_data(context))
         self.add_save_key(context)
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def draw_save_script_button(self, context):
@@ -699,8 +714,8 @@ def draw_save_script_button(self, context):
 
 
 class PromptSave(bpy.types.Operator):
-    bl_label = 'Save script'
-    bl_idname = 'bas.prompt_save'
+    bl_label = "Save script"
+    bl_idname = "bas.prompt_save"
 
     @classmethod
     def poll(cls, context):
@@ -733,12 +748,12 @@ class PromptSave(bpy.types.Operator):
         bpy.data.texts.remove(text)
         self.remove_save_key(context)
         bpy.ops.wm.window_close()
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class ViewImage(bpy.types.Operator):
-    bl_idname = 'bas.view_image'
-    bl_label = 'View Image'
+    bl_idname = "bas.view_image"
+    bl_label = "View Image"
     bl_translation_context = OPS_TCTX
     bl_options = {"REGISTER"}
     bl_description = "View image"
@@ -751,8 +766,8 @@ class ViewImage(bpy.types.Operator):
         image = getattr(context, "image", None)
         print(self.bl_idname, image)
         if not image:
-            self.report({'ERROR'}, "No image")
-            return {'CANCELLED'}
+            self.report({"ERROR"}, "No image")
+            return {"CANCELLED"}
         if image.preview:
             image.preview.reload()
         else:
@@ -762,8 +777,8 @@ class ViewImage(bpy.types.Operator):
 
 
 class RestoreHistory(bpy.types.Operator):
-    bl_idname = 'bas.restore_history'
-    bl_label = 'Restore History'
+    bl_idname = "bas.restore_history"
+    bl_label = "Restore History"
     bl_translation_context = OPS_TCTX
     bl_options = {"REGISTER"}
     bl_description = "Restore ai edit history"
@@ -788,8 +803,8 @@ class RestoreHistory(bpy.types.Operator):
 
 
 class OpenImageInNewWindow(bpy.types.Operator):
-    bl_idname = 'bas.open_image_in_new_window'
-    bl_label = 'Open Image In New Window'
+    bl_idname = "bas.open_image_in_new_window"
+    bl_label = "Open Image In New Window"
     bl_translation_context = OPS_TCTX
     bl_options = {"REGISTER"}
     bl_description = "Open image in new window"
@@ -846,13 +861,13 @@ class OpenImageInNewWindow(bpy.types.Operator):
         try:
             image_window = self.get_image_window(context)
             if not image_window:
-                self.report({'ERROR'}, "No image window")
-                return {'CANCELLED'}
+                self.report({"ERROR"}, "No image window")
+                return {"CANCELLED"}
             if image_window:
                 image = load_image(self.image_path)
                 if image is None:
-                    self.report({'ERROR'}, "No image" + self.image_path)
-                    return {'CANCELLED'}
+                    self.report({"ERROR"}, "No image" + self.image_path)
+                    return {"CANCELLED"}
                 for area in image_window.screen.areas:
                     if area.type == "IMAGE_EDITOR":
                         for space in area.spaces:
@@ -863,47 +878,42 @@ class OpenImageInNewWindow(bpy.types.Operator):
                                 if region.active_panel_category == "UNSUPPORTED":  # 如果还是不支持说明还没被渲染或初始化,再等待多一会
                                     self.run_count += 1
                                     if self.run_count > 20:  # 最多等待20次
-                                        self.report({'ERROR'}, "No image area")
-                                        return {'CANCELLED'}
+                                        self.report({"ERROR"}, "No image area")
+                                        return {"CANCELLED"}
                                     return {"RUNNING_MODAL"}
                                 region.active_panel_category = "AIStudio"  # 设置活动面板
                                 # with context.temp_override(window=image_window, area=area, region=region):
                                 #     bpy.ops.image.view_all(**{"fit_view": True})
                                 #     bpy.ops.image.view_all(fit_view=True)
                                 return {"FINISHED"}
-                self.report({'ERROR'}, "No image area")
+                self.report({"ERROR"}, "No image area")
         except Exception as e:
             print(e)
             import traceback
+
             traceback.print_exc()
             traceback.print_stack()
-        return {'CANCELLED'}
+        return {"CANCELLED"}
 
 
 clss = [
     AIStudioEntry,
     FileImporter,
     FileExporter,
-
     SelectMask,
     DrawImageMask,
     ApplyImageMask,
-
     RemoveReferenceImage,
     SelectReferenceImageByFile,
     SelectReferenceImageByImage,
     ReplaceReferenceImage,
-
     ApplyAiEditImage,
     SmartFixImage,
     ReRenderImage,
-
     PromptEdit,
     PromptSave,
-
     ViewImage,
     RestoreHistory,
-
     OpenImageInNewWindow,
 ]
 

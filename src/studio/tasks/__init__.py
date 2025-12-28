@@ -11,8 +11,6 @@ from .gemini_tasks import (
     AccountGeminiImageGenerateTask,
     GeminiImageEditTask,
     GeminiStyleTransferTask,
-    GeminiAPI,
-    GeminiAPIError,
 )
 
 
@@ -26,6 +24,4 @@ __all__ = [
     "AccountGeminiImageGenerateTask",
     "GeminiImageEditTask",
     "GeminiStyleTransferTask",
-    "GeminiAPI",
-    "GeminiAPIError",
 ]

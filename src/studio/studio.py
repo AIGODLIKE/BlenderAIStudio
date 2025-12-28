@@ -1,6 +1,5 @@
-import json
+import bpy
 import re
-import tempfile
 import time
 import webbrowser
 from datetime import datetime
@@ -8,30 +7,19 @@ from enum import Enum
 from pathlib import Path
 from shutil import copyfile
 from traceback import print_exc
-from typing import Iterable
 
-import bpy
-
+from .clients import StudioHistoryItem, StudioHistory, StudioClient
 from .gui.app.app import AppHud
 from .gui.app.renderer import imgui
 from .gui.app.style import Const
 from .gui.texture import TexturePool
 from .gui.widgets import CustomWidgets
-from .state import AuthMode, State
-from .tasks import (
-    Task,
-    TaskResult,
-    TaskState,
-    TaskManager,
-    GeminiImageGenerationTask,
-    AccountGeminiImageGenerateTask,
-)
+from .account import AuthMode, Account
+from .tasks import TaskState
 from .wrapper import with_child, BaseAdapter, WidgetDescriptor, DescriptorFactory
-from ..i18n import PROP_TCTX
 from ..preferences import get_pref
 from ..timer import Timer
-from ..utils import get_version, calc_appropriate_aspect_ratio
-from ..utils.render import render_scene_to_png, render_scene_depth_to_png
+from ..utils import get_version
 
 
 def get_tool_panel_width():
@@ -235,25 +223,9 @@ class StudioImagesDescriptor(WidgetDescriptor):
         imgui.end_group()
 
 
-class StudioHistoryItem:
-    def __init__(self) -> None:
-        self.result: dict = {}
-        self.output_file: str = ""
-        self.metadata: dict = {}
-        self.vendor: str = ""
-        self.index: int = 0
-        self.timestamp: float = 0
-        self.show_detail: bool = False
-
-    def stringify(self) -> str:
-        data = {
-            "output_file": self.output_file,
-            "metadata": self.metadata,
-            "vendor": self.vendor,
-            "index": self.index,
-            "timestamp": self.timestamp,
-        }
-        return json.dumps(data)
+class StudioHistoryItemViewer:
+    def __init__(self, item: StudioHistoryItem) -> None:
+        self.item = item
 
     def draw(self, app: "AIStudio"):
         col_bg = Const.WINDOW_BG
@@ -263,7 +235,7 @@ class StudioHistoryItem:
         flags |= imgui.ChildFlags.AUTO_RESIZE_Y
         flags |= imgui.ChildFlags.ALWAYS_AUTO_RESIZE
         imgui.push_style_color(imgui.Col.FRAME_BG, col_bg)
-        with with_child(f"##Item_{self.index}", (0, 0), child_flags=flags):
+        with with_child(f"##Item_{self.item.index}", (0, 0), child_flags=flags):
             imgui.push_style_color(imgui.Col.FRAME_BG, col_widget)
 
             # 标题栏
@@ -275,7 +247,7 @@ class StudioHistoryItem:
                 app.font_manager.push_h1_font(24)
                 imgui.table_next_column()
                 imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
-                imgui.text(f"#{self.index:03d}")
+                imgui.text(f"#{self.item.index:03d}")
                 imgui.pop_style_color()
                 app.font_manager.pop_font()
 
@@ -283,7 +255,7 @@ class StudioHistoryItem:
                 imgui.dummy((0, 0))
 
                 imgui.table_next_column()
-                file_name = Path(self.output_file).stem
+                file_name = Path(self.item.output_file).stem
                 imgui.text(file_name)
 
                 imgui.end_table()
@@ -305,7 +277,7 @@ class StudioHistoryItem:
                     imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
                     imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
                     bw, bh = imgui.get_content_region_avail()
-                    icon = TexturePool.get_tex_id(self.output_file)
+                    icon = TexturePool.get_tex_id(self.item.output_file)
                     tex = TexturePool.get_tex(icon)
                     tex_aspect_ratio = tex.width / tex.height
                     btn_aspect_ratio = bw / bh
@@ -329,7 +301,7 @@ class StudioHistoryItem:
                         imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, (12, 12))
                         imgui.begin_tooltip()
                         tex = TexturePool.get_tex(icon)
-                        file_name = Path(self.output_file).stem
+                        file_name = Path(self.item.output_file).stem
                         imgui.text(f"{file_name} [{tex.width}x{tex.height}]")
                         imgui.dummy((0, 0))
                         canvas_tex_width = app.screen_scale * tex.width
@@ -378,8 +350,8 @@ class StudioHistoryItem:
                             imgui.table_next_column()
                             if imgui.button("##编辑", (-imgui.FLT_MIN, bh)):
                                 print("编辑图片")
-                                image = self.output_file
-                                meta = self.stringify()
+                                image = self.item.output_file
+                                meta = self.item.stringify()
                                 context = bpy.context.copy()
                                 Timer.put((edit_image_with_meta_and_context, image, meta, context))
                             if imgui.is_item_hovered():
@@ -412,12 +384,12 @@ class StudioHistoryItem:
                             bh = h1 / 2 - style.cell_padding[1] * 2 - style.frame_padding[1]
 
                             imgui.table_next_column()
-                            old_show_detail = self.show_detail
+                            old_show_detail = self.item.show_detail
                             imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_SELECTED)
                             if old_show_detail:
                                 imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON_SELECTED)
                             if imgui.button("##详情", (-imgui.FLT_MIN, bh)):
-                                self.show_detail = not self.show_detail
+                                self.item.show_detail = not self.item.show_detail
                             if imgui.is_item_hovered():
                                 title = "图像详情"
                                 tip = "查看图像生成信息，例如提示词、生成时间等内容"
@@ -452,9 +424,9 @@ class StudioHistoryItem:
                 imgui.pop_style_color(1)
 
                 imgui.end_table()
-            if self.show_detail:
+            if self.item.show_detail:
                 imgui.text("提示词")
-                prompt = self.metadata.get("prompt", "No prompt found")
+                prompt = self.item.metadata.get("prompt", "No prompt found")
                 h = imgui.get_text_line_height()
                 imgui.same_line(imgui.get_content_region_avail()[0] - h)
                 # 复制按钮
@@ -482,7 +454,7 @@ class StudioHistoryItem:
                 h = 133 / 354 * imgui.get_content_region_avail()[0]
                 _, _ = imgui.input_text_multiline("##prompt", prompt, (-1, h), mlt_flags)
                 h = imgui.get_text_line_height()
-                icon = TexturePool.get_tex_id(self.output_file)
+                icon = TexturePool.get_tex_id(self.item.output_file)
                 tex = TexturePool.get_tex(icon)
                 tex_width = tex.width
                 tex_height = tex.height
@@ -498,13 +470,13 @@ class StudioHistoryItem:
                 imgui.dummy((0, 0))
                 imgui.image(icon, (h, h))
                 imgui.same_line()
-                imgui.text(f"{self.vendor}生成")
+                imgui.text(f"{self.item.vendor}生成")
 
                 icon = TexturePool.get_tex_id("image_info_timestamp")
                 imgui.dummy((0, 0))
                 imgui.image(icon, (h, h))
                 imgui.same_line()
-                imgui.text(datetime.fromtimestamp(self.timestamp).strftime("%Y-%m-%d %H:%M:%S"))
+                imgui.text(datetime.fromtimestamp(self.item.timestamp).strftime("%Y-%m-%d %H:%M:%S"))
                 imgui.dummy((0, 0))
                 # 复制/导出
                 # if imgui.button("复制", (-imgui.FLT_MIN, 0)):
@@ -512,7 +484,7 @@ class StudioHistoryItem:
                 if imgui.button("导出", (-imgui.FLT_MIN, 0)):
 
                     def export_image_callback(file_path: str):
-                        copyfile(self.output_file, file_path)
+                        copyfile(self.item.output_file, file_path)
                         print("导出图片到：", file_path)
 
                     from .ops import FileCallbackRegistry
@@ -521,395 +493,6 @@ class StudioHistoryItem:
                     bpy.ops.bas.file_exporter("INVOKE_DEFAULT", callback_id=callback_id)
             imgui.pop_style_color(1)
         imgui.pop_style_color(1)
-
-
-class StudioHistory:
-    _INSTANCE = None
-
-    def __new__(cls, *args, **kwargs):
-        if cls._INSTANCE is None:
-            cls._INSTANCE = super().__new__(cls)
-        return cls._INSTANCE
-
-    def __init__(self):
-        self.items: list[StudioHistoryItem] = []
-        self.current_index = 0
-
-    def add_fake_item(self):
-        history_item = StudioHistoryItem()
-        history_item.result = {}
-        history_item.output_file = Path.home().joinpath("Desktop/OutputImage/AIStudio/Output.png").as_posix()
-        history_item.metadata = {"prompt": "这是一个测试"}
-        history_item.vendor = NanoBanana.VENDOR
-        history_item.timestamp = time.time()
-        self.add(history_item)
-
-    @classmethod
-    def get_instance(cls) -> "StudioHistory":
-        if cls._INSTANCE is None:
-            cls._INSTANCE = cls()
-        return cls._INSTANCE
-
-    def add(self, item: StudioHistoryItem):
-        self.current_index += 1
-        item.index = self.current_index
-        self.items.insert(0, item)
-
-
-class StudioClient(BaseAdapter):
-    VENDOR = ""
-
-    def __init__(self) -> None:
-        self._name = self.VENDOR
-        self.help_url = ""
-        self.task_manager = TaskManager.get_instance()
-        self.task_id: str = ""
-        self.is_task_submitting = False
-        self.history = StudioHistory.get_instance()
-        self.use_internal_prompt: bool = True
-
-    def get_ctxt(self) -> str:
-        return PROP_TCTX
-
-    def get_value(self, prop: str):
-        return getattr(self, prop)
-
-    def set_value(self, prop: str, value):
-        setattr(self, prop, value)
-
-    def get_properties(self) -> list[str]:
-        return []
-
-    def draw_generation_panel(self):
-        pass
-
-    def draw_setting_panel(self):
-        pass
-
-    def draw_history_panel(self):
-        pass
-
-    def add_history(self, item: StudioHistoryItem):
-        self.history.add(item)
-
-    def new_generate_task(self, app_state: "State"):
-        pass
-
-    def cancel_generate_task(self):
-        pass
-
-    def query_task_elapsed_time(self) -> float:
-        if not self.task_id:
-            return 0
-        if not (task := self.task_manager.get_task(self.task_id)):
-            return 0
-        return task.get_elapsed_time()
-
-    def query_task_status(self) -> dict:
-        if not self.task_id:
-            return {}
-        if not (task := self.task_manager.get_task(self.task_id)):
-            return {}
-        return task.get_info()
-
-    def query_task_result(self):
-        if not self.task_id:
-            return None
-        # 无任务
-        if not (task := self.task_manager.get_task(self.task_id)):
-            return None
-        # 未完成
-        if not task.is_finished():
-            return
-        # 无结果
-        if not (result := task.result):
-            return None
-        # 执行失败
-        if not result.is_success():
-            error_msg = result.error_message
-            print(f"任务失败: {error_msg}")
-            return None
-        image_data = result.get_data()
-        print("任务完成！")
-        return image_data
-
-
-class NanoBanana(StudioClient):
-    VENDOR = "NanoBanana"
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.help_url = "https://ai.google.dev/gemini-api/docs/image-generation?hl=zh-cn"
-        self.input_image_type = "CameraRender"
-        self.prompt = ""
-        self.reference_images: list[str] = []
-        self.size_config = "Auto"
-        self.resolution = "1K"
-        self.meta = {
-            "input_image_type": {
-                "display_name": "Input Image",
-                "category": "Input",
-                "type": "ENUM",
-                "hide_title": False,
-                "options": [
-                    "CameraRender",
-                    "CameraDepth",
-                    "NoInput",
-                ],
-            },
-            "prompt": {
-                "display_name": "Prompt",
-                "category": "Input",
-                "type": "STRING",
-                "hide_title": False,
-                "multiline": True,
-                "default": "",
-            },
-            "reference_images": {
-                "display_name": "Reference Images",
-                "category": "Input",
-                "type": StudioImagesDescriptor.ptype,
-                "hide_title": False,
-                "limit": 12,
-            },
-            "size_config": {
-                "display_name": "Size Config",
-                "category": "Input",
-                "type": "ENUM",
-                "hide_title": False,
-                "options": [
-                    "Auto",
-                    "1:1",
-                    "9:16",
-                    "16:9",
-                    "3:4",
-                    "4:3",
-                    "3:2",
-                    "2:3",
-                    "5:4",
-                    "4:5",
-                    "21:9",
-                ],
-            },
-            "resolution": {
-                "display_name": "Resolution",
-                "category": "Input",
-                "type": "ENUM",
-                "hide_title": False,
-                "options": [
-                    "1K",
-                    "2K",
-                    "4K",
-                ],
-            },
-            "api_key": {
-                "display_name": "API Key",
-                "category": "Settings",
-                "type": "STRING",
-                "hide_title": True,
-                "multiline": False,
-                "default": "",
-            },
-        }
-
-    @property
-    def api_key(self) -> str:
-        return get_pref().nano_banana_api
-
-    @api_key.setter
-    def api_key(self, value: str) -> None:
-        get_pref().nano_banana_api = value
-        bpy.context.preferences.use_preferences_save = True
-
-    def get_properties(self) -> Iterable[str]:
-        return self.meta.keys()
-
-    def get_meta(self, prop: str):
-        return self.meta.get(prop, {})
-
-    def on_image_action(self, prop: str, action: str, index: int = -1) -> None:
-        if action == "upload_image":
-            upload_image(self, prop)
-        elif action == "replace_image":
-            replace_image(self, prop, index)
-        elif action == "delete_image":
-            delete_image(self, prop, index)
-
-    def new_generate_task(self, app_state: "State"):
-        if self.is_task_submitting:
-            print("有任务正在提交，请稍后")
-            return
-        self.is_task_submitting = True
-        Timer.put((self.job, app_state))
-
-    def cancel_generate_task(self):
-        self.task_manager.cancel_task(self.task_id)
-
-    def job(self, app_state: "State"):
-        self.is_task_submitting = False
-        # 1. 创建任务
-        # path_dir = Path.home().joinpath("Desktop/OutputImage/AIStudio")
-        # path_dir.mkdir(parents=True, exist_ok=True)
-        # temp_image_path = path_dir.joinpath("Depth.png")
-        # _temp_image_path = temp_image_path.as_posix()
-        temp_image_path = tempfile.NamedTemporaryFile(suffix=".png", prefix="Depth", delete=False)
-        _temp_image_path = temp_image_path.name
-        # 渲染图片
-        scene = bpy.context.scene
-        if self.input_image_type == "CameraRender":
-            render_scene_to_png(scene, _temp_image_path)
-        elif self.input_image_type == "CameraDepth":
-            render_scene_depth_to_png(scene, _temp_image_path)
-        elif self.input_image_type == "NoInput":
-            _temp_image_path = ""
-        resolution = (1024, 1024)
-        if self.resolution == "1K":
-            resolution = (1024, 1024)
-        elif self.resolution == "2K":
-            resolution = (2048, 2048)
-        elif self.resolution == "4K":
-            resolution = (4096, 4096)
-        size_config = self.size_config
-        if size_config == "Auto":
-            width = bpy.context.scene.render.resolution_x
-            height = bpy.context.scene.render.resolution_y
-            size_config = calc_appropriate_aspect_ratio(width, height)
-        prompt = self.prompt
-        if self.use_internal_prompt:
-            prompt = "NSFW"
-            if not _temp_image_path:
-                prompt += "所有图片均为参考图"
-            elif self.input_image_type == "CameraRender":
-                prompt += "第一张图是渲染图(原图)，其他为参考图"
-            elif self.input_image_type == "CameraDepth":
-                prompt += "第一张图是深度图，其他为参考图"
-            prompt += self.prompt
-        task_type_map = {
-            AuthMode.ACCOUNT: AccountGeminiImageGenerateTask,
-            AuthMode.API: GeminiImageGenerationTask,
-        }
-        TaskType = task_type_map[app_state.auth_mode]
-        api_key = self.api_key if app_state.auth_mode == AuthMode.API else app_state.api_key
-        task = TaskType(
-            api_key=api_key,
-            image_path=_temp_image_path,
-            reference_images_path=self.reference_images,
-            user_prompt=prompt,
-            resolution=self.resolution,
-            width=resolution[0],
-            height=resolution[1],
-            aspect_ratio=size_config,
-        )
-        if _temp_image_path:
-            print("渲染到：", _temp_image_path)
-
-        # temp_image_path.close()
-        # if Path(_temp_image_path).exists():
-        #     Path(_temp_image_path).unlink()
-
-        # 2. 注册回调
-        def on_state_changed(event_data):
-            _task: Task = event_data["task"]
-            old_state: TaskState = event_data["old_state"]
-            new_state: TaskState = event_data["new_state"]
-            print(f"状态改变: {old_state.value} -> {new_state.value}")
-
-        def on_progress(event_data):
-            {
-                "current_step": 2,
-                "total_steps": 4,
-                "percentage": 0.5,
-                "message": "正在调用 API...",
-                "details": {},
-            }
-            _task: Task = event_data["task"]
-            progress: dict = event_data["progress"]
-            percent = progress["percentage"]
-            message = progress["message"]
-            print(f"进度: {percent * 100}% - {message}")
-
-        def on_completed(event_data):
-            # result_data = {
-            #     "image_data": b"",
-            #     "mime_type": "image/png",
-            #     "width": 1024,
-            #     "height": 1024,
-            # }
-            _task: Task = event_data["task"]
-            result: TaskResult = event_data["result"]
-            result_data: dict = result.data
-            # 存储结果
-            timestamp = time.time()
-            time_str = datetime.fromtimestamp(timestamp).strftime("%Y%m%d%H%M%S")
-            save_file = Path(tempfile.gettempdir(), f"Gen_{time_str}.png")
-            save_file.write_bytes(result_data["image_data"])
-            print(f"任务完成: {_task.task_id}")
-            print(f"结果已保存到: {save_file.as_posix()}")
-            # 存储历史记录
-            history_item = StudioHistoryItem()
-            history_item.result = result_data
-            history_item.output_file = save_file.as_posix()
-            history_item.metadata = result.metadata
-            history_item.vendor = NanoBanana.VENDOR
-            history_item.timestamp = timestamp
-            history = StudioHistory.get_instance()
-            history.add(history_item)
-
-        def on_cancelled(event_data):
-            _task: Task = event_data["task"]
-            try:
-                if self.task_id == _task.task_id:
-                    self.task_id = None
-                    print(f"任务已取消: {_task.task_id}")
-            except Exception:
-                pass
-
-        def on_failed(event_data):
-            _task: Task = event_data["task"]
-            result: TaskResult = event_data["result"]
-            if not result.success:
-                print(result.error)
-
-        task.register_callback("state_changed", on_state_changed)
-        task.register_callback("progress_updated", on_progress)
-        task.register_callback("completed", on_completed)
-        task.register_callback("cancelled", on_cancelled)
-        task.register_callback("failed", on_failed)
-        print(f"任务提交: {task.task_id}")
-
-        # 3. 提交到管理器
-        self.task_id = self.task_manager.submit_task(task)
-
-
-def upload_image(client: StudioClient, prop: str):
-    def upload_image_callback(file_path: str):
-        client.get_value(prop).append(file_path)
-
-    from .ops import FileCallbackRegistry
-
-    callback_id = FileCallbackRegistry.register_callback(upload_image_callback)
-    bpy.ops.bas.file_importer("INVOKE_DEFAULT", callback_id=callback_id)
-
-
-def replace_image(client: StudioClient, prop: str, index: int = -1):
-    def replace_image_callback(file_path: str):
-        try:
-            client.get_value(prop)[index] = file_path
-        except IndexError:
-            client.get_value(prop).append(file_path)
-
-    from .ops import FileCallbackRegistry
-
-    callback_id = FileCallbackRegistry.register_callback(replace_image_callback)
-    bpy.ops.bas.file_importer("INVOKE_DEFAULT", callback_id=callback_id)
-
-
-def delete_image(client: StudioClient, prop: str, index: int):
-    client.get_value(prop).pop(index)
-
-
-class Dream(StudioClient):
-    VENDOR = "Dream"
 
 
 class StudioWrapper:
@@ -1264,11 +847,11 @@ class AIStudio(AppHud):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.active_panel = AIStudioPanelType.GENERATION
-        self.state = State.get_instance()
+        self.state = Account.get_instance()
         self.clients = {c.VENDOR: c() for c in StudioClient.__subclasses__()}
         # self.fill_fake_clients()
         self.redeem_panel = RedeemPanel(self)
-        self.active_client = NanoBanana.VENDOR
+        self.active_client = next(iter(self.clients)) if self.clients else ""
         self.clients_wrappers: dict[str, StudioWrapper] = {}
         self.init_clients_wrapper()
 
@@ -1603,7 +1186,9 @@ class AIStudio(AppHud):
                     widget.display_end(widget, self)
                 client = wrapper.studio_client
                 if client.history.items:
-                    client.history.items[0].draw(self)
+                    item = client.history.items[0]
+                    viewer = StudioHistoryItemViewer(item)
+                    viewer.draw(self)
             imgui.pop_style_color()
 
             # 底部按钮
@@ -1804,7 +1389,8 @@ class AIStudio(AppHud):
             with with_child("Outer", (0, -1), flags):
                 history = StudioHistory.get_instance()
                 for item in history.items:
-                    item.draw(self)
+                    viewer = StudioHistoryItemViewer(item)
+                    viewer.draw(self)
             imgui.pop_style_color(1)
 
             imgui.pop_style_var(6)
