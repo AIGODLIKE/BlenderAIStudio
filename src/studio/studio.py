@@ -1,4 +1,5 @@
 import json
+import re
 import tempfile
 import time
 import webbrowser
@@ -1247,19 +1248,16 @@ class RedeemPanel:
     def get_redeem_value(self) -> int:
         if not self.is_redeem_code_valid():
             return 0
-        redeem_value = 0
-        if self.redeem_code.startswith("BD006"):
-            redeem_value = 6
-        elif self.redeem_code.startswith("BD030"):
-            redeem_value = 30
-        elif self.redeem_code.startswith("BD060"):
-            redeem_value = 60
-        elif self.redeem_code.startswith("BD100"):
-            redeem_value = 100
+        pat = "BG([0-9]{3})-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}"
+        try:
+            redeem_value = int(re.match(pat, self.redeem_code).group(1))
+        except Exception:
+            redeem_value = 0
         return redeem_value
 
     def is_redeem_code_valid(self) -> bool:
-        return self.redeem_code.startswith(("BD006", "BD030", "BD060", "BD100"))
+        pat = "BG[0-9]{3}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}"
+        return bool(re.match(pat, self.redeem_code))
 
 
 class AIStudio(AppHud):
