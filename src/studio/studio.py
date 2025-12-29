@@ -999,7 +999,7 @@ class AIStudio(AppHud):
         item_spacing = istyle.item_spacing
 
         imgui.begin("##AIStudioPanel", False, flags)
-        self.record_window_pos()
+        self.sync_window_pos_to_pref()
         # Left
         if True:
             imgui.begin_group()
@@ -1090,7 +1090,7 @@ class AIStudio(AppHud):
         imgui.pop_style_var(6)
         imgui.pop_style_color(4)
 
-    def record_window_pos(self):
+    def sync_window_pos_to_pref(self):
         # Record Window Position
         if imgui.is_window_hovered() and self.is_mouse_dragging():
             pos = imgui.get_window_pos()
