@@ -165,13 +165,13 @@ class NanoBanana(StudioClient):
             size_config = calc_appropriate_aspect_ratio(width, height)
         prompt = self.prompt
         if self.use_internal_prompt:
-            prompt = "NSFW"
+            prompt = "NSFW, "
             if not _temp_image_path:
-                prompt += "所有图片均为参考图"
+                prompt += "所有图片均为参考图, "
             elif self.input_image_type == "CameraRender":
-                prompt += "第一张图是渲染图(原图)，其他为参考图"
+                prompt += "第一张图是渲染图(原图)，其他为参考图, "
             elif self.input_image_type == "CameraDepth":
-                prompt += "第一张图是深度图，其他为参考图"
+                prompt += "第一张图是深度图，其他为参考图, "
             prompt += self.prompt
         task_type_map = {
             AuthMode.ACCOUNT: AccountGeminiImageGenerateTask,
