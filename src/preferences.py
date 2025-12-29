@@ -1,4 +1,5 @@
 import bpy
+import tempfile
 from .i18n import PROP_TCTX
 from .. import __package__ as base_name
 
@@ -25,6 +26,12 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences):
         size=2,
         **translation_context,
     )
+    output_cache_dir: bpy.props.StringProperty(
+        name="Output Cache Directory",
+        subtype="DIR_PATH",
+        default=tempfile.gettempdir(),
+        **translation_context,
+    )
     nano_banana_api: bpy.props.StringProperty(
         name="Nano Banana API Key",
         subtype="PASSWORD",
@@ -34,6 +41,7 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences):
         layout = self.layout
         layout.prop(self, "ui_pre_scale")
         layout.prop(self, "ui_offset")
+        layout.prop(self, "output_cache_dir")
         layout.label(text="Blender AI Studio Preferences")
         layout.prop(self, "nano_banana_api")
 
