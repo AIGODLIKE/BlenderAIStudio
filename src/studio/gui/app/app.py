@@ -384,7 +384,9 @@ class App:
                 self.io.add_key_event(key, is_press)
 
         # 输入
-        if system() == "Windows" and self.ime_buffer.qsize() > 0:
+        if system() == "Windows" and self.io.want_text_input:
+            if self.ime_buffer.qsize() == 0:
+                return
             self.io.add_input_characters_utf8(self.ime_buffer.get())
         elif event.unicode and 0 < (char := ord(event.unicode)) < 0x10000:
             self.io.add_input_character(char)
