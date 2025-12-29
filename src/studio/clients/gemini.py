@@ -1,3 +1,4 @@
+from traceback import print_exc
 import bpy
 import tempfile
 import time
@@ -230,8 +231,17 @@ class NanoBanana(StudioClient):
             # 存储结果
             timestamp = time.time()
             time_str = datetime.fromtimestamp(timestamp).strftime("%Y%m%d%H%M%S")
-            save_file = Path(tempfile.gettempdir(), f"Gen_{time_str}.png")
+            output_dir = get_pref().output_cache_dir
+            save_file = Path(output_dir, f"Gen_{time_str}.png")
             save_file.write_bytes(result_data["image_data"])
+
+            def load_image_into_blender(file_path: str):
+                try:
+                    bpy.data.images.load(file_path)
+                except Exception:
+                    print_exc()
+
+            Timer.put((load_image_into_blender, save_file.as_posix()))
             print(f"任务完成: {_task.task_id}")
             print(f"结果已保存到: {save_file.as_posix()}")
             # 存储历史记录

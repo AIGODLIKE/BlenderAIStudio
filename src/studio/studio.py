@@ -2,6 +2,8 @@ import bpy
 import re
 import time
 import webbrowser
+import platform
+import subprocess
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -41,6 +43,17 @@ def edit_image_with_meta_and_context(file_path, meta, context):
     try:
         with bpy.context.temp_override(**context):
             bpy.ops.bas.open_image_in_new_window("INVOKE_DEFAULT", image_path=file_path, data=meta)
+    except Exception:
+        print_exc()
+
+
+def open_dir(path):
+    open_util = 'explorer "%s"'
+    if platform.system() != "Windows":
+        open_util = 'open /"%s"'
+
+    try:
+        subprocess.run(open_util % path, shell=True, check=True)
     except Exception:
         print_exc()
 
@@ -1374,7 +1387,7 @@ class AIStudio(AppHud):
             imgui.table_setup_column("#EngineEle4", imgui.TableColumnFlags.WIDTH_FIXED, 0, 3)
             imgui.table_next_column()
             self.font_manager.push_h2_font()
-            imgui.text("引擎")
+            imgui.text("队列")
             self.font_manager.pop_font()
 
             # 小字
@@ -1384,7 +1397,7 @@ class AIStudio(AppHud):
             imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
             imgui.push_style_var_y(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0)
             imgui.push_font(None, 12 * Const.SCALE)
-            imgui.button("API")
+            imgui.button("List")
             imgui.pop_font()
             imgui.pop_style_var()
             imgui.pop_style_color(3)
@@ -1393,7 +1406,7 @@ class AIStudio(AppHud):
             imgui.text("")
 
             imgui.table_next_column()
-            self.draw_help_button()
+            self.draw_output_queue_button()
 
             imgui.end_table()
 
@@ -1577,6 +1590,30 @@ class AIStudio(AppHud):
 
         self.font_manager.pop_font()
         imgui.pop_style_color(3)
+        imgui.pop_style_var(2)
+
+    def draw_output_queue_button(self):
+        help_url = self.clients.get(self.active_client, StudioClient()).help_url
+        if not help_url:
+            return
+        imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0.75)
+        imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R)
+        imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)
+        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
+        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
+        imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
+        
+        self.font_manager.push_h1_font(24)
+        label = "缓存目录"
+        label_size = imgui.calc_text_size(label)
+        fp = imgui.get_style().window_padding
+        icon_size = imgui.get_text_line_height_with_spacing()
+        spacing = imgui.get_style().item_spacing
+        bw = label_size[0] + spacing[0] + icon_size + fp[0]
+        if CustomWidgets.icon_label_button("folder", label, "CENTER", (bw, 44)):
+            open_dir(get_pref().output_cache_dir)
+        self.font_manager.pop_font()
+        imgui.pop_style_color(4)
         imgui.pop_style_var(2)
 
     def draw_auth(self):
