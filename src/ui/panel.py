@@ -161,6 +161,7 @@ class AIStudioImagePanel(bpy.types.Panel):
         if w == 0 and h == 0:
             box.alert = True
             box.label(text="The image is empty", icon="ERROR")
+        box.operator("image.clipboard_copy",icon="COPYDOWN",text="Copy image to clipboard")
 
     @staticmethod
     def draw_ai_edit_layout(context, layout: bpy.types.UILayout):

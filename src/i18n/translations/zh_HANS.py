@@ -4,7 +4,7 @@ OPS_TCTX = "BlenderAIStudioOperatorTCTX"
 
 translations = (
     ("AI Studio Entry", "AI Studio 入口", OPS_TCTX),
-    ( "AI Studio is already opened", "AI Studio 已经打开", None),
+    ("AI Studio is already opened", "AI Studio 已经打开", None),
     ("Input Image", "输入图", PROP_TCTX),
     ("Reference Images", "参考图(可选)", PROP_TCTX),
     ("Prompt", "提示词", PROP_TCTX),
@@ -88,4 +88,5 @@ translations = (
     ("During task execution, parameters cannot be modified", "在任务执行过程中，参数不能修改", None),
     ("Generate a new variation with the same prompt and settings", "使用相同的提示和设置生成新的变体", None),
     ("Edit mask", "编辑遮罩", OPS_TCTX),
+    ("Copy image to clipboard", "复制图像到剪切板", "Operator"),
 )
