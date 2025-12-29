@@ -182,6 +182,7 @@ class CustomWidgets:
             icon_x = screen_pos[0] + padding
             text_x = screen_pos[0] + width - padding - text_size[0]
 
+        height = imgui.get_item_rect_size()[1]
         icon_y = screen_pos[1] + (height - icon_w) / 2
         dl.add_image(tex_id, (icon_x, icon_y), (icon_x + icon_w, icon_y + icon_w))
 
