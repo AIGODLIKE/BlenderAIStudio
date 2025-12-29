@@ -479,20 +479,49 @@ class StudioHistoryItemViewer:
                 imgui.text(datetime.fromtimestamp(self.item.timestamp).strftime("%Y-%m-%d %H:%M:%S"))
                 imgui.dummy((0, 0))
                 # 复制/导出
-                # if imgui.button("复制", (-imgui.FLT_MIN, 0)):
-                #     pass
-                if imgui.button("导出", (-imgui.FLT_MIN, 0)):
+                fp = imgui.get_style().frame_padding
+                imgui.push_style_var_x(imgui.StyleVar.ITEM_SPACING, fp[0])
+                aw = imgui.get_content_region_avail()
+                bw = (aw[0] - fp[0]) * 0.5
 
-                    def export_image_callback(file_path: str):
-                        copyfile(self.item.output_file, file_path)
-                        print("导出图片到：", file_path)
+                if CustomWidgets.icon_label_button("prompt_copy", "复制", "CENTER", (bw, 0)):
+                    self.copy_image()
+                imgui.same_line()
+                if CustomWidgets.icon_label_button("image_export", "导出", "CENTER", (bw, 0)):
+                    self.export_image()
+                imgui.pop_style_var()
 
-                    from .ops import FileCallbackRegistry
-
-                    callback_id = FileCallbackRegistry.register_callback(export_image_callback)
-                    bpy.ops.bas.file_exporter("INVOKE_DEFAULT", callback_id=callback_id)
             imgui.pop_style_color(1)
         imgui.pop_style_color(1)
+
+    def copy_image(self):
+        image_path = self.item.output_file
+
+        def copy_image_callback(image_path: str):
+            image = bpy.data.images.get(image_path)
+            should_remove = False
+
+            if not image or image.filepath != image_path:
+                image = bpy.data.images.load(image_path)
+                should_remove = True
+
+            with bpy.context.temp_override(edit_image=image):
+                bpy.ops.image.clipboard_copy()
+
+            if should_remove:
+                bpy.data.images.remove(image)
+
+        Timer.put((copy_image_callback, image_path))
+
+    def export_image(self):
+        def export_image_callback(file_path: str):
+            copyfile(self.item.output_file, file_path)
+            print("导出图片到：", file_path)
+
+        from .ops import FileCallbackRegistry
+
+        callback_id = FileCallbackRegistry.register_callback(export_image_callback)
+        bpy.ops.bas.file_exporter("INVOKE_DEFAULT", callback_id=callback_id)
 
 
 class StudioWrapper:
