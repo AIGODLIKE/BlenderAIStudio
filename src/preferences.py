@@ -13,7 +13,7 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences):
     ui_pre_scale: bpy.props.FloatProperty(
         name="UI Pre Scale Factor",
         default=1,
-        min=0.1,
+        min=0.5,
         max=10,
         **translation_context,
     )
