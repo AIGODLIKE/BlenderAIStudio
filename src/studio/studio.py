@@ -1469,8 +1469,8 @@ class AIStudio(AppHud):
             imgui.push_style_color(imgui.Col.HEADER_ACTIVE, Const.BUTTON_ACTIVE)
             imgui.push_style_color(imgui.Col.HEADER_HOVERED, Const.BUTTON_HOVERED)
             self.draw_auth()
-            self.draw_setting_account()
-            self.draw_setting_api()
+            self.draw_account_panel()
+            self.draw_api_panel()
 
             imgui.pop_style_var(6)
             imgui.pop_style_color(5)
@@ -1487,6 +1487,34 @@ class AIStudio(AppHud):
             imgui.pop_style_var()
 
         imgui.pop_style_var(2)
+
+    def draw_account_panel(self):
+        if self.state.auth_mode != AuthMode.ACCOUNT:
+            return
+        self.draw_login_panel()
+        self.draw_setting_account()
+
+    def draw_login_panel(self):
+        if self.state.is_logged_in():
+            return
+        flags = 0
+        flags |= imgui.ChildFlags.FRAME_STYLE
+        flags |= imgui.ChildFlags.AUTO_RESIZE_Y
+        flags |= imgui.ChildFlags.ALWAYS_AUTO_RESIZE
+
+        with with_child("##Login", (0, 0), child_flags=flags):
+            self.font_manager.push_h3_font()
+            bh = imgui.get_text_line_height_with_spacing() * 2
+            if imgui.button("登录/注册", (-imgui.FLOAT_MIN, bh)):
+                self.state.login()
+            self.font_manager.pop_font()
+        # --- 底部: 警告信息 (单行全宽) ---
+        imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)
+        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.WINDOW_BG)
+        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.WINDOW_BG)
+        isize = 24
+        CustomWidgets.icon_label_button("account_warning", "使用此服务，可支援工具开发", "CENTER", (0, 54), isize)
+        imgui.pop_style_color(3)
 
     def draw_help_button(self):
         help_url = self.clients.get(self.active_client, StudioClient()).help_url
@@ -1555,7 +1583,7 @@ class AIStudio(AppHud):
         imgui.pop_style_color(1)
 
     def draw_setting_account(self):
-        if self.state.auth_mode != AuthMode.ACCOUNT:
+        if not self.state.is_logged_in():
             return
 
         with with_child("Outer", (0, 0), imgui.ChildFlags.FRAME_STYLE | imgui.ChildFlags.AUTO_RESIZE_Y):
@@ -1571,7 +1599,7 @@ class AIStudio(AppHud):
             CustomWidgets.icon_label_button("account_email", self.state.acount_name, "BETWEEN", (bw, bh), isize, fpx * 2)
             imgui.same_line()
             if CustomWidgets.icon_label_button("account_logout", "", "CENTER", (bh, bh), isize):
-                print("登出")
+                self.state.logout()
 
             # --- 表格 2: Token + 刷新
             bw = aw - bh - imgui.get_style().item_spacing[0]
@@ -1599,7 +1627,7 @@ class AIStudio(AppHud):
         CustomWidgets.icon_label_button("account_warning", "收益将 100% 用于支持开源开发", "CENTER", (0, 54), isize)
         imgui.pop_style_color(3)
 
-    def draw_setting_api(self):
+    def draw_api_panel(self):
         if self.state.auth_mode != AuthMode.API:
             return
         imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)

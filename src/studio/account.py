@@ -16,6 +16,7 @@ class Account:
     def __init__(self) -> None:
         self.auth_mode = AuthMode.ACCOUNT
         self.acount_name = "Not Login"
+        self.logged_in = False
         self.credits = 0
         self.api_key = "fake api key"
 
@@ -24,6 +25,20 @@ class Account:
         if cls._INSTANCE is None:
             cls._INSTANCE = cls()
         return cls._INSTANCE
+
+    def is_logged_in(self) -> bool:
+        return self.logged_in
+
+    def refresh_login_status(self):
+        pass
+
+    def login(self):
+        self.logged_in = True
+
+    def logout(self):
+        self.logged_in = False
+        self.acount_name = "Not Login"
+        self.credits = 0
 
     # 兑换积分
     def redeem_credits(self, code: str):
