@@ -1,3 +1,4 @@
+import platform
 import traceback
 import time
 import bpy
@@ -72,6 +73,7 @@ class App:
         self._gui_time = None
 
         self.event_queue: Queue[Event] = Queue()
+        self.ime_buffer = Queue()
 
         logger.debug(f"Creating app {self._id}")
 
@@ -229,9 +231,12 @@ class App:
     def is_mouse_dragging(self):
         return imgui.is_mouse_dragging(imgui.MouseButton.LEFT) or imgui.is_mouse_dragging(imgui.MouseButton.RIGHT) or imgui.is_mouse_dragging(imgui.MouseButton.MIDDLE)
 
+    def want_events(self):
+        return self.io.want_capture_keyboard or self.io.want_capture_mouse or self.io.want_text_input
+
     def should_pass_event(self):
         self.backend.ensure_ctx()
-        if not self.any_hovered() and not self.is_mouse_dragging():
+        if not self.any_hovered() and not self.want_events():
             self.io.clear_input_mouse()
             return True
         return False
@@ -259,6 +264,7 @@ class App:
         frame.push_id(self._id)
 
         # 2. 输入处理
+        self.refresh_ime_status()
         self.process_inputs()
 
         # 3. 窗口状态更新
@@ -297,6 +303,38 @@ class App:
             return
         draw_list = imgui.get_foreground_draw_list()
         draw_list.add_circle_filled(self.io.mouse_pos, 2, imgui.get_color_u32((0, 1, 0, 1)))
+
+    def refresh_ime_status(self):
+        enable = self.io.want_text_input
+        if enable:
+            self.try_enable_ime()
+        else:
+            self.try_disable_ime()
+
+    def try_enable_ime(self):
+        if platform.system() != "Windows":
+            return
+        from .....External.input_method_hook import input_manager
+
+        # 设置输入回调
+        def on_input_received(text):
+            self.ime_buffer.put(text)
+
+        input_manager.set_input_callback(on_input_received)
+        input_manager.enable_chinese_input()
+
+    def try_disable_ime(self):
+        if platform.system() != "Windows":
+            return
+
+        from .....External.input_method_hook import input_manager
+
+        # 设置输入回调
+        def on_input_received(_):
+            return
+
+        input_manager.set_input_callback(on_input_received)
+        input_manager.disable_chinese_input()
 
     def push_event(self, event: "bpy.types.Event"):
         self.event_queue.put(Event(event))
@@ -346,8 +384,8 @@ class App:
                 self.io.add_key_event(key, is_press)
 
         # 输入
-        if system() == "Windows" and IME_BUFFER.qsize() > 0:
-            self.io.add_input_characters_utf8(IME_BUFFER.get())
+        if system() == "Windows" and self.ime_buffer.qsize() > 0:
+            self.io.add_input_characters_utf8(self.ime_buffer.get())
         elif event.unicode and 0 < (char := ord(event.unicode)) < 0x10000:
             self.io.add_input_character(char)
 
