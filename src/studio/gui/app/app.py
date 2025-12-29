@@ -73,6 +73,7 @@ class App:
         self._gui_time = None
 
         self.event_queue: Queue[Event] = Queue()
+        self.ime_enabled = False
         self.ime_buffer = Queue()
 
         logger.debug(f"Creating app {self._id}")
@@ -312,6 +313,8 @@ class App:
             self.try_disable_ime()
 
     def try_enable_ime(self):
+        if self.ime_enabled:
+            return
         if platform.system() != "Windows":
             return
         from .....External.input_method_hook import input_manager
@@ -322,8 +325,11 @@ class App:
 
         input_manager.set_input_callback(on_input_received)
         input_manager.enable_chinese_input()
+        self.ime_enabled = True
 
     def try_disable_ime(self):
+        if not self.ime_enabled:
+            return
         if platform.system() != "Windows":
             return
 
@@ -335,6 +341,7 @@ class App:
 
         input_manager.set_input_callback(on_input_received)
         input_manager.disable_chinese_input()
+        self.ime_enabled = False
 
     def push_event(self, event: "bpy.types.Event"):
         self.event_queue.put(Event(event))
