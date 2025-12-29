@@ -188,7 +188,8 @@ class CustomWidgets:
 
         if label:
             text_y = screen_pos[1] + (height - text_size[1]) / 2
-            col = imgui.get_color_u32((1, 1, 1, 1))
+            tex_col = imgui.get_style_color_vec4(imgui.Col.TEXT)
+            col = imgui.get_color_u32(tex_col)
             dl.add_text((text_x, text_y), col, label)
 
         return clicked
