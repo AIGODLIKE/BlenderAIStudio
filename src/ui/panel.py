@@ -1,23 +1,7 @@
 import bpy
 
 from ..i18n import PANEL_TCTX
-from ..studio.ops import AIStudioEntry
 from ..utils import get_custom_icon
-
-
-class AIStudioPanel(bpy.types.Panel):
-    bl_idname = "SDN_PT_BLENDER_AI_STUDIO"
-    bl_translation_context = PANEL_TCTX
-    bl_label = "Blender AI Studio"
-    bl_description = ""
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
-    bl_category = "AIStudio"
-
-    def draw(self, context):
-        layout = self.layout
-        layout.label(text="Blender AI Studio")
-        layout.operator(AIStudioEntry.bl_idname)
 
 
 def check_is_draw_mask(context):
@@ -29,16 +13,17 @@ def check_is_draw_mask(context):
 
 def check_is_paint_2d(context):
     from bl_ui.properties_paint_common import UnifiedPaintPanel
+
     mode = UnifiedPaintPanel.get_brush_mode(context)
-    return mode == 'PAINT_2D'
+    return mode == "PAINT_2D"
 
 
 class AIStudioImagePanel(bpy.types.Panel):
     bl_idname = "SDN_PT_BLENDER_AI_STUDIO_PT_Image"
     bl_translation_context = PANEL_TCTX
     bl_label = "Blender AI Studio"
-    bl_space_type = 'IMAGE_EDITOR'
-    bl_region_type = 'UI'
+    bl_space_type = "IMAGE_EDITOR"
+    bl_region_type = "UI"
     bl_category = "AIStudio"
 
     @classmethod
@@ -47,7 +32,6 @@ class AIStudioImagePanel(bpy.types.Panel):
         return space_data and space_data.image is not None
 
     def draw(self, context):
-
         ai = context.scene.blender_ai_studio_property
         layout = self.layout
         if check_is_draw_mask(context):
@@ -69,7 +53,7 @@ class AIStudioImagePanel(bpy.types.Panel):
         row.prop(ai, "resolution", text="")
         bb.label(text=bpy.app.translations.pgettext_iface("Out Resolution(px):") + f"{w} x {h}")
         bb = column.box()
-        bb.label(text="AI Edit Prompt", icon='TEXT')
+        bb.label(text="AI Edit Prompt", icon="TEXT")
         row = bb.row(align=True)
         row.prop(ai, "prompt", text="")
         row.operator("bas.prompt_edit", text="", icon="FILE_TEXT")
@@ -94,6 +78,7 @@ class AIStudioImagePanel(bpy.types.Panel):
         from bl_ui.properties_paint_common import UnifiedPaintPanel
         from ..utils import get_custom_icon
         from ..studio.ops import SelectMask
+
         is_draw_mask = check_is_draw_mask(context)
         is_paint_2d = check_is_paint_2d(context)
 
@@ -176,9 +161,7 @@ class AIStudioImagePanel(bpy.types.Panel):
         row = column.row(align=True)
         row.scale_y = 2
         rr = row.row(align=True)
-        args = {
-            "text": "Render",
-            "icon": "SHADERFX"}  # 编辑图片操作符的参数
+        args = {"text": "Render", "icon": "SHADERFX"}  # 编辑图片操作符的参数
         ril = len(ai.reference_images)  # 参考图片数量
         if ril != 0:
             ...
@@ -195,8 +178,8 @@ class AIStudioHistoryPanel(bpy.types.Panel):
     bl_idname = "SDN_PT_BLENDER_AI_STUDIO_PT_History"
     bl_label = "Generate History"
     bl_description = "Generate History"
-    bl_space_type = 'IMAGE_EDITOR'
-    bl_region_type = 'UI'
+    bl_space_type = "IMAGE_EDITOR"
+    bl_region_type = "UI"
     bl_category = "AIStudio"
 
     bl_options = {"DEFAULT_CLOSED"}

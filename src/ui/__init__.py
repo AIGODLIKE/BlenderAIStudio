@@ -1,10 +1,9 @@
 import bpy
 
 from .menu import SelectMaskMenu, RenderButtonMenu
-from .panel import AIStudioPanel, AIStudioImagePanel, AIStudioHistoryPanel
+from .panel import AIStudioImagePanel, AIStudioHistoryPanel
 
 clss = [
-    AIStudioPanel,
     AIStudioImagePanel,
     AIStudioHistoryPanel,
 
