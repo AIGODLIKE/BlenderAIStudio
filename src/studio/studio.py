@@ -994,7 +994,7 @@ class ErrorLog:
     def draw_and_update(self):
         while self.error_messages:
             msg = self.error_messages.pop()
-            bubble = ErrorLogBubble(self.animation_system, msg)
+            bubble = ErrorLogBubble(self.animation_system, msg, duration=5)
             self.error_bubbles[msg] = bubble
         for message, bubble in list(self.error_bubbles.items()):
             if bubble.is_alive:
