@@ -11,10 +11,10 @@ from platform import system
 from queue import Queue
 from uuid import uuid4
 
+from .animation import AnimationSystem
 from .event import Event
 from .renderer import Renderer as ImguiRenderer, imgui
 
-from ...ime import IME_BUFFER
 from ....logger import logger, DEBUG
 
 
@@ -79,6 +79,7 @@ class App:
         logger.debug(f"Creating app {self._id}")
 
         self.backend = ImguiRenderer()
+        self.animation_system = AnimationSystem.get_instance()
 
         logger.debug("App Backend created")
         logger.debug(f"\t{self.backend}")
@@ -223,6 +224,9 @@ class App:
         self._update_hovered_status()
         self._update_focused_status()
 
+    def update_animation(self):
+        self.animation_system.update()
+
     def any_hovered(self):
         return self.any_window_hovered or self.any_item_hovered or self.item_hovered
 
@@ -270,6 +274,7 @@ class App:
 
         # 3. 窗口状态更新
         self.update_window_status()
+        self.update_animation()
 
         # 4. 绘制回调
         self._draw_prepare()
