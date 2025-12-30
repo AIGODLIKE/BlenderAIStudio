@@ -1,7 +1,6 @@
 import gpu
 import ctypes
 import numpy as np
-import bpy
 import time
 from pathlib import Path
 from mathutils import Matrix
@@ -145,6 +144,8 @@ class Renderer:
 
     @staticmethod
     def test_write_buf_to_image():
+        import bpy
+
         w = 100
         h = 100
         pixels = np.random.randint(0, 255, (w, h, 4), dtype=np.uint8)
