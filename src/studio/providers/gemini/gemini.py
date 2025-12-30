@@ -11,7 +11,14 @@ from typing import Tuple
 from .config import Payload
 from ..base import BaseProvider
 from ...account import SERVICE_URL
-from ...exception import StudioException, NotLoggedInException
+from ....logger import logger
+from ...exception import (
+    StudioException,
+    APIRequestException,
+    AuthFailedException,
+    InsufficientBalanceException,
+    ToeknExpiredException,
+)
 
 ###############################################################################
 #         Reference: https://github.com/kovname/nano-banana-render            #
@@ -19,6 +26,26 @@ from ...exception import StudioException, NotLoggedInException
 
 
 class GeminiAPIError(StudioException):
+    pass
+
+
+class GeminiAPISafetyError(StudioException):
+    pass
+
+
+class GeminiAPIOtherError(StudioException):
+    pass
+
+
+class GeminiAPIBlockListError(StudioException):
+    pass
+
+
+class GeminiAPIProhibitedContentError(StudioException):
+    pass
+
+
+class GeminiAPIImageSafetyError(StudioException):
     pass
 
 
@@ -106,12 +133,38 @@ class AccountGeminiImageProvider(GeminiImageGenerateProvider):
         err_msg = resp.get("errMsg", "")
         code = resp.get("code")
         err_code = resp.get("errCode")
-        if code == -4:
-            raise NotLoggedInException(err_msg)
+        match code, err_code:
+            case (-1, -1201):
+                raise InsufficientBalanceException("Invalid or insufficient balance!")
+            case (-1, -1202):
+                raise APIRequestException("API Request Error!")
+            case (-3, -3002):
+                pass
+            case (-4, -4000):
+                raise AuthFailedException("Authentication failed!")
+            case (-4, -4001):
+                raise ToeknExpiredException("Token expired!")
+        if err_msg:
+            print(err_msg)
 
 
 def _parse_image_data_from_response_json(resp: dict) -> Tuple[bytes, str]:
+    # block case
+    block_reason = resp.get("promptFeedback", {}).get("blockReason")
+    match block_reason:
+        case "PROHIBITED_CONTENT":
+            raise GeminiAPIProhibitedContentError("NanoBanana Blocked by PROHIBITED_CONTENT")
+        case "SAFETY":
+            raise GeminiAPISafetyError("NanoBanana Blocked by SAFETY")
+        case "OTHER":
+            raise GeminiAPIOtherError("NanoBanana Blocked by OTHER")
+        case "BLOCKLIST":
+            raise GeminiAPIBlockListError("NanoBanana Blocked by BLOCKLIST")
+        case "IMAGE_SAFETY":
+            raise GeminiAPIImageSafetyError("NanoBanana Blocked by IMAGE_SAFETY")
+
     if "candidates" not in resp or not resp["candidates"]:
+        logger.debug(str(resp))
         raise GeminiAPIError("No image generated. The model may have rejected the request.")
 
     candidate = resp["candidates"][0]
