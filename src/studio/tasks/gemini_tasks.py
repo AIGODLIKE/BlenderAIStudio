@@ -38,14 +38,14 @@ class GeminiTaskBase(Task):
             # 验证 API Key
             if not self.api_key or not self.api_key.strip():
                 self.update_progress(0, "API Key 未设置")
-                return False
+                raise Exception("API Key Not Set")
             # 创建 API 客户端
             self.provider = GeminiProvider(self.api_key)
             self.update_progress(0, "API 客户端已准备")
             return True
         except Exception as e:
             self.update_progress(0, f"准备失败: {str(e)}")
-            return False
+            raise e
 
     def cleanup(self) -> None:
         """清理资源"""
@@ -151,7 +151,7 @@ class GeminiImageGenerationTask(GeminiTaskBase):
             if self.is_cancelled():
                 error_msg = "生成失败: 任务被取消"
                 self.update_progress(message=error_msg)
-                return TaskResult.failure_result(Exception("任务被取消"), error_msg)
+                return TaskResult.failure_result(Exception("Task Cancelled"), error_msg)
             self.update_progress(2, "正在调用 Gemini API...")
 
             # 调用 API
@@ -170,7 +170,7 @@ class GeminiImageGenerationTask(GeminiTaskBase):
             if self.is_cancelled():
                 error_msg = "生成失败: 任务被取消"
                 self.update_progress(message=error_msg)
-                return TaskResult.failure_result(Exception("任务被取消"), error_msg)
+                return TaskResult.failure_result(Exception("Task Cancelled"), error_msg)
 
             self.update_progress(3, "API 调用成功，处理响应...")
 
@@ -185,7 +185,7 @@ class GeminiImageGenerationTask(GeminiTaskBase):
             if self.is_cancelled():
                 error_msg = "生成失败: 任务被取消"
                 self.update_progress(message=error_msg)
-                return TaskResult.failure_result(Exception("任务被取消"), error_msg)
+                return TaskResult.failure_result(Exception("Task Cancelled"), error_msg)
 
             self.update_progress(4, "图片生成完成")
 

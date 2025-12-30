@@ -3,6 +3,13 @@ from typing import Self
 from enum import Enum
 from threading import Thread
 
+from .exception import (
+    APIRequestException,
+    AuthFailedException,
+    InsufficientBalanceException,
+    ToeknExpiredException,
+)
+
 SERVICE_URL = "http://dc0.mc-cx.com:63333"
 
 
@@ -20,6 +27,7 @@ class Account:
         self.logged_in = False
         self.credits = 0
         self.api_key = "fake api key"
+        self.token = ""
         self.price_table = {}
         self.initialized = False
         self.error_messages: list = []
@@ -62,19 +70,40 @@ class Account:
     def redeem_credits(self, code: str):
         url = f"{SERVICE_URL}/v1/billing/redeem-code"
         headers = {
-            "token": "",
+            "token": self.token,
             "Content-Type": "application/json",
         }
         payload = {
             "code": code,
         }
-        resp = requests.post(url, headers=headers, json=payload)
+        try:
+            resp = requests.post(url, headers=headers, json=payload)
+        except ConnectionError:
+            self.push_error("网络连接失败")
+            return
+        if resp.status_code == 404:
+            self.push_error("兑换失败")
+            return
         resp.raise_for_status()
         if resp.status_code == 200:
-            resp_json = resp.json()
+            resp_json: dict = resp.json()
             data: dict = resp_json.get("data", {"amount": 0})
             code = resp_json.get("code")
-            err_msg = resp_json.get("errMsg")
+            err_code = resp_json.get("errCode")
+            err_msg = resp_json.get("errMsg", "")
+            match code, err_code:
+                case (-1, -1201):
+                    self.push_error(InsufficientBalanceException("Invalid or insufficient balance!"))
+                case (-1, -1202):
+                    self.push_error(APIRequestException("API Request Error!"))
+                case (-3, -3002):
+                    pass
+                case (-4, -4000):
+                    self.push_error(AuthFailedException("Authentication failed!"))
+                case (-4, -4001):
+                    self.push_error(ToeknExpiredException("Token expired!"))
+                case (-6, -6003):
+                    pass
             if code != 0:
                 print("兑换失败:", err_msg)
             else:
@@ -111,6 +140,40 @@ class Account:
             self.price_table = data
         else:
             self.push_error("获取价格失败:" + resp.text)
+
+    def fetch_credits(self):
+        if self.price_table:
+            return
+        url = f"{SERVICE_URL}/billing/balance"
+        headers = {
+            "token": self.token,
+            "Content-Type": "application/json",
+        }
+        try:
+            resp = requests.get(url, headers=headers)
+        except ConnectionError:
+            self.push_error("网络连接失败")
+            return
+        if resp.status_code == 404:
+            self.push_error("价格列表获取失败")
+            return
+        resp.raise_for_status()
+        if resp.status_code == 200:
+            resp_json: dict = resp.json()
+            code = resp_json.get("code")
+            err_code = resp_json.get("errCode")
+            err_msg = resp_json.get("errMsg", "")
+            match code, err_code:
+                case (-4, -4000):
+                    self.push_error(AuthFailedException("Authentication failed!"))
+                case (-4, -4001):
+                    self.push_error(ToeknExpiredException("Token expired!"))
+            if code != 0:
+                self.push_error("获取余额失败:" + err_msg)
+                return
+            self.credits = resp_json.get("data", 0)
+        else:
+            self.push_error("获取余额失败:" + resp.text)
 
 
 def init_account():

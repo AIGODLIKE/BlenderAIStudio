@@ -88,7 +88,8 @@ class GeminiImageGenerateProvider(GeminiProvider):
             self._check_response_custom(resp)
             return _parse_image_data_from_response_json(resp)
         except requests.RequestException as e:
-            raise GeminiAPIError(f"Network error: {str(e)}")
+            logger.debug(str(e))
+            raise GeminiAPIError("Network error")
         except json.JSONDecodeError:
             raise GeminiAPIError("Failed to parse API response")
         except GeminiAPIError as e:
@@ -99,12 +100,13 @@ class GeminiImageGenerateProvider(GeminiProvider):
         if code == 403:
             raise GeminiAPIError("API key invalid or quota exceeded. Check your Google AI Studio account.")
         elif code == 429:
-            retry_after = resp.headers.get("Retry-After", "unknown")
-            raise GeminiAPIError(f"Rate limit exceeded. Retry after: {retry_after} seconds.")
+            raise GeminiAPIError("Rate limit exceeded.")
         elif code == 400:
-            raise GeminiAPIError(f"Bad request (400): {resp.text}")
+            logger.debug(resp.text)
+            raise GeminiAPIError("Bad request (400).")
         elif code != 200:
-            raise GeminiAPIError(f"API request failed with status {code}: {resp.text}")
+            logger.debug(resp.text)
+            raise GeminiAPIError("API request failed. Unknown error.")
 
     def _check_response_custom(self, resp: dict):
         pass
