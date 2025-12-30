@@ -1130,7 +1130,8 @@ class AIStudio(AppHud):
         return self.clients.get(self.active_client, StudioClient())
 
     def push_error_message(self, message: str):
-        self.error_log.push_error_message(message)
+        translated_msg = bpy.app.translations.pgettext(message)
+        self.error_log.push_error_message(translated_msg)
 
     def handler_draw(self, _area: bpy.types.Area):
         self.draw_studio_panel()
