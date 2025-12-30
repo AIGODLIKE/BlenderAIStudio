@@ -2,6 +2,7 @@ import bpy
 import re
 import time
 import webbrowser
+import math
 import platform
 import subprocess
 from datetime import datetime
@@ -11,14 +12,15 @@ from shutil import copyfile
 from traceback import print_exc
 
 from .clients import StudioHistoryItem, StudioHistory, StudioClient
+from .gui.app.animation import AnimationSystem, Easing, Tween, Sequence
 from .gui.app.app import AppHud
 from .gui.app.renderer import imgui
 from .gui.app.style import Const
 from .gui.texture import TexturePool
-from .gui.widgets import CustomWidgets
+from .gui.widgets import CustomWidgets, with_child
 from .account import AuthMode, Account
 from .tasks import TaskState
-from .wrapper import with_child, BaseAdapter, WidgetDescriptor, DescriptorFactory
+from .wrapper import BaseAdapter, WidgetDescriptor, DescriptorFactory
 from ..preferences import get_pref
 from ..timer import Timer
 from ..utils import get_version
@@ -885,6 +887,122 @@ class RedeemPanel:
         return bool(re.match(pat, self.redeem_code))
 
 
+class ErrorLogBubble:
+    def __init__(
+        self,
+        anim_system: AnimationSystem,
+        text: str,
+        pos: tuple[float, float] = (0, 0),
+        duration: float = 3,
+    ) -> None:
+        self.text = text
+        self.x = pos[0]
+        self.y = pos[1]
+        self.duration = duration
+        self.alpha = 1.0
+        self.shake_x = 0.0
+        self.is_alive = True
+
+        # 使用 Parallel 组合多个并行效果
+        # 1. 位置持续向上
+        anim_system.add(
+            Sequence(
+                [
+                    Tween(0, 0, duration=self.duration * 0.7),
+                    Tween(
+                        self.y,
+                        self.y - 120,
+                        duration=self.duration * 0.3,
+                        easing=Easing.ease_out_quad,
+                        on_update=lambda v: setattr(self, "y", v),
+                    ),
+                ]
+            )
+        )
+
+        # 2. 初始抖动效果
+        def apply_shake(t: float) -> None:
+            self.shake_x = math.sin(time.time() * 40) * 5 * (1 - t)
+
+        anim_system.add(Tween(0, 1, duration=self.duration * 0.2, on_update=apply_shake))
+
+        # 3. 延迟后淡出并销毁
+        anim_system.add(
+            Sequence(
+                [
+                    Tween(0, 0, duration=self.duration * 0.7),  # 等待 1.2 秒
+                    Tween(
+                        1.0,
+                        0.0,
+                        duration=self.duration * 0.3,
+                        easing=Easing.ease_out_quad,
+                        on_update=lambda v: setattr(self, "alpha", v),
+                    ),
+                ]
+            )
+        ).on_complete(self._destroy)
+
+    def _destroy(self) -> None:
+        self.is_alive = False
+
+    def draw(self, app: "AIStudio") -> None:
+        """渲染逻辑"""
+        if not self.is_alive:
+            return
+
+        wp = imgui.get_style().window_padding
+        lh = imgui.get_text_line_height_with_spacing()
+        text_size = imgui.calc_text_size(self.text)
+        icon_size = text_size[1]
+        spacing = lh * 0.5
+        content_size = icon_size + spacing + text_size[0], text_size[1]
+
+        x = self.x + (app.screen_width - content_size[0]) / 2 + self.shake_x
+        y = self.y + app.screen_height - lh * 2
+
+        dl = imgui.get_foreground_draw_list()
+
+        text_col = imgui.get_color_u32(imgui.Col.TEXT, self.alpha)
+        bg_col = imgui.get_color_u32(imgui.Col.WINDOW_BG, self.alpha)
+        icon_col = imgui.get_color_u32(imgui.Col.TEXT, self.alpha)
+
+        p_min = (x - wp[0], y - wp[1])
+        p_max = (x + content_size[0] + wp[0], y + content_size[1] + wp[1])
+
+        rounding = imgui.get_style().frame_rounding
+        # 绘制背景和边框
+        dl.add_rect_filled(p_min, p_max, bg_col, rounding=rounding)
+
+        icon = TexturePool.get_tex_id("account_warning")
+        p_min = x, y + (content_size[1] - icon_size) / 2
+        p_max = p_min[0] + icon_size, p_min[1] + icon_size
+        dl.add_image(icon, p_min, p_max, col=icon_col)
+
+        dl.add_text((x + spacing + icon_size, y), text_col, self.text)
+
+
+class ErrorLog:
+    def __init__(self, app: "AIStudio") -> None:
+        self.app = app
+        self.animation_system = app.animation_system
+        self.error_bubbles: dict[str, ErrorLogBubble] = {}
+        self.error_messages: list[str] = []
+
+    def push_error_message(self, message: str):
+        self.error_messages.append(message)
+
+    def draw_and_update(self):
+        while self.error_messages:
+            msg = self.error_messages.pop()
+            bubble = ErrorLogBubble(self.animation_system, msg)
+            self.error_bubbles[msg] = bubble
+        for message, bubble in list(self.error_bubbles.items()):
+            if bubble.is_alive:
+                bubble.draw(self.app)
+            else:
+                self.error_bubbles.pop(message)
+
+
 class AIStudio(AppHud):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -895,6 +1013,7 @@ class AIStudio(AppHud):
         self.redeem_panel = RedeemPanel(self)
         self.active_client = next(iter(self.clients)) if self.clients else ""
         self.clients_wrappers: dict[str, StudioWrapper] = {}
+        self.error_log = ErrorLog(self)
         self.init_clients_wrapper()
 
     def fill_fake_clients(self):
@@ -1007,6 +1126,12 @@ class AIStudio(AppHud):
             wrapper.load(client)
             self.clients_wrappers[cname] = wrapper
 
+    def get_active_client(self) -> StudioClient:
+        return self.clients.get(self.active_client, StudioClient())
+
+    def push_error_message(self, message: str):
+        self.error_log.push_error_message(message)
+
     def handler_draw(self, _area: bpy.types.Area):
         self.draw_studio_panel()
 
@@ -1042,6 +1167,11 @@ class AIStudio(AppHud):
 
         imgui.begin("##AIStudioPanel", False, flags)
         self.sync_window_pos_to_pref()
+
+        # Error Log Bubble
+        if True:
+            self.draw_and_update_error_log()
+
         # Left
         if True:
             imgui.begin_group()
@@ -1139,6 +1269,14 @@ class AIStudio(AppHud):
             tool_panel_width = get_tool_panel_width()
             offset = pos[0] * self.screen_scale - tool_panel_width, pos[1] * self.screen_scale
             get_pref().set_ui_offset(offset)
+
+    def draw_and_update_error_log(self):
+        active_client = self.get_active_client()
+        for error in active_client.take_errors():
+            self.push_error_message(str(error))
+        for error in self.state.take_errors():
+            self.push_error_message(str(error))
+        self.error_log.draw_and_update()
 
     def draw_generation_panel(self):
         if self.active_panel != AIStudioPanelType.GENERATION:
@@ -1239,7 +1377,7 @@ class AIStudio(AppHud):
                 imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, 15)
                 full_width = imgui.get_content_region_avail()[0]
                 self.font_manager.push_h1_font()
-                client = self.clients.get(self.active_client, StudioClient())
+                client = self.get_active_client()
                 status = client.query_task_status()
                 # 按钮状态:
                 #   1. 无状态
@@ -1559,7 +1697,7 @@ class AIStudio(AppHud):
         imgui.pop_style_color(3)
 
     def draw_help_button(self):
-        help_url = self.clients.get(self.active_client, StudioClient()).help_url
+        help_url = self.get_active_client().help_url
         if not help_url:
             return
         imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0.75)
@@ -1593,7 +1731,7 @@ class AIStudio(AppHud):
         imgui.pop_style_var(2)
 
     def draw_output_queue_button(self):
-        help_url = self.clients.get(self.active_client, StudioClient()).help_url
+        help_url = self.get_active_client().help_url
         if not help_url:
             return
         imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0.75)
@@ -1602,7 +1740,7 @@ class AIStudio(AppHud):
         imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
         imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
         imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
-        
+
         self.font_manager.push_h1_font(24)
         label = "缓存目录"
         label_size = imgui.calc_text_size(label)
