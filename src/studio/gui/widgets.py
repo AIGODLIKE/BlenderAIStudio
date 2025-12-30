@@ -1,9 +1,23 @@
 import bpy
 import gpu
 import numpy as np
+from contextlib import contextmanager
+from traceback import print_exc
 from typing import Optional
 from .texture import TexturePool
 from .app.renderer import imgui
+
+
+# 通用子窗口包装
+@staticmethod
+@contextmanager
+def with_child(str_id: str, size: tuple[float, float] = (0.0, 0.0), child_flags: imgui.ChildFlags = imgui.ChildFlags.NONE, window_flags: imgui.WindowFlags = imgui.WindowFlags.NONE):
+    imgui.begin_child(str_id, size, child_flags, window_flags)
+    try:
+        yield
+    except Exception:
+        print_exc()
+    imgui.end_child()
 
 
 class CustomWidgets:

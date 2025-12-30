@@ -1,25 +1,13 @@
 from __future__ import annotations
-from traceback import print_exc
-from contextlib import contextmanager
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict
 from slimgui import imgui
 from bpy.app.translations import pgettext
 from .gui.app.style import Const
 from .gui.app.app import App
 from .gui.texture import TexturePool
-
-
-# 通用子窗口包装
-@contextmanager
-def with_child(str_id: str, size: Tuple[float, float] = (0.0, 0.0), child_flags: imgui.ChildFlags = imgui.ChildFlags.NONE, window_flags: imgui.WindowFlags = imgui.WindowFlags.NONE):
-    imgui.begin_child(str_id, size, child_flags, window_flags)
-    try:
-        yield
-    except Exception:
-        print_exc()
-    imgui.end_child()
+from .gui.widgets import with_child
 
 
 class PropertyType(Enum):
