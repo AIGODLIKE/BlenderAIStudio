@@ -72,6 +72,15 @@ class StudioClient(BaseAdapter):
         self.is_task_submitting = False
         self.history = StudioHistory.get_instance()
         self.use_internal_prompt: bool = True
+        self.error_messages: list = []
+
+    def take_errors(self) -> list:
+        errors = self.error_messages[:]
+        self.error_messages.clear()
+        return errors
+
+    def push_error(self, error):
+        self.error_messages.append(error)
 
     def get_ctxt(self) -> str:
         return PROP_TCTX

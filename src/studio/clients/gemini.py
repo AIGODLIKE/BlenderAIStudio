@@ -267,6 +267,7 @@ class NanoBanana(StudioClient):
             _task: Task = event_data["task"]
             result: TaskResult = event_data["result"]
             if not result.success:
+                self.push_error(result.error)
                 print(result.error)
                 print(f"任务失败: {_task.task_id}")
 
