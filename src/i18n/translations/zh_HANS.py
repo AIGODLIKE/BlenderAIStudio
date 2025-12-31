@@ -34,6 +34,9 @@ error_translations = (
     ("Server Status", "服务器状态", None),
     ("Connected", "已连接", STUDIO_TCTX),
     ("Disconnected", "连接失败", STUDIO_TCTX),
+    ("Server Error: Bad Gateway", "服务器错误：Bad Gateway", None),
+    ("Can't load auth file", "加载账户信息失败", None),
+    ("Can't create auth directory", "创建账户目录失败", None),
 )
 
 studio_panel_translations = (

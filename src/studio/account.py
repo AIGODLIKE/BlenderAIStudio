@@ -198,6 +198,7 @@ class Account:
         try:
             self._AUTH_PATH.write_text(json.dumps(data))
         except Exception:
+            traceback.print_exc()
             self.push_error(_T("Can't save auth file"))
 
     def logout(self):
@@ -229,6 +230,9 @@ class Account:
             return 0
         if resp.status_code == 404:
             self.push_error(_T("Redeem failed"))
+            return 0
+        if resp.status_code == 502:
+            self.push_error(_T("Server Error: Bad Gateway"))
             return 0
         resp.raise_for_status()
         if resp.status_code == 200:
@@ -276,6 +280,9 @@ class Account:
         if resp.status_code == 404:
             self.push_error(_T("Price fetch failed"))
             return
+        if resp.status_code == 502:
+            self.push_error(_T("Server Error: Bad Gateway"))
+            return
         resp.raise_for_status()
         if resp.status_code == 200:
             resp_json: dict = resp.json()
@@ -317,6 +324,9 @@ class Account:
             return
         if resp.status_code == 404:
             self.push_error(_T("Credits fetch failed"))
+            return
+        if resp.status_code == 502:
+            self.push_error(_T("Server Error: Bad Gateway"))
             return
         resp.raise_for_status()
         if resp.status_code == 200:
