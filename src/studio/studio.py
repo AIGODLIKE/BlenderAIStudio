@@ -996,7 +996,11 @@ class RedeemPanel:
                 self.should_draw_redeem_confirm = False
                 if self.is_redeem_code_valid():
                     self.should_draw_redeem_success = True
-                    print("兑换成功")
+                    credits = self.app.state.redeem_credits(self.redeem_code)
+                    if credits > 0:
+                        print("兑换成功")
+                    else:
+                        print("兑换失败")
                 else:
                     self.should_draw_redeem_error = True
                     print("兑换码无效")
