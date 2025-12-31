@@ -1,6 +1,13 @@
+import asyncio
+import json
+import tempfile
+import traceback
+import webbrowser
 import requests
+
 from typing import Self
 from enum import Enum
+from pathlib import Path
 from threading import Thread
 from bpy.app.translations import pgettext as _T
 from .exception import (
@@ -9,12 +16,31 @@ from .exception import (
     InsufficientBalanceException,
     ToeknExpiredException,
 )
+from ..logger import logger
 
-SERVICE_URL = "http://dc0.mc-cx.com:63333"
+try:
+    from ...External.websockets.server import serve
+    from ...External.websockets.legacy.server import WebSocketServer
+    from ...External.websockets.exceptions import ConnectionClosedOK, ConnectionClosed
+except Exception:
+    from websockets.server import serve
+    from websockets import WebSocketServerProtocol
+    from websockets.legacy.server import WebSocketServer
+    from websockets.exceptions import ConnectionClosedOK, ConnectionClosed
+
+
+SERVICE_URL = "https://api-addon.acggit.com/v1"
+LOGIN_URL = "https://addon-login.acggit.com"
+AUTH_PATH = Path(tempfile.gettempdir(), "aistudio/auth.json")
+try:
+    AUTH_PATH.parent.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass
 
 
 class Account:
     _INSTANCE = None
+    _AUTH_PATH = AUTH_PATH
 
     def __new__(cls, *args, **kwargs):
         if cls._INSTANCE is None:
@@ -23,14 +49,21 @@ class Account:
 
     def __init__(self) -> None:
         self.auth_mode = AuthMode.ACCOUNT
-        self.acount_name = "Not Login"
+        self.nickname = ""
         self.logged_in = False
         self.credits = 0
-        self.api_key = "fake api key"
         self.token = ""
         self.price_table = {}
+        self.redeem_to_credits_table = {
+            6: 600,
+            30: 3300,
+            60: 7200,
+            100: 13000,
+        }
         self.initialized = False
         self.error_messages: list = []
+        self.waiting_for_login = False
+        self.load_account_info_from_local()
 
     def take_errors(self) -> list:
         errors = self.error_messages[:]
@@ -55,22 +88,108 @@ class Account:
     def is_logged_in(self) -> bool:
         return self.logged_in
 
+    def is_waiting_for_login(self) -> bool:
+        return self.waiting_for_login
+
     def refresh_login_status(self):
         pass
 
     def login(self):
+        if self.waiting_for_login:
+            return
+        self.waiting_for_login = True
+        webbrowser.open(LOGIN_URL)
+
+        async def login_callback(websocket: "WebSocketServerProtocol", event: dict):
+            try:
+                data: dict = event.get("data", {})
+                self.load_account_info(data)
+                self.save_account_info(data)
+                event = {
+                    "type": "send_token_return",
+                    "data": {
+                        "status": "ok",
+                        "host": "Blender",
+                    },
+                }
+                await websocket.send(json.dumps(event))
+            except ConnectionClosedOK:
+                pass
+
+        def run(port_range):
+            server = None
+            for p in range(*port_range):
+                try:
+                    server = WebSocketServer(p)
+                    server.reg_handler("send_token", login_callback)
+                    server.run()
+                    break
+                except OSError:
+                    logger.debug(f"Port {p} is in use")
+                except Exception:
+                    traceback.print_exc()
+
+            if not server:
+                logger.critical("No available port found")
+            self.waiting_for_login = False
+
+        job = Thread(target=run, args=((55441, 55451),), daemon=True)
+        job.start()
+
+    def load_account_info_from_local(self):
+        if not self._AUTH_PATH.exists():
+            return
+        try:
+            data = json.loads(self._AUTH_PATH.read_text())
+            self.load_account_info(data)
+        except Exception:
+            traceback.print_exc()
+            self.push_error(_T("Can't load auth file"))
+
+    def load_account_info(self, data: dict):
+        {
+            "id": 0,
+            "email": "test@on.ink",
+            "nickname": "TEST",
+            "avatar": "xxx",
+            "coin": 1564,
+            "token": "xxx",
+        }
+        if not isinstance(data, dict):
+            print(data)
+            self.push_error(_T("Invalid auth data"))
+            return
+        self.nickname = data.get("nickname", "")
+        self.token = data.get("token", "")
+        self.credits = data.get("coin", 0)
         self.logged_in = True
+
+    def save_account_info(self, data: dict):
+        if not self._AUTH_PATH.parent.exists():
+            self.push_error(_T("Can't create auth directory"))
+            return
+        try:
+            self._AUTH_PATH.write_text(json.dumps(data))
+        except Exception:
+            self.push_error(_T("Can't save auth file"))
 
     def logout(self):
         self.logged_in = False
-        self.acount_name = "Not Login"
+        self.nickname = "Not Login"
         self.credits = 0
+        self.token = ""
+        if not self._AUTH_PATH.exists():
+            return
+        try:
+            self._AUTH_PATH.unlink()
+        except Exception:
+            pass
 
     # 兑换积分
     def redeem_credits(self, code: str) -> int:
         url = f"{SERVICE_URL}/v1/billing/redeem-code"
         headers = {
-            "token": self.token,
+            "X-Auth-T": self.token,
             "Content-Type": "application/json",
         }
         payload = {
@@ -141,14 +260,29 @@ class Account:
             data: dict = resp_json.get("data", {})
             self.price_table = data
         else:
-            self.push_error(_T("Price fetch failed") + ": "  + resp.text)
+            self.push_error(_T("Price fetch failed") + ": " + resp.text)
+
+    def get_model_price_table(self, provider: str = "") -> dict:
+        if not self.price_table:
+            return {}
+        # TODO 实现价格表获取
+        return self.price_table[0]
+
+    def calc_model_price(self, model: str = "") -> dict:
+        if not self.price_table:
+            return {}
+
+        for item in self.price_table:
+            if item.get("modelId") == model:
+                return item
+        return {}
 
     def fetch_credits(self):
         if self.price_table:
             return
         url = f"{SERVICE_URL}/billing/balance"
         headers = {
-            "token": self.token,
+            "X-Auth-T": self.token,
             "Content-Type": "application/json",
         }
         try:
@@ -175,7 +309,88 @@ class Account:
                 return
             self.credits = resp_json.get("data", 0)
         else:
-            self.push_error(_T("Credits fetch failed") + ": "  + resp.text)
+            self.push_error(_T("Credits fetch failed") + ": " + resp.text)
+
+
+class WebSocketServer:
+    _host = "127.0.0.1"
+
+    def __init__(self, port):
+        self.host = self._host
+        self.port = port
+        self.logger = logger
+        self._handlers = {}
+        self.stop_event = asyncio.Event()
+
+        self.reg_handler("_default", self._default)
+        self.reg_handler("query_status", self._query_status)
+
+    def reg_handler(self, etype, handler):
+        self._handlers[etype] = handler
+
+    def unreg_handler(self, etype):
+        del self._handlers[etype]
+
+    async def call_handler(self, websocket: "WebSocketServerProtocol", message):
+        try:
+            event: dict = json.loads(message)
+        except json.JSONDecodeError:
+            return
+        if not isinstance(event, dict):
+            event = {}
+        etype = event.get("type", "_default")
+        handler = self._handlers.get(etype, self._default)
+        try:
+            await handler(websocket, event)
+        except Exception as e:
+            self.logger.error(f"Error in handler {handler.__name__}: {e}")
+            self.logger.error(traceback.format_exc())
+
+    async def _default(self, websocket: "WebSocketServerProtocol", event: dict):
+        try:
+            self.logger.warning(f"默认消息: {event}")
+            event = {
+                "type": "default",
+                "data": event,
+            }
+            await websocket.send(json.dumps(event))
+        except ConnectionClosedOK:
+            pass
+
+    async def _query_status(self, websocket: "WebSocketServerProtocol", event: dict):
+        try:
+            self.logger.warning(f"查询状态: {event}")
+            event = {
+                "type": "query_status_return",
+                "data": {
+                    "status": "ok",
+                    "host": "Blender",
+                },
+            }
+            await websocket.send(json.dumps(event))
+        except ConnectionClosedOK:
+            pass
+
+    async def handle(self, websocket: "WebSocketServerProtocol", path: str):
+        try:
+            self.logger.debug(f"Client Connected: {websocket}")
+            async for message in websocket:
+                await self.call_handler(websocket, message)
+        except ConnectionClosed as e:
+            self.logger.debug(f"客户端断开: {e.code} (code={e.code}, reason='{e.reason}')")
+        except Exception as e:
+            self.logger.critical(f"客户端异常: {e}")
+
+    async def main(self):
+        async with serve(self.handle, self.host, self.port, max_size=None):
+            self.logger.warning(f"Server running on port {self.port}")
+            await self.stop_event.wait()  # 阻塞直到设置 stop
+
+    def run(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_until_complete(self.main())
+
 
 def init_account():
     account = Account.get_instance()
@@ -184,7 +399,7 @@ def init_account():
 
 
 class AuthMode(Enum):
-    ACCOUNT = "Account Mode (Recommended)"
+    ACCOUNT = "Backup Mode"
     API = "API Key Mode"
 
 
