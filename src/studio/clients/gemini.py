@@ -29,7 +29,6 @@ class NanoBanana(StudioClient):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.help_url = "https://ai.google.dev/gemini-api/docs/image-generation?hl=zh-cn"
         self.input_image_type = "CameraRender"
         self.prompt = ""
         self.reference_images: list[str] = []
