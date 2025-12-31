@@ -2,6 +2,7 @@ import bpy
 
 from .menu import SelectMaskMenu, RenderButtonMenu
 from .panel import AIStudioImagePanel, AIStudioHistoryPanel
+from ..icons import previews_icons
 
 clss = [
     AIStudioImagePanel,
@@ -19,7 +20,11 @@ def draw_ai_studio_button(self, context):
 
     layout = self.layout
     col = layout.column()
-    col.operator(AIStudioEntry.bl_idname, text="", icon="LIGHT")
+    icon = previews_icons.get("ai")
+    icon_id = 0
+    if icon:
+        icon_id = icon.icon_id
+    col.operator(AIStudioEntry.bl_idname, text="", icon_value=icon_id)
 
 
 def register():
