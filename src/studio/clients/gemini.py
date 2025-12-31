@@ -125,6 +125,9 @@ class NanoBanana(StudioClient):
         elif action == "delete_image":
             delete_image(self, prop, index)
 
+    def calc_price(self, price_table: dict) -> int | None:
+        return price_table.get("price", {}).get(self.resolution, None)
+
     def new_generate_task(self, account: "Account"):
         if self.is_task_submitting:
             print("有任务正在提交，请稍后")

@@ -106,6 +106,9 @@ class StudioClient(BaseAdapter):
     def add_history(self, item: "StudioHistoryItem"):
         self.history.add(item)
 
+    def calc_price(self, price_table: dict) -> int | None:
+        return 999999
+
     def new_generate_task(self, account: "Account"):
         pass
 
