@@ -17,11 +17,16 @@ def with_scene_render_output_settings(scene: bpy.types.Scene, image_path: str):
     old_fmt = render.image_settings.file_format
 
     render.filepath = image_path
+    if bpy.app.version >= (5, 0):
+        old_media_type = render.image_settings.media_type
+        render.image_settings.media_type = "IMAGE"
     render.image_settings.file_format = "PNG"
     try:
         yield
     finally:
         render.filepath = old
+        if bpy.app.version >= (5, 0):
+            render.image_settings.media_type = old_media_type
         render.image_settings.file_format = old_fmt
 
 
