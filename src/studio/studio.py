@@ -977,6 +977,11 @@ class AIStudio(AppHud):
         self.active_client = next(iter(self.clients)) if self.clients else ""
         self.clients_wrappers: dict[str, StudioWrapper] = {}
         self.error_log = ErrorLog(self)
+        self.urls = {
+            "Disclaimers": "https://shimo.im/docs/1d3aMnalmBf5ep3g/",
+            "Feedback": "https://shimo.im/docs/vVqRM5DejgiPwd3y/",
+            "Community": "https://shimo.im/docs/8Nk6ed5w6xsEzRqL/",
+        }
         self.init_clients_wrapper()
 
     def fill_fake_clients(self):
@@ -1624,9 +1629,32 @@ class AIStudio(AppHud):
         if True:
             imgui.push_style_var_y(imgui.StyleVar.ITEM_SPACING, 26)
             self.font_manager.push_h1_font()
-            imgui.text(_T("Disclaimers"))
-            imgui.text(_T("Feedback"))
-            imgui.text(_T("Community"))
+            for misc in ["Disclaimers", "Feedback", "Community"]:
+                imgui.push_id(misc)
+                imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+                imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
+                imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
+                imgui.button(_T(misc))
+                imgui.pop_style_color(3)
+
+                imgui.same_line()
+
+                aw = imgui.get_content_region_avail()[0]
+                bh = imgui.get_text_line_height()
+                bw = aw - bh - imgui.get_style().item_spacing[0]
+                imgui.invisible_button("##" + misc, (bw, bh))
+
+                imgui.same_line()
+
+                imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)
+                imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.WINDOW_R)
+                if CustomWidgets.icon_label_button("url", "", "CENTER", (bh, bh), bh * 0.65):
+                    url = self.urls.get(misc, "")
+                    if url:
+                        webbrowser.open(url)
+                imgui.pop_style_var(1)
+                imgui.pop_style_color(1)
+                imgui.pop_id()
             self.font_manager.pop_font()
             imgui.pop_style_var()
 
@@ -1786,7 +1814,7 @@ class AIStudio(AppHud):
             self.draw_buy()
             imgui.same_line()
             label = _T("Redeem for ice pops")
-            if CustomWidgets.icon_label_button("account_certificate",  label, "CENTER", (bw, bh), isize):
+            if CustomWidgets.icon_label_button("account_certificate", label, "CENTER", (bw, bh), isize):
                 self.redeem_panel.should_draw_redeem = True
             self.redeem_panel.draw()
             imgui.pop_style_var(2)
@@ -1825,7 +1853,7 @@ class AIStudio(AppHud):
                         imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
                         imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
                         aw = imgui.get_content_region_avail()[0]
-                        bh = 44
+                        bh = imgui.get_text_line_height_with_spacing()
                         bw = aw - bh - imgui.get_style().item_spacing[0]
                         imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0)
                         self.font_manager.push_h3_font()
@@ -1838,7 +1866,7 @@ class AIStudio(AppHud):
 
                         imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)
                         if CustomWidgets.icon_label_button("url", "", "CENTER", (bh, bh), 23):
-                            print("Help")
+                            webbrowser.open(wrapper.studio_client.help_url)
                         imgui.pop_style_color(1)
 
                     imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, imgui.get_style().frame_rounding * 0.5)
