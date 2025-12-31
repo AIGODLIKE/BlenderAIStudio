@@ -68,6 +68,9 @@ class GeminiProvider(BaseProvider):
     def generate_image(self, payload: Payload) -> Tuple[bytes, str]:
         raise NotImplementedError
 
+    def _process_resp_json(self, resp) -> dict:
+        return resp
+
 
 class GeminiImageGenerateProvider(GeminiProvider):
     def generate_image(self, payload: Payload) -> Tuple[bytes, str]:
@@ -86,6 +89,7 @@ class GeminiImageGenerateProvider(GeminiProvider):
             self._check_response_status(response)
             resp = response.json()
             self._check_response_custom(resp)
+            resp = self._process_resp_json(resp)
             return _parse_image_data_from_response_json(resp)
         except requests.RequestException as e:
             logger.debug(str(e))
@@ -131,6 +135,12 @@ class AccountGeminiImageProvider(GeminiImageGenerateProvider):
             "X-Auth-T": self.api_key,
             "Content-Type": "application/json",
         }
+
+    def _process_resp_json(self, resp) -> dict:
+        resp = resp.get("data", {})
+        if not resp:
+            raise GeminiAPIError("Invalid response format")
+        return resp
 
     def _check_response_custom(self, resp: dict):
         # {'responseId': 2005309135796568064, 'code': -4, 'errCode': -4000, 'errMsg': '请先登录!'}
