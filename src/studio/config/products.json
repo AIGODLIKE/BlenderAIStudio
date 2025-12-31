@@ -1,0 +1,58 @@
+[
+    {
+        "id": "1",
+        "icon": "product_card_1",
+        "name": "Taster Pack",
+        "certificate": 600,
+        "color": [
+            0.2627,
+            0.8117,
+            0.4862,
+            1
+        ],
+        "price": "6",
+        "url": "https://item.taobao.com/item.htm?ft=t&id=1007803936312&skuId=6168304691735"
+    },
+    {
+        "id": "2",
+        "icon": "product_card_2",
+        "name": "Connoisseur Pack",
+        "certificate": 3300,
+        "color": [
+            0.1647,
+            0.5098,
+            0.8941,
+            1
+        ],
+        "price": "30",
+        "url": "https://item.taobao.com/item.htm?ft=t&id=1007803936312&skuId=6168304691736"
+    },
+    {
+        "id": "3",
+        "icon": "product_card_3",
+        "name": "Deluxe Pack",
+        "certificate": 7200,
+        "color": [
+            0.4745,
+            0.2823,
+            0.9176,
+            1
+        ],
+        "price": "60",
+        "url": "https://item.taobao.com/item.htm?ft=t&id=1007803936312&skuId=6168304691737"
+    },
+    {
+        "id": "4",
+        "icon": "product_card_4",
+        "name": "Premium Mega Pack",
+        "certificate": 13000,
+        "color": [
+            1.0,
+            0.7647,
+            0.0,
+            1
+        ],
+        "price": "100",
+        "url": "https://item.taobao.com/item.htm?ft=t&id=1007803936312&skuId=6168304691738"
+    }
+]

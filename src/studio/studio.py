@@ -1,5 +1,6 @@
 import bpy
 import re
+import json
 import time
 import webbrowser
 import math
@@ -554,6 +555,277 @@ class AIStudioPanelType(Enum):
     HISTORY = "history"
 
 
+class StorePanel:
+    PRODUCTS = []
+
+    def __init__(self, app: "AIStudio"):
+        self.app = app
+        self.redeem_panel = RedeemPanel(app)
+        self.init()
+
+    def init(self):
+        if self.PRODUCTS:
+            return
+        products_path = Path(__file__).parent / "config/products.json"
+        try:
+            json_data = json.loads(products_path.read_text(encoding="utf-8"))
+            self.PRODUCTS.clear()
+            self.PRODUCTS.extend(json_data)
+        except Exception as e:
+            print("加载产品信息失败：", e)
+
+    @property
+    def should_draw_redeem(self):
+        return self.redeem_panel.should_draw_redeem
+
+    @should_draw_redeem.setter
+    def should_draw_redeem(self, value):
+        self.redeem_panel.should_draw_redeem = value
+
+    def draw(self):
+        imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, Const.LP_WINDOW_P)
+        imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.WINDOW_R)
+
+        imgui.push_style_color(imgui.Col.WINDOW_BG, Const.RP_L_BOX_BG)
+        imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
+        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
+        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
+        imgui.push_style_color(imgui.Col.MODAL_WINDOW_DIM_BG, Const.MODAL_WINDOW_DIM_BG)
+
+        self.redeem_panel.draw()
+
+        imgui.pop_style_var(2)
+        imgui.pop_style_color(5)
+
+    def draw_login_panel(self):
+        if self.app.state.is_logged_in():
+            return
+        flags = 0
+        flags |= imgui.ChildFlags.FRAME_STYLE
+        flags |= imgui.ChildFlags.AUTO_RESIZE_Y
+        flags |= imgui.ChildFlags.ALWAYS_AUTO_RESIZE
+
+        with with_child("##Login", (0, 0), child_flags=flags):
+            self.app.font_manager.push_h3_font()
+            bh = imgui.get_text_line_height_with_spacing() * 2
+            if imgui.button(_T("Login/Register"), (-imgui.FLOAT_MIN, bh)):
+                self.app.state.login()
+            self.app.font_manager.pop_font()
+        # --- 底部: 警告信息 (单行全宽) ---
+        imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)
+        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.WINDOW_BG)
+        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.WINDOW_BG)
+        isize = 24
+        label = _T("Support Tool Dev")
+        CustomWidgets.icon_label_button("account_warning", label, "CENTER", (0, 54), isize)
+        imgui.pop_style_color(3)
+
+    def draw_setting_account(self):
+        if not self.app.state.is_logged_in():
+            return
+
+        with with_child("Outer", (0, 0), imgui.ChildFlags.FRAME_STYLE | imgui.ChildFlags.AUTO_RESIZE_Y):
+            bh = 45
+            fpx = imgui.get_style().frame_padding[0]
+            isize = 24
+            aw = imgui.get_content_region_avail()[0]
+            imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R * 0.5)
+            imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, imgui.get_style().frame_padding)
+
+            # --- 表格 1: 邮箱 + 登出
+            bw = aw - bh - imgui.get_style().item_spacing[0]
+            CustomWidgets.icon_label_button("account_email", self.app.state.acount_name, "BETWEEN", (bw, bh), isize, fpx * 2)
+            imgui.same_line()
+            if CustomWidgets.icon_label_button("account_logout", "", "CENTER", (bh, bh), isize):
+                self.app.state.logout()
+
+            # --- 表格 2: Token + 刷新
+            bw = aw - bh - imgui.get_style().item_spacing[0]
+            CustomWidgets.icon_label_button("account_token", str(self.app.state.credits), "BETWEEN", (bw, bh), isize, fpx * 2)
+            imgui.same_line()
+            if CustomWidgets.icon_label_button("account_refresh", "", "CENTER", (bh, bh), isize):
+                print("刷新 Token")
+
+            # --- 表格 3: 功能按钮 (50% + 50%) ---
+            bw = (aw - imgui.get_style().item_spacing[0]) * 0.5
+            label = _T("Store")
+            if CustomWidgets.icon_label_button("account_buy", label, "CENTER", (bw, bh), isize):
+                print("获取冰糕")
+                imgui.open_popup("##Buy")
+            self.draw_buy()
+            imgui.same_line()
+            label = _T("Redeem")
+            if CustomWidgets.icon_label_button("account_certificate", label, "CENTER", (bw, bh), isize):
+                self.app.store_panel.should_draw_redeem = True
+            self.app.store_panel.draw()
+            imgui.pop_style_var(2)
+
+        # --- 底部: 警告信息 (单行全宽) ---
+        imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)
+        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.WINDOW_BG)
+        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.WINDOW_BG)
+        label = _T("Proceeds → open source")
+        CustomWidgets.icon_label_button("account_warning", label, "CENTER", (0, 54), isize)
+        imgui.pop_style_color(3)
+
+    def draw_buy(self):
+        window_size = 1680, 713
+        hh = get_header_panel_height() / self.app.screen_scale
+        sw = self.app.screen_width
+        sh = self.app.screen_height
+        window_pos = (sw - window_size[0]) / 2, (sh - window_size[1] + hh) / 2
+        imgui.set_next_window_pos(window_pos, imgui.Cond.ONCE)
+        imgui.set_next_window_size(window_size, imgui.Cond.ALWAYS)
+        flags = 0
+        flags |= imgui.WindowFlags.NO_RESIZE
+        flags |= imgui.WindowFlags.NO_COLLAPSE
+        flags |= imgui.WindowFlags.NO_TITLE_BAR
+        flags |= imgui.WindowFlags.NO_SCROLL_WITH_MOUSE
+        flags |= imgui.WindowFlags.NO_SCROLLBAR
+        flags |= imgui.WindowFlags.NO_SAVED_SETTINGS
+        imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, Const.LP_WINDOW_P)
+        imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.WINDOW_R)
+
+        imgui.push_style_color(imgui.Col.WINDOW_BG, Const.RP_L_BOX_BG)
+        imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
+        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
+        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
+        imgui.push_style_color(imgui.Col.MODAL_WINDOW_DIM_BG, Const.MODAL_WINDOW_DIM_BG)
+
+        style = imgui.get_style()
+        if imgui.begin_popup_modal("##Buy", False, flags)[0]:
+            imgui.push_style_var(imgui.StyleVar.CELL_PADDING, (style.window_padding[0] * 0.5, 0))
+            # 标题
+            if True:
+                self.app.font_manager.push_h1_font()
+
+                imgui.push_style_var_y(imgui.StyleVar.FRAME_PADDING, 0)
+                imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+                imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
+                imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
+                imgui.button(_T("AGL STORE"))
+                imgui.same_line()
+
+                icon = TexturePool.get_tex_id("settings_header")
+                tex = TexturePool.get_tex(icon)
+                scale = imgui.get_text_line_height() / tex.height
+                imgui.image_button("Buy", icon, (tex.width * scale, tex.height * scale), tint_col=Const.BUTTON_SELECTED)
+                imgui.pop_style_color(3)
+                imgui.same_line()
+
+                imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+                imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
+                imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
+                bh = imgui.get_text_line_height()
+                label = _T("The more, the cheaper.")
+                bw = imgui.calc_text_size(label)[0] + bh * 1.5
+                CustomWidgets.icon_label_button("account_warning", label, "CENTER", (bw, bh))
+                imgui.pop_style_color(3)
+                imgui.same_line()
+
+                h = imgui.get_frame_height()
+                aw = imgui.get_content_region_avail()[0]
+                imgui.dummy((aw - style.item_spacing[0] - h, 0))
+                imgui.same_line()
+                imgui.push_style_color(imgui.Col.BUTTON, Const.CLOSE_BUTTON_NORMAL)
+                imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.CLOSE_BUTTON_ACTIVE)
+                imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.CLOSE_BUTTON_HOVERED)
+                if CustomWidgets.colored_image_button("##CloseBtn", "close", (h, h)):
+                    imgui.close_current_popup()
+                imgui.pop_style_var(1)
+                imgui.pop_style_color(3)
+                self.app.font_manager.pop_font()
+
+            imgui.dummy((0, style.window_padding[0] - style.item_spacing[1] * 2))
+            # 购买规格
+            products = self.app.store_panel.PRODUCTS
+            if imgui.begin_table("##BuyTable", len(products), imgui.TableFlags.SIZING_STRETCH_SAME):
+                for config in products:
+                    imgui.table_next_column()
+                    if self.draw_product_card(config):
+                        imgui.close_current_popup()
+                        self.buy_product(config)
+
+                imgui.end_table()
+
+            imgui.pop_style_var(1)
+            imgui.end_popup()
+
+        imgui.pop_style_var(2)
+        imgui.pop_style_color(5)
+
+    def draw_product_card(self, config: dict[str, str]):
+        product = config["id"]
+        icon = config["icon"]
+        name = config["name"]
+        cert = config["certificate"]
+        color = config["color"]
+        price = config["price"]
+
+        style = imgui.get_style()
+        imgui.push_id(f"Product_{product}")
+        imgui.begin_group()
+        dl = imgui.get_window_draw_list()
+
+        screen_pos = imgui.get_cursor_screen_pos()
+        aw, ah = imgui.get_content_region_avail()
+        clicked = imgui.invisible_button("##ProductCard", (aw, ah))
+        hovered = imgui.is_item_hovered()
+
+        tex = TexturePool.get_tex_id(f"{icon}_gray")
+        if hovered:
+            tex = TexturePool.get_tex_id(icon)
+
+        pmin = imgui.get_item_rect_min()
+        pmax = imgui.get_item_rect_max()
+        dl.add_image_rounded(tex, pmin, pmax, (0, 0), (1, 1), 0xFFFFFFFF, style.frame_rounding * 2)
+
+        imgui.set_cursor_pos((screen_pos[0] + style.frame_padding[0], screen_pos[1] + style.frame_padding[1]))
+        col = imgui.get_color_u32((1, 1, 1, 1))
+        font_manager = self.app.font_manager
+        # 信息1
+        if True:
+            label = _T(name)
+            font_manager.push_h1_font(24)
+            label_width = imgui.calc_text_size(label)[0]
+            dl.add_text((screen_pos[0] + (aw - label_width) * 0.5, screen_pos[1] + 400), col, label)
+            font_manager.pop_font()
+        # 信息2
+        if True:
+            label = _T("[ Ice Pops x %s ]") % cert
+            font_manager.push_h1_font(36)
+            label_width = imgui.calc_text_size(label)[0]
+            dl.add_text((screen_pos[0] + (aw - label_width) * 0.5, screen_pos[1] + 447), col, label)
+            font_manager.pop_font()
+
+        imgui.separator()
+
+        # 底部横条
+        if True:
+            flags = imgui.DrawFlags.ROUND_CORNERS_BOTTOM_LEFT | imgui.DrawFlags.ROUND_CORNERS_BOTTOM_RIGHT
+            col = color if hovered else (56 / 255, 56 / 255, 56 / 255, 1)
+            col = imgui.get_color_u32(col)
+            dl.add_rect_filled((pmin[0], pmax[1] - 70), pmax, col, style.frame_rounding * 2, flags)
+        # 底部文字
+        if True:
+            label = f"￥{price}"
+            font_manager.push_h1_font(30)
+            lw, lh = imgui.calc_text_size(label)
+            col = imgui.get_color_u32((1, 1, 1, 1))
+            dl.add_text((pmin[0] + (aw - lw) * 0.5, pmax[1] - 70 + (70 - lh) * 0.5), col, label)
+            font_manager.pop_font()
+
+        imgui.end_group()
+        imgui.pop_id()
+        return clicked
+
+    def buy_product(self, product: dict):
+        url = product.get("url")
+        if url:
+            webbrowser.open(url)
+        print(f"购买 {product['name']}")
+
+
 class RedeemPanel:
     def __init__(self, app: "AIStudio"):
         self.app = app
@@ -578,22 +850,10 @@ class RedeemPanel:
         self.should_draw_redeem_error = False
 
     def draw(self):
-        imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, Const.LP_WINDOW_P)
-        imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.WINDOW_R)
-
-        imgui.push_style_color(imgui.Col.WINDOW_BG, Const.RP_L_BOX_BG)
-        imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
-        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
-        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
-        imgui.push_style_color(imgui.Col.MODAL_WINDOW_DIM_BG, Const.MODAL_WINDOW_DIM_BG)
-
         self.draw_redeem()
         self.draw_redeem_confirm()
         self.draw_redeem_ok()
         self.draw_redeem_error()
-
-        imgui.pop_style_var(2)
-        imgui.pop_style_color(5)
 
     def draw_redeem(self):
         if self.should_draw_redeem:
@@ -660,7 +920,7 @@ class RedeemPanel:
                 imgui.pop_item_width()
 
                 imgui.table_next_column()
-                if imgui.button(_T("Redeem"), (101, 0)):
+                if imgui.button(_T("Use"), (101, 0)):
                     imgui.close_current_popup()
                     self.should_draw_redeem = False
                     self.should_draw_redeem_confirm = True
@@ -984,7 +1244,7 @@ class AIStudio(AppHud):
         self.state = Account.get_instance()
         self.clients = {c.VENDOR: c() for c in StudioClient.__subclasses__()}
         # self.fill_fake_clients()
-        self.redeem_panel = RedeemPanel(self)
+        self.store_panel = StorePanel(self)
         self.active_client = next(iter(self.clients)) if self.clients else ""
         self.clients_wrappers: dict[str, StudioWrapper] = {}
         self.error_log = ErrorLog(self)
@@ -1674,31 +1934,8 @@ class AIStudio(AppHud):
     def draw_account_panel(self):
         if self.state.auth_mode != AuthMode.ACCOUNT:
             return
-        self.draw_login_panel()
-        self.draw_setting_account()
-
-    def draw_login_panel(self):
-        if self.state.is_logged_in():
-            return
-        flags = 0
-        flags |= imgui.ChildFlags.FRAME_STYLE
-        flags |= imgui.ChildFlags.AUTO_RESIZE_Y
-        flags |= imgui.ChildFlags.ALWAYS_AUTO_RESIZE
-
-        with with_child("##Login", (0, 0), child_flags=flags):
-            self.font_manager.push_h3_font()
-            bh = imgui.get_text_line_height_with_spacing() * 2
-            if imgui.button(_T("Login/Register"), (-imgui.FLOAT_MIN, bh)):
-                self.state.login()
-            self.font_manager.pop_font()
-        # --- 底部: 警告信息 (单行全宽) ---
-        imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)
-        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.WINDOW_BG)
-        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.WINDOW_BG)
-        isize = 24
-        label = _T("Support Tool Dev")
-        CustomWidgets.icon_label_button("account_warning", label, "CENTER", (0, 54), isize)
-        imgui.pop_style_color(3)
+        self.store_panel.draw_login_panel()
+        self.store_panel.draw_setting_account()
 
     def draw_help_button(self):
         help_url = self.get_active_client().help_url
@@ -1789,54 +2026,6 @@ class AIStudio(AppHud):
             imgui.pop_style_var(4)
             imgui.pop_item_width()
         imgui.pop_style_color(1)
-
-    def draw_setting_account(self):
-        if not self.state.is_logged_in():
-            return
-
-        with with_child("Outer", (0, 0), imgui.ChildFlags.FRAME_STYLE | imgui.ChildFlags.AUTO_RESIZE_Y):
-            bh = 45
-            fpx = imgui.get_style().frame_padding[0]
-            isize = 24
-            aw = imgui.get_content_region_avail()[0]
-            imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R * 0.5)
-            imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, imgui.get_style().frame_padding)
-
-            # --- 表格 1: 邮箱 + 登出
-            bw = aw - bh - imgui.get_style().item_spacing[0]
-            CustomWidgets.icon_label_button("account_email", self.state.acount_name, "BETWEEN", (bw, bh), isize, fpx * 2)
-            imgui.same_line()
-            if CustomWidgets.icon_label_button("account_logout", "", "CENTER", (bh, bh), isize):
-                self.state.logout()
-
-            # --- 表格 2: Token + 刷新
-            bw = aw - bh - imgui.get_style().item_spacing[0]
-            CustomWidgets.icon_label_button("account_token", str(self.state.credits), "BETWEEN", (bw, bh), isize, fpx * 2)
-            imgui.same_line()
-            if CustomWidgets.icon_label_button("account_refresh", "", "CENTER", (bh, bh), isize):
-                print("刷新 Token")
-
-            # --- 表格 3: 功能按钮 (50% + 50%) ---
-            bw = (aw - imgui.get_style().item_spacing[0]) * 0.5
-            label = _T("Store")
-            if CustomWidgets.icon_label_button("account_buy", label, "CENTER", (bw, bh), isize):
-                print("获取冰糕")
-                imgui.open_popup("##Buy")
-            self.draw_buy()
-            imgui.same_line()
-            label = _T("Redeem Now")
-            if CustomWidgets.icon_label_button("account_certificate", label, "CENTER", (bw, bh), isize):
-                self.redeem_panel.should_draw_redeem = True
-            self.redeem_panel.draw()
-            imgui.pop_style_var(2)
-
-        # --- 底部: 警告信息 (单行全宽) ---
-        imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)
-        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.WINDOW_BG)
-        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.WINDOW_BG)
-        label = _T("Proceeds → open source")
-        CustomWidgets.icon_label_button("account_warning", label, "CENTER", (0, 54), isize)
-        imgui.pop_style_color(3)
 
     def draw_api_panel(self):
         if self.state.auth_mode != AuthMode.API:
@@ -1963,187 +2152,6 @@ class AIStudio(AppHud):
                 tip = _T("Set the image resolution via both image size and aspect ratio, and the larger the resolution, the longer the generation time/resource required.")
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             return
-
-    def draw_buy(self):
-        window_size = 1680, 713
-        hh = get_header_panel_height() / self.screen_scale
-        sw = self.screen_width
-        sh = self.screen_height
-        window_pos = (sw - window_size[0]) / 2, (sh - window_size[1] + hh) / 2
-        imgui.set_next_window_pos(window_pos, imgui.Cond.ONCE)
-        imgui.set_next_window_size(window_size, imgui.Cond.ALWAYS)
-        flags = 0
-        flags |= imgui.WindowFlags.NO_RESIZE
-        flags |= imgui.WindowFlags.NO_COLLAPSE
-        flags |= imgui.WindowFlags.NO_TITLE_BAR
-        flags |= imgui.WindowFlags.NO_SCROLL_WITH_MOUSE
-        flags |= imgui.WindowFlags.NO_SCROLLBAR
-        flags |= imgui.WindowFlags.NO_SAVED_SETTINGS
-        imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, Const.LP_WINDOW_P)
-        imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.WINDOW_R)
-
-        imgui.push_style_color(imgui.Col.WINDOW_BG, Const.RP_L_BOX_BG)
-        imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
-        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
-        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
-        imgui.push_style_color(imgui.Col.MODAL_WINDOW_DIM_BG, Const.MODAL_WINDOW_DIM_BG)
-
-        style = imgui.get_style()
-        if imgui.begin_popup_modal("##Buy", False, flags)[0]:
-            imgui.push_style_var(imgui.StyleVar.CELL_PADDING, (style.window_padding[0] * 0.5, 0))
-            # 标题
-            if True:
-                self.font_manager.push_h1_font()
-
-                imgui.push_style_var_y(imgui.StyleVar.FRAME_PADDING, 0)
-                imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
-                imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
-                imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
-                imgui.button(_T("AGL STORE"))
-                imgui.same_line()
-
-                icon = TexturePool.get_tex_id("settings_header")
-                tex = TexturePool.get_tex(icon)
-                scale = imgui.get_text_line_height() / tex.height
-                imgui.image_button("Buy", icon, (tex.width * scale, tex.height * scale), tint_col=Const.BUTTON_SELECTED)
-                imgui.pop_style_color(3)
-                imgui.same_line()
-
-                imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
-                imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
-                imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
-                bh = imgui.get_text_line_height()
-                label = _T("The more, the cheaper.")
-                bw = imgui.calc_text_size(label)[0] + bh * 1.5
-                CustomWidgets.icon_label_button("account_warning", label, "CENTER", (bw, bh))
-                imgui.pop_style_color(3)
-                imgui.same_line()
-
-                h = imgui.get_frame_height()
-                aw = imgui.get_content_region_avail()[0]
-                imgui.dummy((aw - style.item_spacing[0] - h, 0))
-                imgui.same_line()
-                imgui.push_style_color(imgui.Col.BUTTON, Const.CLOSE_BUTTON_NORMAL)
-                imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.CLOSE_BUTTON_ACTIVE)
-                imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.CLOSE_BUTTON_HOVERED)
-                if CustomWidgets.colored_image_button("##CloseBtn", "close", (h, h)):
-                    imgui.close_current_popup()
-                imgui.pop_style_var(1)
-                imgui.pop_style_color(3)
-                self.font_manager.pop_font()
-
-            imgui.dummy((0, style.window_padding[0] - style.item_spacing[1] * 2))
-            # 购买规格
-            products = [
-                {
-                    "id": "1",
-                    "name": "Taster Pack",
-                    "certificate": 600,
-                    "color": (67 / 255, 207 / 255, 124 / 255, 1),
-                    "price": "6",
-                },
-                {
-                    "id": "2",
-                    "name": "Connoisseur Pack",
-                    "certificate": 3300,
-                    "color": (42 / 255, 130 / 255, 228 / 255, 1),
-                    "price": "30",
-                },
-                {
-                    "id": "3",
-                    "name": "Deluxe Pack",
-                    "certificate": 7200,
-                    "color": (121 / 255, 72 / 255, 234 / 255, 1),
-                    "price": "60",
-                },
-                {
-                    "id": "4",
-                    "name": "Premium Mega Pack",
-                    "certificate": 13000,
-                    "color": (255 / 255, 195 / 255, 0 / 255, 1),
-                    "price": "100",
-                },
-            ]
-            if imgui.begin_table("##BuyTable", len(products), imgui.TableFlags.SIZING_STRETCH_SAME):
-                for config in products:
-                    imgui.table_next_column()
-                    if self.draw_product_card(config):
-                        imgui.close_current_popup()
-                        self.buy_product(config)
-
-                imgui.end_table()
-
-            imgui.pop_style_var(1)
-            imgui.end_popup()
-
-        imgui.pop_style_var(2)
-        imgui.pop_style_color(5)
-
-    def draw_product_card(self, config: dict[str, str]):
-        product = config["id"]
-        name = config["name"]
-        cert = config["certificate"]
-        color = config["color"]
-        price = config["price"]
-
-        style = imgui.get_style()
-        imgui.push_id(f"Product_{product}")
-        imgui.begin_group()
-        dl = imgui.get_window_draw_list()
-
-        screen_pos = imgui.get_cursor_screen_pos()
-        aw, ah = imgui.get_content_region_avail()
-        clicked = imgui.invisible_button("##ProductCard", (aw, ah))
-        hovered = imgui.is_item_hovered()
-
-        tex = TexturePool.get_tex_id(f"product_card_{product}_gray")
-        if hovered:
-            tex = TexturePool.get_tex_id(f"product_card_{product}")
-
-        pmin = imgui.get_item_rect_min()
-        pmax = imgui.get_item_rect_max()
-        dl.add_image_rounded(tex, pmin, pmax, (0, 0), (1, 1), 0xFFFFFFFF, style.frame_rounding * 2)
-
-        imgui.set_cursor_pos((screen_pos[0] + style.frame_padding[0], screen_pos[1] + style.frame_padding[1]))
-        col = imgui.get_color_u32((1, 1, 1, 1))
-        # 信息1
-        if True:
-            label = _T(name)
-            self.font_manager.push_h1_font(24)
-            label_width = imgui.calc_text_size(label)[0]
-            dl.add_text((screen_pos[0] + (aw - label_width) * 0.5, screen_pos[1] + 400), col, label)
-            self.font_manager.pop_font()
-        # 信息2
-        if True:
-            label = _T("[ Ice Pops x %s ]") % cert
-            self.font_manager.push_h1_font(36)
-            label_width = imgui.calc_text_size(label)[0]
-            dl.add_text((screen_pos[0] + (aw - label_width) * 0.5, screen_pos[1] + 447), col, label)
-            self.font_manager.pop_font()
-
-        imgui.separator()
-
-        # 底部横条
-        if True:
-            flags = imgui.DrawFlags.ROUND_CORNERS_BOTTOM_LEFT | imgui.DrawFlags.ROUND_CORNERS_BOTTOM_RIGHT
-            col = color if hovered else (56 / 255, 56 / 255, 56 / 255, 1)
-            col = imgui.get_color_u32(col)
-            dl.add_rect_filled((pmin[0], pmax[1] - 70), pmax, col, style.frame_rounding * 2, flags)
-        # 底部文字
-        if True:
-            label = f"￥{price}"
-            self.font_manager.push_h1_font(30)
-            lw, lh = imgui.calc_text_size(label)
-            col = imgui.get_color_u32((1, 1, 1, 1))
-            dl.add_text((pmin[0] + (aw - lw) * 0.5, pmax[1] - 70 + (70 - lh) * 0.5), col, label)
-            self.font_manager.pop_font()
-
-        imgui.end_group()
-        imgui.pop_id()
-        return clicked
-
-    def buy_product(self, product: dict):
-        print(f"购买 {product['name']}")
 
     def test_webp_animation(self):
         for i, image in enumerate(Path.home().joinpath("Desktop/webp").glob("*.webp")):
