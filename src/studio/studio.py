@@ -1532,7 +1532,7 @@ class AIStudio(AppHud):
             imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
             imgui.button(_T("AI STUDIO"))
             imgui.same_line()
-            icon = TexturePool.get_tex_id("beta_header")
+            icon = TexturePool.get_tex_id("lite_header")
             tex = TexturePool.get_tex(icon)
             scale = imgui.get_text_line_height() / tex.height
             imgui.image_button("", icon, (tex.width * scale, tex.height * scale), tint_col=Const.BUTTON_SELECTED)
