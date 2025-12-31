@@ -30,7 +30,7 @@ error_translations = (
 )
 
 studio_panel_translations = (
-    ("Start", "开始AI渲染", STUDIO_TCTX),
+    ("Start", "运行", STUDIO_TCTX),
     ("Task Submitting...", "任务提交中...", None),
     ("Rendering", "渲染中", None),
     ("Stop AI Rendering", "停止AI渲染", None),
@@ -97,6 +97,8 @@ studio_panel_translations = (
     ("Deluxe Pack", "大型畅享礼包", None),
     ("Premium Mega Pack", "巨型豪华礼包", None),
     ("[ Ice Pops x %s ]", "[ 冰糕x%s ]", None),
+    ("Waiting for login", "等待登录", None),
+    ("(%s/use)", "(%s/次)", None),
 )
 
 task_translations = (
