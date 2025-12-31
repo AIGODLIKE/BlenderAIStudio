@@ -5,6 +5,7 @@ import webbrowser
 import math
 import platform
 import subprocess
+from bpy.app.translations import pgettext as _T
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -359,78 +360,40 @@ class StudioHistoryItemViewer:
                         imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 0)
                         # 编辑
                         if True:
-                            label = "编辑"
                             style = imgui.get_style()
                             bh = h1 / 2 - style.cell_padding[1] * 2 - style.frame_padding[1]
                             imgui.table_next_column()
-                            if imgui.button("##编辑", (-imgui.FLT_MIN, bh)):
+                            if CustomWidgets.icon_label_button("image_edit", _T("Edit"), "BETWEEN", (0, bh)):
                                 print("编辑图片")
                                 image = self.item.output_file
                                 meta = self.item.stringify()
                                 context = bpy.context.copy()
                                 Timer.put((edit_image_with_meta_and_context, image, meta, context))
                             if imgui.is_item_hovered():
-                                title = "编辑图像"
-                                tip = "打开图像编辑器，编辑当前图像。（可执行重绘、融图等编辑操作）"
+                                title = _T("Edit Image")
+                                tip = _T("Open image editor and edit current image.")
                                 imgui.set_next_window_size((720, 0))
                                 AppHelperDraw.draw_tips_with_title(app, [tip], title)
-                            dl = imgui.get_window_draw_list()
-                            pmin = imgui.get_item_rect_min()
-                            pmax = imgui.get_item_rect_max()
-                            lh = imgui.get_text_line_height()
-                            text_width = imgui.calc_text_size(label)[0]
-                            pcenter = (pmin[0] + pmax[0]) * 0.5, (pmin[1] + pmax[1]) * 0.5
-                            content_width = text_width + lh + style.item_spacing[0]
-                            content_height = lh
-
-                            icon = TexturePool.get_tex_id("image_edit")
-                            ipmin = pcenter[0] - content_width * 0.5, pcenter[1] - content_height * 0.5
-                            ipmax = ipmin[0] + content_height, pcenter[1] + content_height * 0.5
-                            dl.add_image(icon, ipmin, ipmax)
-
-                            col = imgui.get_color_u32(imgui.get_style().colors[imgui.Col.TEXT])
-                            tpos = pcenter[0] - content_width * 0.5 + lh + style.item_spacing[0], pcenter[1] - content_height * 0.5
-                            dl.add_text(tpos, col, label)
 
                         # 细节
                         if True:
-                            label = "详情"
                             style = imgui.get_style()
                             bh = h1 / 2 - style.cell_padding[1] * 2 - style.frame_padding[1]
-
                             imgui.table_next_column()
                             old_show_detail = self.item.show_detail
                             imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_SELECTED)
                             if old_show_detail:
                                 imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON_SELECTED)
-                            if imgui.button("##详情", (-imgui.FLT_MIN, bh)):
+                            if CustomWidgets.icon_label_button("image_detail", _T("More"), "BETWEEN", (0, bh)):
                                 self.item.show_detail = not self.item.show_detail
                             if imgui.is_item_hovered():
-                                title = "图像详情"
-                                tip = "查看图像生成信息，例如提示词、生成时间等内容"
+                                title = _T("Details")
+                                tip = _T("View generated image details like prompt, generation time, etc.")
                                 imgui.set_next_window_size((550, 0))
                                 AppHelperDraw.draw_tips_with_title(app, [tip], title)
                             if old_show_detail:
                                 imgui.pop_style_color(1)
                             imgui.pop_style_color(1)
-
-                            dl = imgui.get_window_draw_list()
-                            pmin = imgui.get_item_rect_min()
-                            pmax = imgui.get_item_rect_max()
-                            lh = imgui.get_text_line_height()
-                            text_width = imgui.calc_text_size(label)[0]
-                            pcenter = (pmin[0] + pmax[0]) * 0.5, (pmin[1] + pmax[1]) * 0.5
-                            content_width = text_width + lh + style.item_spacing[0]
-                            content_height = lh
-
-                            icon = TexturePool.get_tex_id("image_detail")
-                            ipmin = pcenter[0] - content_width * 0.5, pcenter[1] - content_height * 0.5
-                            ipmax = ipmin[0] + content_height, pcenter[1] + content_height * 0.5
-                            dl.add_image(icon, ipmin, ipmax)
-
-                            col = imgui.get_color_u32(imgui.get_style().colors[imgui.Col.TEXT])
-                            tpos = pcenter[0] - content_width * 0.5 + lh + style.item_spacing[0], pcenter[1] - content_height * 0.5
-                            dl.add_text(tpos, col, label)
 
                         imgui.end_table()
                     imgui.pop_style_var(1)
@@ -440,7 +403,7 @@ class StudioHistoryItemViewer:
 
                 imgui.end_table()
             if self.item.show_detail:
-                imgui.text("提示词")
+                imgui.text(_T("Prompt"))
                 prompt = self.item.metadata.get("prompt", "No prompt found")
                 h = imgui.get_text_line_height()
                 imgui.same_line(imgui.get_content_region_avail()[0] - h)
@@ -485,7 +448,7 @@ class StudioHistoryItemViewer:
                 imgui.dummy((0, 0))
                 imgui.image(icon, (h, h))
                 imgui.same_line()
-                imgui.text(f"{self.item.vendor}生成")
+                imgui.text(_T("Generated by %s") % self.item.vendor)
 
                 icon = TexturePool.get_tex_id("image_info_timestamp")
                 imgui.dummy((0, 0))
@@ -499,10 +462,10 @@ class StudioHistoryItemViewer:
                 aw = imgui.get_content_region_avail()
                 bw = (aw[0] - fp[0]) * 0.5
 
-                if CustomWidgets.icon_label_button("prompt_copy", "复制", "CENTER", (bw, 0)):
+                if CustomWidgets.icon_label_button("prompt_copy", _T("Copy"), "CENTER", (bw, 0)):
                     self.copy_image()
                 imgui.same_line()
-                if CustomWidgets.icon_label_button("image_export", "导出", "CENTER", (bw, 0)):
+                if CustomWidgets.icon_label_button("image_export", _T("Export"), "CENTER", (bw, 0)):
                     self.export_image()
                 imgui.pop_style_var()
 
@@ -648,7 +611,7 @@ class RedeemPanel:
                 imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
                 imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
                 imgui.push_style_var_x(imgui.StyleVar.FRAME_PADDING, 0)
-                imgui.button("使用兑换券")
+                imgui.button(_T("Use Redeem Code"))
                 imgui.pop_style_var(1)
                 imgui.same_line()
 
@@ -674,7 +637,7 @@ class RedeemPanel:
                 self.app.font_manager.pop_font()
 
             imgui.dummy((0, style.window_padding[0] - style.item_spacing[1] * 2))
-            imgui.text("请输入兑换码")
+            imgui.text(_T("Please enter your redeem code"))
             imgui.dummy((0, style.window_padding[0] - style.item_spacing[1] * 2))
             # 兑换规格
             imgui.push_style_color(imgui.Col.FRAME_BG, Const.FRAME_BG)
@@ -689,7 +652,7 @@ class RedeemPanel:
                 imgui.pop_item_width()
 
                 imgui.table_next_column()
-                if imgui.button("兑换", (101, 0)):
+                if imgui.button(_T("Redeem"), (101, 0)):
                     imgui.close_current_popup()
                     self.should_draw_redeem = False
                     self.should_draw_redeem_confirm = True
@@ -725,7 +688,7 @@ class RedeemPanel:
                 imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
 
                 imgui.push_style_var_x(imgui.StyleVar.FRAME_PADDING, 0)
-                imgui.button("确认兑换？")
+                imgui.button(_T("Confirm to Redeem?"))
                 imgui.pop_style_var(1)
 
                 imgui.pop_style_color(3)
@@ -748,11 +711,11 @@ class RedeemPanel:
 
             imgui.dummy((0, style.window_padding[0] - style.item_spacing[1] * 2))
             redeem_value = self.get_redeem_value()
-            imgui.text(f"兑换后，您将获得{redeem_value}冰糕(积分)")
+            imgui.text(_T("You will redeem %s ice pops(credits)") % redeem_value)
             imgui.dummy((0, style.window_padding[0] - style.item_spacing[1] * 2))
 
             imgui.table_next_column()
-            if imgui.button("确定", (101, 0)):
+            if imgui.button(_T("OK"), (101, 0)):
                 imgui.close_current_popup()
                 self.should_draw_redeem_confirm = False
                 if self.is_redeem_code_valid():
@@ -767,7 +730,7 @@ class RedeemPanel:
 
             imgui.same_line()
 
-            if imgui.button("取消", (101, 0)):
+            if imgui.button(_T("Cancel"), (101, 0)):
                 imgui.close_current_popup()
                 self.clear_redeem()
 
@@ -795,7 +758,7 @@ class RedeemPanel:
                 imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
                 imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
                 imgui.push_style_var_x(imgui.StyleVar.FRAME_PADDING, 0)
-                imgui.button("兑换成功~")
+                imgui.button(_T("Redeem Success!"))
                 imgui.pop_style_var(1)
                 imgui.pop_style_color(3)
                 imgui.same_line()
@@ -816,9 +779,9 @@ class RedeemPanel:
 
             imgui.dummy((0, style.window_padding[0] - style.item_spacing[1] * 2))
             redeem_value = self.get_redeem_value()
-            imgui.text(f"您已获得{redeem_value}冰糕(积分)，注意刷新")
+            imgui.text(_T("You have obtained %s ice pops(credits)") % redeem_value)
             imgui.dummy((0, style.window_padding[0] - style.item_spacing[1] * 2))
-            if imgui.button("知道啦"):
+            if imgui.button(_T("Got it!")):
                 self.should_draw_redeem_success = False
                 imgui.close_current_popup()
                 self.clear_redeem()
@@ -847,7 +810,7 @@ class RedeemPanel:
                 imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
                 imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
                 imgui.push_style_var_x(imgui.StyleVar.FRAME_PADDING, 0)
-                imgui.button("兑换失败~QAQ")
+                imgui.button(_T("Redeem Failed ~ QAQ"))
                 imgui.pop_style_var(1)
                 imgui.pop_style_color(3)
                 imgui.same_line()
@@ -866,8 +829,8 @@ class RedeemPanel:
                 imgui.pop_style_color(3)
                 self.app.font_manager.pop_font()
 
-            imgui.text("兑换码错误或已被使用，请检查或联系客服")
-            if imgui.button("退出", (101, 0)):
+            imgui.text(_T("Redeem Code Error or Already Used, Please Check or Contact Customer Service"))
+            if imgui.button(_T("Exit"), (101, 0)):
                 imgui.close_current_popup()
                 self.clear_redeem()
             imgui.end_popup()
@@ -1311,7 +1274,7 @@ class AIStudio(AppHud):
             imgui.table_setup_column("#EngineEle4", imgui.TableColumnFlags.WIDTH_FIXED, 0, 3)
             imgui.table_next_column()
             self.font_manager.push_h2_font()
-            imgui.text("引擎")
+            imgui.text(_T("Engine"))
             self.font_manager.pop_font()
 
             # 小字
@@ -1389,17 +1352,17 @@ class AIStudio(AppHud):
                 task_state: TaskState = status.get("state", "")
                 is_rendering = False
                 show_stop_btn = False
-                label = "  开始AI渲染"
+                label = "  " + _T("Start AI Rendering")
                 if client.is_task_submitting:
-                    label = "  任务提交中"
+                    label = "  " + _T("Task Submitting...")
                 if task_state == "running":
                     is_rendering = True
                     elapsed_time = client.query_task_elapsed_time()
-                    label = f"  渲染中({elapsed_time:.1f})s"
+                    label = f"  {_T('Rendering')}({elapsed_time:.1f})s"
                     rmin = imgui.get_cursor_screen_pos()
                     rmax = (rmin[0] + full_width, rmin[1] + gen_btn_height)
                     if imgui.is_mouse_hovering_rect(rmin, rmax):
-                        label = "  停止AI渲染"
+                        label = "  " + _T("Stop AI Rendering")
                         show_stop_btn = True
                 col_btn = Const.SLIDER_NORMAL
                 col_btn_hover = (77 / 255, 161 / 255, 255 / 255, 1)
@@ -1485,8 +1448,8 @@ class AIStudio(AppHud):
                         imgui.pop_style_color()
                 imgui.end_combo()
             if imgui.is_item_hovered():
-                title = "选择生成式引擎"
-                tip = "选择引擎并填写API，即可无缝在Blender中使用AI.注意：本工具仅具备连接服务功能，生成内容&费用以API提供方为准."
+                title = _T("Please Select Generation Engine")
+                tip = _T("Select Engine and Fill API, You can use AI in Blender seamlessly. Note: This tool only has the function of connecting to the service. The generated content & fees are subject to the provider.")
                 imgui.set_next_window_size((759, 0))
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             imgui.pop_style_color(2)
@@ -1506,7 +1469,7 @@ class AIStudio(AppHud):
             imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
             imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
             imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
-            imgui.button("历史")
+            imgui.button(_T("History"))
             imgui.same_line()
             icon = TexturePool.get_tex_id("history_header")
             tex = TexturePool.get_tex(icon)
@@ -1526,7 +1489,7 @@ class AIStudio(AppHud):
             imgui.table_setup_column("#EngineEle4", imgui.TableColumnFlags.WIDTH_FIXED, 0, 3)
             imgui.table_next_column()
             self.font_manager.push_h2_font()
-            imgui.text("队列")
+            imgui.text(_T("List"))
             self.font_manager.pop_font()
 
             # 小字
@@ -1591,7 +1554,7 @@ class AIStudio(AppHud):
             imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
             imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
             imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
-            imgui.button("设置")
+            imgui.button(_T("Settings"))
             imgui.same_line()
             icon = TexturePool.get_tex_id("settings_header")
             tex = TexturePool.get_tex(icon)
@@ -1611,7 +1574,7 @@ class AIStudio(AppHud):
             imgui.table_setup_column("#EngineEle4", imgui.TableColumnFlags.WIDTH_FIXED, 0, 3)
             imgui.table_next_column()
             self.font_manager.push_h2_font()
-            imgui.text("服务")
+            imgui.text(_T("Service"))
             self.font_manager.pop_font()
 
             # 小字
@@ -1661,9 +1624,9 @@ class AIStudio(AppHud):
         if True:
             imgui.push_style_var_y(imgui.StyleVar.ITEM_SPACING, 26)
             self.font_manager.push_h1_font()
-            imgui.text("免责声明")
-            imgui.text("反馈问题")
-            imgui.text("交流群")
+            imgui.text(_T("Disclaimers"))
+            imgui.text(_T("Feedback"))
+            imgui.text(_T("Community"))
             self.font_manager.pop_font()
             imgui.pop_style_var()
 
@@ -1686,7 +1649,7 @@ class AIStudio(AppHud):
         with with_child("##Login", (0, 0), child_flags=flags):
             self.font_manager.push_h3_font()
             bh = imgui.get_text_line_height_with_spacing() * 2
-            if imgui.button("登录/注册", (-imgui.FLOAT_MIN, bh)):
+            if imgui.button(_T("Login/Register"), (-imgui.FLOAT_MIN, bh)):
                 self.state.login()
             self.font_manager.pop_font()
         # --- 底部: 警告信息 (单行全宽) ---
@@ -1694,7 +1657,8 @@ class AIStudio(AppHud):
         imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.WINDOW_BG)
         imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.WINDOW_BG)
         isize = 24
-        CustomWidgets.icon_label_button("account_warning", "使用此服务，可支援工具开发", "CENTER", (0, 54), isize)
+        label = _T("Use this mode to support tool development")
+        CustomWidgets.icon_label_button("account_warning", label, "CENTER", (0, 54), isize)
         imgui.pop_style_color(3)
 
     def draw_help_button(self):
@@ -1707,7 +1671,7 @@ class AIStudio(AppHud):
         imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
         imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
         self.font_manager.push_h1_font(24)
-        label = " 帮助"
+        label = " " + _T("Help")
         label_size = imgui.calc_text_size(label)
         if imgui.button(f"##{label}", (112, 44)):
             webbrowser.open(help_url)
@@ -1743,7 +1707,7 @@ class AIStudio(AppHud):
         imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
 
         self.font_manager.push_h1_font(24)
-        label = "缓存目录"
+        label = _T("Output Directory")
         label_size = imgui.calc_text_size(label)
         fp = imgui.get_style().window_padding
         icon_size = imgui.get_text_line_height_with_spacing()
@@ -1771,12 +1735,12 @@ class AIStudio(AppHud):
             imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
             items = AuthMode
             aw = imgui.get_content_region_avail()[0]
-            if imgui.begin_combo("##Item", self.state.auth_mode.value):
+            if imgui.begin_combo("##Item", _T(self.state.auth_mode.value)):
                 for item in items:
                     is_selected = self.state.auth_mode == item
                     if is_selected:
                         imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
-                    if imgui.button(item.value, (aw, 0)):
+                    if imgui.button(_T(item.value), (aw, 0)):
                         self.state.auth_mode = item
                         imgui.close_current_popup()
                     if is_selected:
@@ -1815,12 +1779,14 @@ class AIStudio(AppHud):
 
             # --- 表格 3: 功能按钮 (50% + 50%) ---
             bw = (aw - imgui.get_style().item_spacing[0]) * 0.5
-            if CustomWidgets.icon_label_button("account_buy", "获取冰糕", "CENTER", (bw, bh), isize):
+            label = _T("Buy ice pops")
+            if CustomWidgets.icon_label_button("account_buy", label, "CENTER", (bw, bh), isize):
                 print("获取冰糕")
                 imgui.open_popup("##Buy")
             self.draw_buy()
             imgui.same_line()
-            if CustomWidgets.icon_label_button("account_certificate", "兑换冰糕", "CENTER", (bw, bh), isize):
+            label = _T("Redeem for ice pops")
+            if CustomWidgets.icon_label_button("account_certificate",  label, "CENTER", (bw, bh), isize):
                 self.redeem_panel.should_draw_redeem = True
             self.redeem_panel.draw()
             imgui.pop_style_var(2)
@@ -1829,7 +1795,8 @@ class AIStudio(AppHud):
         imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)
         imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.WINDOW_BG)
         imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.WINDOW_BG)
-        CustomWidgets.icon_label_button("account_warning", "收益将 100% 用于支持开源开发", "CENTER", (0, 54), isize)
+        label = _T("The proceeds will be 100% allocated to support open-source development.")
+        CustomWidgets.icon_label_button("account_warning", label, "CENTER", (0, 54), isize)
         imgui.pop_style_color(3)
 
     def draw_api_panel(self):
@@ -1840,7 +1807,8 @@ class AIStudio(AppHud):
         imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.WINDOW_BG)
         isize = 24
         self.font_manager.push_h3_font(20)
-        CustomWidgets.icon_label_button("account_warning", "服务由API方提供，注意网络畅通", "CENTER", (0, 54), isize)
+        label = _T("The service is provided by the API provider. Please ensure network connectivity.")
+        CustomWidgets.icon_label_button("account_warning", label, "CENTER", (0, 54), isize)
         self.font_manager.pop_font()
         imgui.pop_style_color(3)
         flags = imgui.ChildFlags.FRAME_STYLE | imgui.ChildFlags.AUTO_RESIZE_Y
@@ -1901,11 +1869,11 @@ class AIStudio(AppHud):
     def draw_wrapper_widget_spec(self, wrapper: StudioWrapper, widget: WidgetDescriptor):
         if widget.widget_name == "input_image_type" and imgui.is_item_hovered():
             imgui.set_next_window_size((630, 0))
-            title = "首图模式"
+            title = _T("First Image Mode")
             tips = [
-                "活动相机将被用于输出，请选择输出输出模式。",
-                "相机渲染=合并结果",
-                "相机深度=雾场（雾场效果可在世界环境>雾场通道设置）",
+                _T("The activity camera will be used for output, please select the output mode."),
+                _T("CameraRender equal to Composition Result."),
+                _T("CameraDepth equal to Mist (Mist effect can be set in World > Mist Pass)."),
             ]
             AppHelperDraw.draw_tips_with_title(self, tips, title)
             return
@@ -1936,8 +1904,8 @@ class AIStudio(AppHud):
 
             if imgui.is_item_hovered():
                 imgui.set_next_window_size((580, 0))
-                title = "提示词优化"
-                tip = "启用提示词优化，可提升描述准确性，以及生成内容的安全性"
+                title = _T("Prompt Optimization")
+                tip = _T("Enable Prompt Optimization to improve the quality of the generated image and the safety of the content.")
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             imgui.end_child()
             imgui.set_cursor_pos(pos)
@@ -1945,15 +1913,15 @@ class AIStudio(AppHud):
         if widget.widget_name == "size_config":
             if imgui.is_item_hovered():
                 imgui.set_next_window_size((450, 0))
-                title = "图像比例"
-                tip = "设置生成图像的长宽比，以满足生成需求"
+                title = _T("Image Size Config")
+                tip = _T("Set the image size for the generated image.")
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             return
         if widget.widget_name == "resolution":
             if imgui.is_item_hovered():
                 imgui.set_next_window_size((710, 0))
-                title = "图像分辨率"
-                tip = "结合图像比例，设置分辨率，分辨率越大需要更多的生成时间/资源"
+                title = _T("Image Resolution")
+                tip = _T("Set the image resolution via both image size and aspect ratio, and the larger the resolution, the longer the generation time/resource required.")
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             return
 

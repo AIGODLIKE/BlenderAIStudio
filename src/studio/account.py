@@ -2,7 +2,7 @@ import requests
 from typing import Self
 from enum import Enum
 from threading import Thread
-
+from bpy.app.translations import pgettext as _T
 from .exception import (
     APIRequestException,
     AuthFailedException,
@@ -67,7 +67,7 @@ class Account:
         self.credits = 0
 
     # 兑换积分
-    def redeem_credits(self, code: str):
+    def redeem_credits(self, code: str) -> int:
         url = f"{SERVICE_URL}/v1/billing/redeem-code"
         headers = {
             "token": self.token,
@@ -79,11 +79,11 @@ class Account:
         try:
             resp = requests.post(url, headers=headers, json=payload)
         except ConnectionError:
-            self.push_error("网络连接失败")
-            return
+            self.push_error(_T("Network connection failed"))
+            return 0
         if resp.status_code == 404:
-            self.push_error("兑换失败")
-            return
+            self.push_error(_T("Redeem failed"))
+            return 0
         resp.raise_for_status()
         if resp.status_code == 200:
             resp_json: dict = resp.json()
@@ -110,8 +110,10 @@ class Account:
                 amount = data.get("amount", 0)
                 self.credits += amount
                 print("兑换成功:", amount)
+                return amount
         else:
             print("兑换失败:", resp.status_code, resp.text)
+        return 0
 
     def fetch_credits_price(self):
         if self.price_table:
@@ -123,10 +125,10 @@ class Account:
         try:
             resp = requests.get(url, headers=headers)
         except ConnectionError:
-            self.push_error("网络连接失败")
+            self.push_error(_T("Network connection failed"))
             return
         if resp.status_code == 404:
-            self.push_error("价格列表获取失败")
+            self.push_error(_T("Price fetch failed"))
             return
         resp.raise_for_status()
         if resp.status_code == 200:
@@ -134,12 +136,12 @@ class Account:
             code = resp_json.get("code")
             err_msg = resp_json.get("errMsg")
             if code != 0:
-                self.push_error("获取价格失败:" + err_msg)
+                self.push_error(_T("Price fetch failed") + ": " + err_msg)
                 return
             data: dict = resp_json.get("data", {})
             self.price_table = data
         else:
-            self.push_error("获取价格失败:" + resp.text)
+            self.push_error(_T("Price fetch failed") + ": "  + resp.text)
 
     def fetch_credits(self):
         if self.price_table:
@@ -152,10 +154,10 @@ class Account:
         try:
             resp = requests.get(url, headers=headers)
         except ConnectionError:
-            self.push_error("网络连接失败")
+            self.push_error(_T("Network connection failed"))
             return
         if resp.status_code == 404:
-            self.push_error("价格列表获取失败")
+            self.push_error(_T("Credits fetch failed"))
             return
         resp.raise_for_status()
         if resp.status_code == 200:
@@ -169,12 +171,11 @@ class Account:
                 case (-4, -4001):
                     self.push_error(ToeknExpiredException("Token expired!"))
             if code != 0:
-                self.push_error("获取余额失败:" + err_msg)
+                self.push_error(_T("Credits fetch failed") + ": " + err_msg)
                 return
             self.credits = resp_json.get("data", 0)
         else:
-            self.push_error("获取余额失败:" + resp.text)
-
+            self.push_error(_T("Credits fetch failed") + ": "  + resp.text)
 
 def init_account():
     account = Account.get_instance()
@@ -183,8 +184,8 @@ def init_account():
 
 
 class AuthMode(Enum):
-    ACCOUNT = "账号模式(推荐)"
-    API = "API模式"
+    ACCOUNT = "Account Mode (Recommended)"
+    API = "API Key Mode"
 
 
 def register():
