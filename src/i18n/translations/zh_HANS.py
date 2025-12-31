@@ -31,6 +31,9 @@ error_translations = (
     ("Redeem code error!", "兑换码错误！", None),
     ("Database update error!", "数据库更新错误！", None),
     ("Internal error!", "内部错误！", None),
+    ("Server Status", "服务器状态", None),
+    ("Connected", "已连接", STUDIO_TCTX),
+    ("Disconnected", "连接失败", STUDIO_TCTX),
 )
 
 studio_panel_translations = (
@@ -90,7 +93,7 @@ studio_panel_translations = (
     ("Support Tool Dev", "使用此模式服务，可支援工具开发", None),
     ("Disclaimers", "免责声明", None),
     ("Feedback", "反馈问题", None),
-    ("Community", "社群社区", None),
+    ("Community", "社群社区", STUDIO_TCTX),
     ("Backup Mode", "稳定通道", None),
     ("API Key Mode", "API模式", None),
     ("AI STUDIO", "无限之心", None),
