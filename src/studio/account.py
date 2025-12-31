@@ -33,7 +33,8 @@ except Exception:
     from websockets.exceptions import ConnectionClosedOK, ConnectionClosed
 
 
-SERVICE_URL = "https://api-addon.acggit.com/v1"
+SERVICE_BASE_URL = "https://api-addon.acggit.com"
+SERVICE_URL = f"{SERVICE_BASE_URL}/v1"
 LOGIN_URL = "https://addon-login.acggit.com"
 AUTH_PATH = Path(tempfile.gettempdir(), "aistudio/auth.json")
 try:
@@ -55,6 +56,7 @@ class Account:
         self.auth_mode = AuthMode.ACCOUNT
         self.nickname = ""
         self.logged_in = False
+        self.services_connected = False
         self.credits = 0
         self.token = ""
         self.price_table = {}
@@ -68,6 +70,7 @@ class Account:
         self.error_messages: list = []
         self.waiting_for_login = False
         self.load_account_info_from_local()
+        self.ping_once()
 
     def take_errors(self) -> list:
         errors = self.error_messages[:]
@@ -140,6 +143,17 @@ class Account:
 
         job = Thread(target=run, args=((55441, 55451),), daemon=True)
         job.start()
+
+    def ping_once(self):
+        url = f"{SERVICE_URL}/billing/model-price"
+        headers = {
+            "Content-Type": "application/json",
+        }
+        try:
+            resp = requests.get(url, headers=headers)
+            self.services_connected = resp.status_code == 200
+        except Exception:
+            self.services_connected = False
 
     def load_account_info_from_local(self):
         if not self._AUTH_PATH.exists():

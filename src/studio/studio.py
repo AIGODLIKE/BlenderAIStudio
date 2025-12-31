@@ -672,9 +672,63 @@ class StorePanel:
         imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)
         imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.WINDOW_BG)
         imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.WINDOW_BG)
-        label = _T("Proceeds → open source")
-        CustomWidgets.icon_label_button("account_warning", label, "CENTER", (0, 54), isize)
-        imgui.pop_style_color(3)
+        # 服务器状态
+        if True:
+            label = _T("Server Status") + ":"
+            if self.app.state.services_connected:
+                connect_state = _T("Connected")
+                icon = "cloud_blue"
+                text_col = Const.BUTTON_SELECTED
+            else:
+                connect_state = _T("Disconnected")
+                icon = "cloud_gray"
+                text_col = Const.DISABLE
+
+            # 1. 基础尺寸与位置计算
+            width = imgui.get_content_region_avail()[0]
+            height = 54
+            screen_pos = imgui.get_cursor_screen_pos()
+
+            imgui.button(f"##btn_{icon}_{label}", (width, height))
+
+            dl = imgui.get_window_draw_list()
+            tex_id = TexturePool.get_tex_id(icon)
+
+            icon_w = imgui.get_text_line_height()
+            gap = icon_w * 0.25 if label else 0  # 图标与文字间距
+
+            text_size1 = imgui.calc_text_size(label)
+            text_size2 = imgui.calc_text_size(connect_state)
+
+            # 整体居中: ..[Icon + Text]..
+            content_w = icon_w + gap + text_size1[0] + gap + text_size2[0]
+            start_x = screen_pos[0] + (width - content_w) / 2
+            icon_x = start_x
+            text_x = start_x + icon_w + gap
+
+            height = imgui.get_item_rect_size()[1]
+            icon_y = screen_pos[1] + (height - icon_w) / 2
+            dl.add_image(tex_id, (icon_x, icon_y), (icon_x + icon_w, icon_y + icon_w))
+
+            # 文字1
+            if True:
+                text_y = screen_pos[1] + (height - text_size1[1]) / 2
+                tex_col = imgui.get_style_color_vec4(imgui.Col.TEXT)
+                col = imgui.get_color_u32(tex_col)
+                dl.add_text((text_x, text_y), col, label)
+
+            text_x += text_size1[0] + gap
+
+            # 文字2
+            if True:
+                text_y = screen_pos[1] + (height - text_size2[1]) / 2
+                col = imgui.get_color_u32(text_col)
+                dl.add_text((text_x, text_y), col, connect_state)
+        # 警告信息
+        if True:
+            label = _T("Proceeds → open source")
+            CustomWidgets.icon_label_button("account_warning", label, "CENTER", (0, 54), isize)
+            imgui.pop_style_color(3)
 
     def draw_buy(self):
         window_size = 1680, 713
