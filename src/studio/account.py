@@ -312,6 +312,8 @@ class Account:
         return {}
 
     def fetch_credits(self):
+        if self.auth_mode != AuthMode.ACCOUNT.value:
+            return
         url = f"{SERVICE_URL}/billing/balance"
         headers = {
             "X-Auth-T": self.token,
