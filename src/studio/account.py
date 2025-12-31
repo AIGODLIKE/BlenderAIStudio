@@ -100,7 +100,7 @@ class Account:
         self.waiting_for_login = True
         webbrowser.open(LOGIN_URL)
 
-        async def login_callback(websocket: "WebSocketServerProtocol", event: dict):
+        async def login_callback(server: WebSocketServer, websocket: "WebSocketServerProtocol", event: dict):
             try:
                 data: dict = event.get("data", {})
                 self.load_account_info(data)
@@ -113,6 +113,7 @@ class Account:
                     },
                 }
                 await websocket.send(json.dumps(event))
+                server.stop_event.set()
             except ConnectionClosedOK:
                 pass
 
@@ -341,14 +342,15 @@ class WebSocketServer:
         etype = event.get("type", "_default")
         handler = self._handlers.get(etype, self._default)
         try:
-            await handler(websocket, event)
+            await handler(self, websocket, event)
         except Exception as e:
             self.logger.error(f"Error in handler {handler.__name__}: {e}")
             self.logger.error(traceback.format_exc())
 
-    async def _default(self, websocket: "WebSocketServerProtocol", event: dict):
+    @staticmethod
+    async def _default(server: "WebSocketServer", websocket: "WebSocketServerProtocol", event: dict):
         try:
-            self.logger.warning(f"默认消息: {event}")
+            server.logger.warning(f"默认消息: {event}")
             event = {
                 "type": "default",
                 "data": event,
@@ -357,9 +359,10 @@ class WebSocketServer:
         except ConnectionClosedOK:
             pass
 
-    async def _query_status(self, websocket: "WebSocketServerProtocol", event: dict):
+    @staticmethod
+    async def _query_status(server: "WebSocketServer", websocket: "WebSocketServerProtocol", event: dict):
         try:
-            self.logger.warning(f"查询状态: {event}")
+            server.logger.warning(f"查询状态: {event}")
             event = {
                 "type": "query_status_return",
                 "data": {
