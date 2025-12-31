@@ -615,7 +615,7 @@ class RedeemPanel:
                 imgui.pop_style_var(1)
                 imgui.same_line()
 
-                icon = TexturePool.get_tex_id("settings_header")
+                icon = TexturePool.get_tex_id("redeem_header")
                 tex = TexturePool.get_tex(icon)
                 scale = imgui.get_text_line_height() / tex.height
                 imgui.image_button("Redeem", icon, (tex.width * scale, tex.height * scale), tint_col=Const.BUTTON_SELECTED)
