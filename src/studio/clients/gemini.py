@@ -25,7 +25,7 @@ from ...utils.render import render_scene_to_png, render_scene_depth_to_png
 
 
 class NanoBanana(StudioClient):
-    VENDOR = "NanoBanana"
+    VENDOR = "NanoBananaPro"
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)

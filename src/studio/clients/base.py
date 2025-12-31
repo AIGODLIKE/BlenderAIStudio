@@ -45,7 +45,7 @@ class StudioHistory:
         history_item.result = {}
         history_item.output_file = Path.home().joinpath("Desktop/OutputImage/AIStudio/Output.png").as_posix()
         history_item.metadata = {"prompt": "这是一个测试"}
-        history_item.vendor = "NanoBanana"
+        history_item.vendor = "NanoBananaPro"
         history_item.timestamp = time.time()
         self.add(history_item)
 
