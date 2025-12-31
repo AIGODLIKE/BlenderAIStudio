@@ -29,7 +29,7 @@ except Exception:
     from websockets.exceptions import ConnectionClosedOK, ConnectionClosed
 
 
-SERVICE_URL = "https://api-addon.acggit.com/v1"
+SERVICE_URL = "https://api-addon.acggit.com"
 LOGIN_URL = "https://addon-login.acggit.com"
 AUTH_PATH = Path(tempfile.gettempdir(), "aistudio/auth.json")
 try:
