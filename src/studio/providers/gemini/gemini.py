@@ -108,6 +108,9 @@ class GeminiImageGenerateProvider(GeminiProvider):
         elif code == 400:
             logger.debug(resp.text)
             raise GeminiAPIError("Bad request (400).")
+        elif code == 502:
+            logger.debug(resp.text)
+            raise GeminiAPIError("Server Error: Bad Gateway")
         elif code != 200:
             logger.debug(resp.text)
             raise GeminiAPIError("API request failed. Unknown error.")
