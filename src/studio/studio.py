@@ -5,7 +5,7 @@ import webbrowser
 import math
 import platform
 import subprocess
-from bpy.app.translations import pgettext as _T
+from bpy.app.translations import pgettext
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -25,6 +25,14 @@ from .wrapper import BaseAdapter, WidgetDescriptor, DescriptorFactory
 from ..preferences import get_pref
 from ..timer import Timer
 from ..utils import get_version
+from ..i18n import STUDIO_TCTX
+
+
+def _T(msg, ctxt=STUDIO_TCTX):
+    t = pgettext(msg, ctxt)
+    if t == msg:
+        return pgettext(msg)
+    return t
 
 
 def get_tool_panel_width():
@@ -829,7 +837,10 @@ class RedeemPanel:
                 imgui.pop_style_color(3)
                 self.app.font_manager.pop_font()
 
-            imgui.text(_T("Redeem Code Error or Already Used, Please Check or Contact Customer Service"))
+            imgui.dummy((0, style.window_padding[0] - style.item_spacing[1] * 2))
+            imgui.text(_T("Redeem Code Error or Already Used."))
+            imgui.text(_T("Please Check or Contact Customer Service."))
+            imgui.dummy((0, style.window_padding[0] - style.item_spacing[1] * 2))
             if imgui.button(_T("Exit"), (101, 0)):
                 imgui.close_current_popup()
                 self.clear_redeem()
@@ -1259,7 +1270,7 @@ class AIStudio(AppHud):
             imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
             imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
             imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
-            imgui.button("无限之心")
+            imgui.button(_T("AI STUDIO"))
             imgui.same_line()
             icon = TexturePool.get_tex_id("beta_header")
             tex = TexturePool.get_tex(icon)
@@ -1357,7 +1368,7 @@ class AIStudio(AppHud):
                 task_state: TaskState = status.get("state", "")
                 is_rendering = False
                 show_stop_btn = False
-                label = "  " + _T("Start AI Rendering")
+                label = "  " + _T("Start")
                 if client.is_task_submitting:
                     label = "  " + _T("Task Submitting...")
                 if task_state == "running":
@@ -1474,7 +1485,7 @@ class AIStudio(AppHud):
             imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
             imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
             imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
-            imgui.button(_T("History"))
+            imgui.button(_T("Gen"))
             imgui.same_line()
             icon = TexturePool.get_tex_id("history_header")
             tex = TexturePool.get_tex(icon)
@@ -1559,7 +1570,7 @@ class AIStudio(AppHud):
             imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
             imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
             imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
-            imgui.button(_T("Settings"))
+            imgui.button(_T("User"))
             imgui.same_line()
             icon = TexturePool.get_tex_id("settings_header")
             tex = TexturePool.get_tex(icon)
@@ -1685,7 +1696,7 @@ class AIStudio(AppHud):
         imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.WINDOW_BG)
         imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.WINDOW_BG)
         isize = 24
-        label = _T("Use this mode to support tool development")
+        label = _T("Support Tool Dev")
         CustomWidgets.icon_label_button("account_warning", label, "CENTER", (0, 54), isize)
         imgui.pop_style_color(3)
 
@@ -1735,7 +1746,7 @@ class AIStudio(AppHud):
         imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
 
         self.font_manager.push_h1_font(24)
-        label = _T("Output Directory")
+        label = _T("Output")
         label_size = imgui.calc_text_size(label)
         fp = imgui.get_style().window_padding
         icon_size = imgui.get_text_line_height_with_spacing()
@@ -1807,13 +1818,13 @@ class AIStudio(AppHud):
 
             # --- 表格 3: 功能按钮 (50% + 50%) ---
             bw = (aw - imgui.get_style().item_spacing[0]) * 0.5
-            label = _T("Buy ice pops")
+            label = _T("Store")
             if CustomWidgets.icon_label_button("account_buy", label, "CENTER", (bw, bh), isize):
                 print("获取冰糕")
                 imgui.open_popup("##Buy")
             self.draw_buy()
             imgui.same_line()
-            label = _T("Redeem for ice pops")
+            label = _T("Redeem Now")
             if CustomWidgets.icon_label_button("account_certificate", label, "CENTER", (bw, bh), isize):
                 self.redeem_panel.should_draw_redeem = True
             self.redeem_panel.draw()
@@ -1823,7 +1834,7 @@ class AIStudio(AppHud):
         imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)
         imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.WINDOW_BG)
         imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.WINDOW_BG)
-        label = _T("The proceeds will be 100% allocated to support open-source development.")
+        label = _T("Proceeds → open source")
         CustomWidgets.icon_label_button("account_warning", label, "CENTER", (0, 54), isize)
         imgui.pop_style_color(3)
 
@@ -1835,7 +1846,7 @@ class AIStudio(AppHud):
         imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.WINDOW_BG)
         isize = 24
         self.font_manager.push_h3_font(20)
-        label = _T("The service is provided by the API provider. Please ensure network connectivity.")
+        label = _T("Service from API provider.")
         CustomWidgets.icon_label_button("account_warning", label, "CENTER", (0, 54), isize)
         self.font_manager.pop_font()
         imgui.pop_style_color(3)
@@ -1988,7 +1999,7 @@ class AIStudio(AppHud):
                 imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
                 imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
                 imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
-                imgui.button("AIGODLIKE小卖部")
+                imgui.button(_T("AGL STORE"))
                 imgui.same_line()
 
                 icon = TexturePool.get_tex_id("settings_header")
@@ -2002,7 +2013,7 @@ class AIStudio(AppHud):
                 imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
                 imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
                 bh = imgui.get_text_line_height()
-                label = "越多人消耗冰糕，未来单次运行消耗的冰糕数越会降低↓"
+                label = _T("The more, the cheaper.")
                 bw = imgui.calc_text_size(label)[0] + bh * 1.5
                 CustomWidgets.icon_label_button("account_warning", label, "CENTER", (bw, bh))
                 imgui.pop_style_color(3)
@@ -2026,29 +2037,29 @@ class AIStudio(AppHud):
             products = [
                 {
                     "id": "1",
-                    "name": "小型尝鲜礼包",
-                    "certificate": "[ 冰糕x600 ]",
+                    "name": "Taster Pack",
+                    "certificate": 600,
                     "color": (67 / 255, 207 / 255, 124 / 255, 1),
                     "price": "6",
                 },
                 {
                     "id": "2",
-                    "name": "中型品鉴礼包",
-                    "certificate": "[ 冰糕x3300 ]",
+                    "name": "Connoisseur Pack",
+                    "certificate": 3300,
                     "color": (42 / 255, 130 / 255, 228 / 255, 1),
                     "price": "30",
                 },
                 {
                     "id": "3",
-                    "name": "大型畅享礼包",
-                    "certificate": "[ 冰糕x7200 ]",
+                    "name": "Deluxe Pack",
+                    "certificate": 7200,
                     "color": (121 / 255, 72 / 255, 234 / 255, 1),
                     "price": "60",
                 },
                 {
                     "id": "4",
-                    "name": "巨型豪华礼包",
-                    "certificate": "[ 冰糕x13000 ]",
+                    "name": "Premium Mega Pack",
+                    "certificate": 13000,
                     "color": (255 / 255, 195 / 255, 0 / 255, 1),
                     "price": "100",
                 },
@@ -2097,14 +2108,14 @@ class AIStudio(AppHud):
         col = imgui.get_color_u32((1, 1, 1, 1))
         # 信息1
         if True:
-            label = name
+            label = _T(name)
             self.font_manager.push_h1_font(24)
             label_width = imgui.calc_text_size(label)[0]
             dl.add_text((screen_pos[0] + (aw - label_width) * 0.5, screen_pos[1] + 400), col, label)
             self.font_manager.pop_font()
         # 信息2
         if True:
-            label = cert
+            label = _T("[ Ice Pops x %s ]") % cert
             self.font_manager.push_h1_font(36)
             label_width = imgui.calc_text_size(label)[0]
             dl.add_text((screen_pos[0] + (aw - label_width) * 0.5, screen_pos[1] + 447), col, label)
