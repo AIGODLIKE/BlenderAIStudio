@@ -179,7 +179,7 @@ class NanoBanana(StudioClient):
             AuthMode.API: GeminiImageGenerationTask,
         }
         TaskType = task_type_map[account.auth_mode]
-        api_key = self.api_key if account.auth_mode == AuthMode.API else account.api_key
+        api_key = self.api_key if account.auth_mode == AuthMode.API else account.token
         task = TaskType(
             api_key=api_key,
             image_path=_temp_image_path,
