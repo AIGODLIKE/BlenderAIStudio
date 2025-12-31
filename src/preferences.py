@@ -1,11 +1,17 @@
 import bpy
 import tempfile
+from enum import Enum
 from .i18n import PROP_TCTX
 from .. import __package__ as base_name
 
 translation_context = {}
 if bpy.app.version >= (4, 0, 0):
     translation_context["translation_context"] = PROP_TCTX
+
+
+class AuthMode(Enum):
+    ACCOUNT = "Backup Mode"
+    API = "API Key Mode"
 
 
 class BlenderAIStudioPref(bpy.types.AddonPreferences):
@@ -32,6 +38,11 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences):
         default=tempfile.gettempdir(),
         **translation_context,
     )
+    account_auth_mode: bpy.props.EnumProperty(
+        name="Account Auth Mode",
+        items=[(item.value, item.name, "") for item in AuthMode],
+        **translation_context,
+    )
     nano_banana_api: bpy.props.StringProperty(
         name="Nano Banana API Key",
         subtype="PASSWORD",
@@ -50,6 +61,10 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences):
 
     def set_ui_offset(self, value):
         self.ui_offset = value
+        bpy.context.preferences.use_preferences_save = True
+
+    def set_account_auth_mode(self, value):
+        self.account_auth_mode = value
         bpy.context.preferences.use_preferences_save = True
 
 

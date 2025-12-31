@@ -1700,7 +1700,7 @@ class AIStudio(AppHud):
                 is_rendering = False
                 show_stop_btn = False
                 label = "  " + _T("Start")
-                if self.state.auth_mode == AuthMode.ACCOUNT:
+                if self.state.auth_mode == AuthMode.ACCOUNT.value:
                     client = self.get_active_client()
                     price_table = self.state.get_model_price_table(client.VENDOR)
                     price = self.calc_active_client_price(price_table)
@@ -2009,7 +2009,7 @@ class AIStudio(AppHud):
         imgui.pop_style_var(2)
 
     def draw_account_panel(self):
-        if self.state.auth_mode != AuthMode.ACCOUNT:
+        if self.state.auth_mode != AuthMode.ACCOUNT.value:
             return
         self.store_panel.draw_login_panel()
         self.store_panel.draw_account()
@@ -2088,13 +2088,13 @@ class AIStudio(AppHud):
             imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
             items = AuthMode
             aw = imgui.get_content_region_avail()[0]
-            if imgui.begin_combo("##Item", _T(self.state.auth_mode.value)):
+            if imgui.begin_combo("##Item", _T(self.state.auth_mode)):
                 for item in items:
-                    is_selected = self.state.auth_mode == item
+                    is_selected = self.state.auth_mode == item.value
                     if is_selected:
                         imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
                     if imgui.button(_T(item.value), (aw, 0)):
-                        self.state.auth_mode = item
+                        self.state.auth_mode = item.value
                         imgui.close_current_popup()
                     if is_selected:
                         imgui.pop_style_color()
@@ -2105,7 +2105,7 @@ class AIStudio(AppHud):
         imgui.pop_style_color(1)
 
     def draw_api_panel(self):
-        if self.state.auth_mode != AuthMode.API:
+        if self.state.auth_mode != AuthMode.API.value:
             return
         imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)
         imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.WINDOW_BG)

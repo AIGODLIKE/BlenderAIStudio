@@ -6,7 +6,6 @@ import webbrowser
 import requests
 
 from typing import Self
-from enum import Enum
 from pathlib import Path
 from threading import Thread
 from bpy.app.translations import pgettext as _T
@@ -20,6 +19,7 @@ from .exception import (
     DatabaseUpdateException,
     ToeknExpiredException,
 )
+from ..preferences import get_pref, AuthMode
 from ..logger import logger
 
 try:
@@ -53,7 +53,6 @@ class Account:
         return cls._INSTANCE
 
     def __init__(self) -> None:
-        self.auth_mode = AuthMode.ACCOUNT
         self.nickname = ""
         self.logged_in = False
         self.services_connected = False
@@ -71,6 +70,14 @@ class Account:
         self.waiting_for_login = False
         self.load_account_info_from_local()
         self.ping_once()
+
+    @property
+    def auth_mode(self) -> str:
+        return get_pref().account_auth_mode
+
+    @auth_mode.setter
+    def auth_mode(self, mode: str):
+        get_pref().set_account_auth_mode(mode)
 
     def take_errors(self) -> list:
         errors = self.error_messages[:]
@@ -418,11 +425,6 @@ def init_account():
     return 1
 
 
-class AuthMode(Enum):
-    ACCOUNT = "Backup Mode"
-    API = "API Key Mode"
-
-
 def register():
     import bpy
 
@@ -437,7 +439,7 @@ def unregister():
 
 if __name__ == "__main__":
     account = Account()
-    account.auth_mode = AuthMode.ACCOUNT
+    account.auth_mode = AuthMode.ACCOUNT.value
     account.account_name = "test"
     account.credits = 100
     account.fetch_credits_price()

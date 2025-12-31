@@ -177,11 +177,11 @@ class NanoBanana(StudioClient):
                 prompt += "第一张图是深度图，其他为参考图, "
             prompt += self.prompt
         task_type_map = {
-            AuthMode.ACCOUNT: AccountGeminiImageGenerateTask,
-            AuthMode.API: GeminiImageGenerationTask,
+            AuthMode.ACCOUNT.value: AccountGeminiImageGenerateTask,
+            AuthMode.API.value: GeminiImageGenerationTask,
         }
         TaskType = task_type_map[account.auth_mode]
-        api_key = self.api_key if account.auth_mode == AuthMode.API else account.token
+        api_key = self.api_key if account.auth_mode == AuthMode.API.value else account.token
         task = TaskType(
             api_key=api_key,
             image_path=_temp_image_path,
