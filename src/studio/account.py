@@ -232,7 +232,7 @@ class Account:
                 print("兑换失败:", err_msg)
             else:
                 amount = data.get("amount", 0)
-                self.credits += amount
+                self.credits = amount
                 print("兑换成功:", amount)
                 return amount
         else:
