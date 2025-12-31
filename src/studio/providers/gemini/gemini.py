@@ -125,7 +125,7 @@ class AccountGeminiImageProvider(GeminiImageGenerateProvider):
         super().__init__(api_key, model)
         self.base_url = SERVICE_URL
         self.model = "gemini-3-pro-image-preview"
-        self.entry = "v1/service/cpick"
+        self.entry = "service/cpick"
 
     def build_api_url(self) -> str:
         return f"{self.base_url}/{self.entry}"
