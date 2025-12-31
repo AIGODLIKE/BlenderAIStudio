@@ -13,7 +13,11 @@ from bpy.app.translations import pgettext as _T
 from .exception import (
     APIRequestException,
     AuthFailedException,
+    ParameterValidationException,
     InsufficientBalanceException,
+    RedeemCodeException,
+    InternalException,
+    DatabaseUpdateException,
     ToeknExpiredException,
 )
 from ..logger import logger
@@ -211,14 +215,18 @@ class Account:
             code = resp_json.get("code")
             err_code = resp_json.get("errCode")
             err_msg = resp_json.get("errMsg", "")
-            err_type_map = {
-                "余额不足": InsufficientBalanceException("Invalid or insufficient balance!"),
-                "API请求错误!": APIRequestException("API Request Error!"),
-                "鉴权错误": AuthFailedException("Authentication failed!"),
-                "Token过期": ToeknExpiredException("Token expired!"),
-            }
-            err = err_type_map.get(err_msg, None)
-            if err:
+            if err_msg:
+                err_type_map = {
+                    "参数校验错误": ParameterValidationException("Parameter validation failed!"),
+                    "兑换码错误": RedeemCodeException("Redeem code error!"),
+                    "数据库更新错误（不需要展示）": DatabaseUpdateException("Database update error!"),
+                    "内部错误（不需要展示）": InternalException("Internal error!"),
+                    "余额不足": InsufficientBalanceException("Insufficient balance!"),
+                    "API请求错误!": APIRequestException("API Request Error!"),
+                    "鉴权错误": AuthFailedException("Authentication failed!"),
+                    "Token过期": ToeknExpiredException("Token expired!"),
+                }
+                err = err_type_map.get(err_msg, Exception(err_msg))
                 self.push_error(err)
             if code != 0:
                 print("兑换失败:", err_msg)

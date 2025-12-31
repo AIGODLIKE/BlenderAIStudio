@@ -147,19 +147,15 @@ class AccountGeminiImageProvider(GeminiImageGenerateProvider):
         err_msg = resp.get("errMsg", "")
         code = resp.get("code")
         err_code = resp.get("errCode")
-        match code, err_code:
-            case (-1, -1201):
-                raise InsufficientBalanceException("Invalid or insufficient balance!")
-            case (-1, -1202):
-                raise APIRequestException("API Request Error!")
-            case (-3, -3002):
-                pass
-            case (-4, -4000):
-                raise AuthFailedException("Authentication failed!")
-            case (-4, -4001):
-                raise ToeknExpiredException("Token expired!")
-        if err_msg:
-            print(err_msg)
+        if not err_msg:
+            return
+        err_type_map = {
+            "余额不足": InsufficientBalanceException("Insufficient balance!"),
+            "API请求错误!": APIRequestException("API Request Error!"),
+            "鉴权错误": AuthFailedException("Authentication failed!"),
+            "Token过期": ToeknExpiredException("Token expired!"),
+        }
+        raise err_type_map.get(err_msg, Exception(err_msg))
 
 
 def _parse_image_data_from_response_json(resp: dict) -> Tuple[bytes, str]:

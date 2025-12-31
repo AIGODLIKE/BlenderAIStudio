@@ -9,7 +9,7 @@ error_translations = (
     ("Price fetch failed", "价格获取失败", None),
     ("Credits fetch failed", "余额获取失败", None),
     ("API Key Not Set", "API 密钥未设置", None),
-    ("Invalid or insufficient balance!", "无效或余额不足", None),
+    ("Insufficient balance!", "余额不足", None),
     ("API Request Error!", "API 请求错误", None),
     ("Authentication failed!", "认证失败", None),
     ("Token expired!", "Token 过期", None),
@@ -27,6 +27,10 @@ error_translations = (
     ("No image generated. The model may have rejected the request.", "未生成图像。模型可能已拒绝请求。", None),
     ("Invalid response format - no content in candidate", "无效的响应格式 - 候选答案中没有内容", None),
     ("No image data found in API response", "API 响应中未找到图像数据", None),
+    ("Parameter validation failed!", "参数校验错误！", None),
+    ("Redeem code error!", "兑换码错误！", None),
+    ("Database update error!", "数据库更新错误！", None),
+    ("Internal error!", "内部错误！", None),
 )
 
 studio_panel_translations = (

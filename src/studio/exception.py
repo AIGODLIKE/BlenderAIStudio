@@ -8,9 +8,33 @@ class NotLoggedInException(StudioException):
     """
 
 
+class ParameterValidationException(StudioException):
+    """
+    Raised when the parameter validation failed.
+    """
+
+
+class RedeemCodeException(StudioException):
+    """
+    Raised when the redeem code is invalid.
+    """
+
+
 class InsufficientBalanceException(StudioException):
     """
     Raised when the user's balance is insufficient.
+    """
+
+
+class DatabaseUpdateException(StudioException):
+    """
+    Raised when the database update failed.
+    """
+
+
+class InternalException(StudioException):
+    """
+    Raised when the internal server error.
     """
 
 
