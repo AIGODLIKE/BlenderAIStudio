@@ -73,7 +73,7 @@ class StudioClient(BaseAdapter):
 
     def __init__(self) -> None:
         self._name = self.VENDOR
-        self.help_url = "https://shimo.im/docs/47kgMZ7nj4Sm963V"
+        self.help_url = ""
         self.task_manager = TaskManager.get_instance()
         self.task_id: str = ""
         self.is_task_submitting = False

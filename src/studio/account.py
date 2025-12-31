@@ -32,7 +32,7 @@ except Exception:
     from websockets.legacy.server import WebSocketServer
     from websockets.exceptions import ConnectionClosedOK, ConnectionClosed
 
-
+HELP_URL = "https://shimo.im/docs/47kgMZ7nj4Sm963V"
 SERVICE_BASE_URL = "https://api-addon.acggit.com"
 SERVICE_URL = f"{SERVICE_BASE_URL}/v1"
 LOGIN_URL = "https://addon-login.acggit.com"
@@ -54,6 +54,7 @@ class Account:
 
     def __init__(self) -> None:
         self.nickname = ""
+        self.help_url = HELP_URL
         self.logged_in = False
         self.services_connected = False
         self.credits = 0

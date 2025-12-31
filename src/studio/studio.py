@@ -2015,7 +2015,7 @@ class AIStudio(AppHud):
         self.store_panel.draw_account()
 
     def draw_help_button(self):
-        help_url = self.get_active_client().help_url
+        help_url = self.state.help_url
         if not help_url:
             return
         imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0.75)
