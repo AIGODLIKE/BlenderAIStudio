@@ -147,6 +147,7 @@ class Account:
         try:
             data = json.loads(self._AUTH_PATH.read_text())
             self.load_account_info(data)
+            self.fetch_credits()
         except Exception:
             traceback.print_exc()
             self.push_error(_T("Can't load auth file"))

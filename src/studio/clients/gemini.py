@@ -228,6 +228,7 @@ class NanoBanana(StudioClient):
             #     "width": 1024,
             #     "height": 1024,
             # }
+            account.fetch_credits()
             _task: Task = event_data["task"]
             result: TaskResult = event_data["result"]
             result_data: dict = result.data
@@ -273,6 +274,7 @@ class NanoBanana(StudioClient):
                 self.push_error(result.error)
                 print(result.error)
                 print(f"任务失败: {_task.task_id}")
+            account.fetch_credits()
 
         task.register_callback("state_changed", on_state_changed)
         task.register_callback("progress_updated", on_progress)
