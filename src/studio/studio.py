@@ -13,7 +13,7 @@ from pathlib import Path
 from shutil import copyfile
 from traceback import print_exc
 
-from .clients import StudioHistoryItem, StudioHistory, StudioClient
+from .clients import StudioHistoryItem, StudioHistory, StudioClient, NanoBanana
 from .gui.app.animation import AnimationSystem, Easing, Tween, Sequence
 from .gui.app.app import AppHud
 from .gui.app.renderer import imgui
@@ -608,8 +608,12 @@ class StorePanel:
         with with_child("##Login", (0, 0), child_flags=flags):
             self.app.font_manager.push_h3_font()
             bh = imgui.get_text_line_height_with_spacing() * 2
-            if imgui.button(_T("Login/Register"), (-imgui.FLOAT_MIN, bh)):
-                self.app.state.login()
+            if self.app.state.is_waiting_for_login():
+                label = _T("Waiting for login") + "." * round(imgui.get_time() // 0.5 % 4)
+                imgui.button(label, (-imgui.FLOAT_MIN, bh))
+            else:
+                if imgui.button(_T("Login/Register"), (-imgui.FLOAT_MIN, bh)):
+                    self.app.state.login()
             self.app.font_manager.pop_font()
         # --- 底部: 警告信息 (单行全宽) ---
         imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)
@@ -620,7 +624,11 @@ class StorePanel:
         CustomWidgets.icon_label_button("account_warning", label, "CENTER", (0, 54), isize)
         imgui.pop_style_color(3)
 
-    def draw_setting_account(self):
+    def draw_login(self):
+        if not self.app.state.is_logged_in():
+            return
+
+    def draw_account(self):
         if not self.app.state.is_logged_in():
             return
 
@@ -634,7 +642,7 @@ class StorePanel:
 
             # --- 表格 1: 邮箱 + 登出
             bw = aw - bh - imgui.get_style().item_spacing[0]
-            CustomWidgets.icon_label_button("account_email", self.app.state.acount_name, "BETWEEN", (bw, bh), isize, fpx * 2)
+            CustomWidgets.icon_label_button("account_email", self.app.state.nickname, "BETWEEN", (bw, bh), isize, fpx * 2)
             imgui.same_line()
             if CustomWidgets.icon_label_button("account_logout", "", "CENTER", (bh, bh), isize):
                 self.app.state.logout()
@@ -978,7 +986,7 @@ class RedeemPanel:
                 self.app.font_manager.pop_font()
 
             imgui.dummy((0, style.window_padding[0] - style.item_spacing[1] * 2))
-            redeem_value = self.get_redeem_value()
+            redeem_value = self.redeem_to_credits()
             imgui.text(_T("You will redeem %s ice pops(credits)") % redeem_value)
             imgui.dummy((0, style.window_padding[0] - style.item_spacing[1] * 2))
 
@@ -1046,7 +1054,7 @@ class RedeemPanel:
                 self.app.font_manager.pop_font()
 
             imgui.dummy((0, style.window_padding[0] - style.item_spacing[1] * 2))
-            redeem_value = self.get_redeem_value()
+            redeem_value = self.redeem_to_credits()
             imgui.text(_T("You have obtained %s ice pops(credits)") % redeem_value)
             imgui.dummy((0, style.window_padding[0] - style.item_spacing[1] * 2))
             if imgui.button(_T("Got it!")):
@@ -1106,15 +1114,16 @@ class RedeemPanel:
                 self.clear_redeem()
             imgui.end_popup()
 
-    def get_redeem_value(self) -> int:
+    def redeem_to_credits(self) -> int:
         if not self.is_redeem_code_valid():
             return 0
         pat = "BG([0-9]{3})-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}"
         try:
             redeem_value = int(re.match(pat, self.redeem_code).group(1))
+            credits_value = self.app.state.redeem_to_credits_table.get(redeem_value, 0)
         except Exception:
-            redeem_value = 0
-        return redeem_value
+            credits_value = 0
+        return credits_value
 
     def is_redeem_code_valid(self) -> bool:
         pat = "BG[0-9]{3}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}"
@@ -1367,6 +1376,10 @@ class AIStudio(AppHud):
 
     def get_active_client(self) -> StudioClient:
         return self.clients.get(self.active_client, StudioClient())
+
+    def calc_active_client_price(self, price_table: dict) -> int | None:
+        client = self.get_active_client()
+        return client.calc_price(price_table)
 
     def push_error_message(self, message: str):
         translated_msg = bpy.app.translations.pgettext(message)
@@ -1629,6 +1642,12 @@ class AIStudio(AppHud):
                 is_rendering = False
                 show_stop_btn = False
                 label = "  " + _T("Start")
+                if self.state.auth_mode == AuthMode.ACCOUNT:
+                    client = self.get_active_client()
+                    price_table = self.state.get_model_price_table(client.VENDOR)
+                    price = self.calc_active_client_price(price_table)
+                    if price is not None:
+                        label += _T("(%s/use)") % price
                 if client.is_task_submitting:
                     label = "  " + _T("Task Submitting...")
                 if task_state == "running":
@@ -1935,7 +1954,7 @@ class AIStudio(AppHud):
         if self.state.auth_mode != AuthMode.ACCOUNT:
             return
         self.store_panel.draw_login_panel()
-        self.store_panel.draw_setting_account()
+        self.store_panel.draw_account()
 
     def draw_help_button(self):
         help_url = self.get_active_client().help_url
