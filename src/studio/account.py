@@ -29,7 +29,7 @@ except Exception:
     from websockets.exceptions import ConnectionClosedOK, ConnectionClosed
 
 
-SERVICE_URL = "https://api-addon.acggit.com"
+SERVICE_URL = "https://api-addon.acggit.com/v1"
 LOGIN_URL = "https://addon-login.acggit.com"
 AUTH_PATH = Path(tempfile.gettempdir(), "aistudio/auth.json")
 try:
@@ -188,7 +188,7 @@ class Account:
 
     # 兑换积分
     def redeem_credits(self, code: str) -> int:
-        url = f"{SERVICE_URL}/v1/billing/redeem-code"
+        url = f"{SERVICE_URL}/billing/redeem-code"
         headers = {
             "X-Auth-T": self.token,
             "Content-Type": "application/json",
@@ -211,19 +211,15 @@ class Account:
             code = resp_json.get("code")
             err_code = resp_json.get("errCode")
             err_msg = resp_json.get("errMsg", "")
-            match code, err_code:
-                case (-1, -1201):
-                    self.push_error(InsufficientBalanceException("Invalid or insufficient balance!"))
-                case (-1, -1202):
-                    self.push_error(APIRequestException("API Request Error!"))
-                case (-3, -3002):
-                    pass
-                case (-4, -4000):
-                    self.push_error(AuthFailedException("Authentication failed!"))
-                case (-4, -4001):
-                    self.push_error(ToeknExpiredException("Token expired!"))
-                case (-6, -6003):
-                    pass
+            err_type_map = {
+                "余额不足": InsufficientBalanceException("Invalid or insufficient balance!"),
+                "API请求错误!": APIRequestException("API Request Error!"),
+                "鉴权错误": AuthFailedException("Authentication failed!"),
+                "Token过期": ToeknExpiredException("Token expired!"),
+            }
+            err = err_type_map.get(err_msg, None)
+            if err:
+                self.push_error(err)
             if code != 0:
                 print("兑换失败:", err_msg)
             else:
@@ -279,8 +275,6 @@ class Account:
         return {}
 
     def fetch_credits(self):
-        if self.price_table:
-            return
         url = f"{SERVICE_URL}/billing/balance"
         headers = {
             "X-Auth-T": self.token,

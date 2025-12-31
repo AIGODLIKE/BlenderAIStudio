@@ -652,7 +652,7 @@ class StorePanel:
             CustomWidgets.icon_label_button("account_token", str(self.app.state.credits), "BETWEEN", (bw, bh), isize, fpx * 2)
             imgui.same_line()
             if CustomWidgets.icon_label_button("account_refresh", "", "CENTER", (bh, bh), isize):
-                print("刷新 Token")
+                self.app.state.fetch_credits()
 
             # --- 表格 3: 功能按钮 (50% + 50%) ---
             bw = (aw - imgui.get_style().item_spacing[0]) * 0.5
