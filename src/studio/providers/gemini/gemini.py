@@ -120,6 +120,7 @@ class AccountGeminiImageProvider(GeminiImageGenerateProvider):
     def __init__(self, api_key: str, model: str = ""):
         super().__init__(api_key, model)
         self.base_url = SERVICE_URL
+        self.model = "gemini-3-pro-image-preview"
         self.entry = "v1/service/cpick"
 
     def build_api_url(self) -> str:
@@ -127,6 +128,7 @@ class AccountGeminiImageProvider(GeminiImageGenerateProvider):
 
     def build_headers(self) -> dict:
         return {
+            "X-Auth-T": self.api_key,
             "Content-Type": "application/json",
         }
 
