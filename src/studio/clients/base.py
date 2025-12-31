@@ -1,5 +1,6 @@
 import json
 import time
+from typing import Self
 from pathlib import Path
 from ..account import Account
 from ..tasks import TaskManager
@@ -63,6 +64,12 @@ class StudioHistory:
 
 class StudioClient(BaseAdapter):
     VENDOR = ""
+    _INSTANCE = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._INSTANCE is None:
+            cls._INSTANCE = super().__new__(cls)
+        return cls._INSTANCE
 
     def __init__(self) -> None:
         self._name = self.VENDOR
@@ -73,6 +80,12 @@ class StudioClient(BaseAdapter):
         self.history = StudioHistory.get_instance()
         self.use_internal_prompt: bool = True
         self.error_messages: list = []
+
+    @classmethod
+    def get_instance(cls) -> Self:
+        if cls._INSTANCE is None:
+            cls._INSTANCE = cls()
+        return cls._INSTANCE
 
     def take_errors(self) -> list:
         errors = self.error_messages[:]

@@ -1309,7 +1309,7 @@ class AIStudio(AppHud):
         super().__init__(*args, **kwargs)
         self.active_panel = AIStudioPanelType.GENERATION
         self.state = Account.get_instance()
-        self.clients = {c.VENDOR: c() for c in StudioClient.__subclasses__()}
+        self.clients = {c.VENDOR: c.get_instance() for c in StudioClient.__subclasses__()}
         # self.fill_fake_clients()
         self.store_panel = StorePanel(self)
         self.active_client = next(iter(self.clients)) if self.clients else ""
