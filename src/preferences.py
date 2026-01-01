@@ -42,7 +42,7 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences):
     )
     account_auth_mode: bpy.props.EnumProperty(
         name="Account Auth Mode",
-        items=[(item.value, item.name.title(), "") for item in AuthMode],
+        items=[(item.value, item.value, "") for item in AuthMode],
         **translation_context,
     )
     nano_banana_api: bpy.props.StringProperty(
@@ -71,10 +71,9 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences):
 
     def draw_api(self, layout):
         from .studio.account import Account
-        layout.label(text="Api")
-        layout.row(align=True).prop(self, "account_auth_mode",text="Account Auth Mode",)
-        # layout.label(text=self.account_auth_mode)
-        if self.account_auth_mode == "Backup Mode":
+        layout.label(text="Service")
+        layout.prop(self, "account_auth_mode", text="Operating Mode", )
+        if self.is_account_mode:
             account = Account.get_instance()
             if account.is_logged_in():
                 layout.label(text=bpy.app.translations.pgettext_iface("Logged in") + account.nickname)
