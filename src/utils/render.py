@@ -1,4 +1,5 @@
 import bpy
+from uuid import uuid4
 from pathlib import Path
 from contextlib import contextmanager
 from bpy.app.translations import pgettext as _T
@@ -48,14 +49,37 @@ def render_scene_depth_to_png(scene: bpy.types.Scene, image_path: str):
     """
     check_scene_camera_with_exception(scene)
     bpy.context.view_layer.use_pass_mist = True
-    bpy.context.scene.use_nodes = True
-    tree: bpy.types.NodeTree = bpy.context.scene.node_tree
+    old_tree = get_comp_node_tree(scene)
+    ensure_comp_node_tree(scene)
+    tree: bpy.types.NodeTree = get_comp_node_tree(scene)
 
     for node in tree.nodes:
         tree.nodes.remove(node)
 
     render_layer = tree.nodes.new(type="CompositorNodeRLayers")
-    output = tree.nodes.new(type="CompositorNodeComposite")
-    tree.links.new(render_layer.outputs["Mist"], output.inputs["Image"])
+    if bpy.app.version >= (5, 0):
+        output = tree.nodes.new(type="NodeGroupOutput")
+        tree.interface.new_socket(name="Output", in_out="OUTPUT", socket_type="NodeSocketColor")
+        tree.links.new(render_layer.outputs["Mist"], output.inputs[0])
+    else:
+        output = tree.nodes.new(type="CompositorNodeComposite")
+        tree.links.new(render_layer.outputs["Mist"], output.inputs["Image"])
     with with_scene_render_output_settings(scene, image_path):
         bpy.ops.render.render(write_still=True)
+    if bpy.app.version >= (5, 0):
+        scene.compositing_node_group = old_tree
+        bpy.data.node_groups.remove(tree)
+
+
+def ensure_comp_node_tree(sce: bpy.types.Scene):
+    if bpy.app.version >= (5, 0):
+        tree = bpy.data.node_groups.new("Render Layers" + uuid4().hex, "CompositorNodeTree")
+        sce.compositing_node_group = tree
+    else:
+        sce.use_nodes = True
+
+
+def get_comp_node_tree(sce: bpy.types.Scene) -> bpy.types.CompositorNodeTree:
+    if bpy.app.version >= (5, 0):
+        return sce.compositing_node_group
+    return sce.node_tree
