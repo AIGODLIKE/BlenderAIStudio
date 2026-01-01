@@ -88,17 +88,17 @@ class GeminiImageGenerationTask(GeminiTaskBase):
     """
 
     def __init__(
-        self,
-        api_key: str,
-        image_path: str,
-        user_prompt: str,
-        reference_images_path: list[str],
-        is_color_render: bool = False,
-        resolution: str = "1K",
-        width: int = 1024,
-        height: int = 1024,
-        aspect_ratio: str = "1:1",
-        max_retries: int = 3,
+            self,
+            api_key: str,
+            image_path: str,
+            user_prompt: str,
+            reference_images_path: list[str],
+            is_color_render: bool = False,
+            resolution: str = "1K",
+            width: int = 1024,
+            height: int = 1024,
+            aspect_ratio: str = "1:1",
+            max_retries: int = 3,
     ):
         """
         初始化图片生成任务
@@ -224,15 +224,15 @@ class GeminiImageEditTask(GeminiTaskBase):
     """
 
     def __init__(
-        self,
-        api_key: str,
-        image_path: str,
-        edit_prompt: str,
-        mask_path: Optional[str] = None,
-        reference_images_path: Optional[str] | list[str] = None,
-        resolution: str = "1K",
-        aspect_ratio: str = "1:1",
-        max_retries: int = 3,
+            self,
+            api_key: str,
+            image_path: str,
+            edit_prompt: str,
+            mask_path: Optional[str] = None,
+            reference_images_path: Optional[str] | list[str] = None,
+            resolution: str = "1K",
+            aspect_ratio: str = "1:1",
+            max_retries: int = 3,
     ):
         """
         初始化图片编辑任务
@@ -328,6 +328,14 @@ class GeminiImageEditTask(GeminiTaskBase):
             return TaskResult.failure_result(e, error_msg)
 
 
+class AccountGeminiImageEditTask(GeminiImageEditTask):
+    def prepare(self) -> bool:
+        if not super().prepare():
+            return False
+        self.provider = AccountGeminiImageProvider(self.api_key)
+        return True
+
+
 class GeminiStyleTransferTask(GeminiTaskBase):
     """
     Gemini 风格迁移任务
@@ -336,14 +344,14 @@ class GeminiStyleTransferTask(GeminiTaskBase):
     """
 
     def __init__(
-        self,
-        api_key: str,
-        target_image_path: str,
-        style_image_path: str,
-        style_prompt: str = "",
-        resolution="1K",
-        aspect_ratio="1:1",
-        max_retries: int = 3,
+            self,
+            api_key: str,
+            target_image_path: str,
+            style_image_path: str,
+            style_prompt: str = "",
+            resolution="1K",
+            aspect_ratio="1:1",
+            max_retries: int = 3,
     ):
         """
         初始化风格迁移任务

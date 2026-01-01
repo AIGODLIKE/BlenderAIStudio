@@ -10,9 +10,9 @@ from .gemini_tasks import (
     GeminiImageGenerationTask,
     AccountGeminiImageGenerateTask,
     GeminiImageEditTask,
+    AccountGeminiImageEditTask,
     GeminiStyleTransferTask,
 )
-
 
 __all__ = [
     "Task",
@@ -23,5 +23,6 @@ __all__ = [
     "GeminiImageGenerationTask",
     "AccountGeminiImageGenerateTask",
     "GeminiImageEditTask",
+    'AccountGeminiImageEditTask',
     "GeminiStyleTransferTask",
 ]

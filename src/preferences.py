@@ -1,6 +1,8 @@
-import bpy
 import tempfile
 from enum import Enum
+
+import bpy
+
 from .i18n import PROP_TCTX
 from .. import __package__ as base_name
 
@@ -40,7 +42,7 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences):
     )
     account_auth_mode: bpy.props.EnumProperty(
         name="Account Auth Mode",
-        items=[(item.value, item.name, "") for item in AuthMode],
+        items=[(item.value, item.name.title(), "") for item in AuthMode],
         **translation_context,
     )
     nano_banana_api: bpy.props.StringProperty(
@@ -48,16 +50,9 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences):
         subtype="PASSWORD",
     )
 
-    def draw(self, context):
-        layout = self.layout
-        layout.prop(self, "ui_pre_scale")
-        layout.prop(self, "ui_offset")
-        layout.prop(self, "output_cache_dir")
-        layout.label(text="Blender AI Studio Preferences")
-        layout.prop(self, "nano_banana_api")
-
-        if self.nano_banana_api == "":
-            layout.label(text="Please input your API Key")
+    @property
+    def is_account_mode(self):
+        return self.account_auth_mode == "Backup Mode"
 
     def set_ui_offset(self, value):
         self.ui_offset = value
@@ -66,6 +61,33 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences):
     def set_account_auth_mode(self, value):
         self.account_auth_mode = value
         bpy.context.preferences.use_preferences_save = True
+
+    def draw(self, context):
+        layout = self.layout
+        layout.prop(self, "ui_pre_scale")
+        layout.prop(self, "ui_offset")
+        layout.prop(self, "output_cache_dir")
+        self.draw_api(layout.box())
+
+    def draw_api(self, layout):
+        from .studio.account import Account
+        layout.label(text="Api")
+        layout.row(align=True).prop(self, "account_auth_mode",text="Account Auth Mode",)
+        # layout.label(text=self.account_auth_mode)
+        if self.account_auth_mode == "Backup Mode":
+            account = Account.get_instance()
+            if account.is_logged_in():
+                layout.label(text=bpy.app.translations.pgettext_iface("Logged in") + account.nickname)
+                layout.operator("bas.logout_account_auth")
+            elif account.is_waiting_for_login():
+                layout.label(text="Waiting for login...")
+            else:
+                layout.label(text="Not Logged in")
+                layout.operator("bas.login_account_auth")
+        else:
+            layout.prop(self, "nano_banana_api")
+            if self.nano_banana_api == "":
+                layout.label(text="Please input your API Key")
 
 
 def get_pref() -> BlenderAIStudioPref:

@@ -456,12 +456,11 @@ class ApplyAiEditImage(bpy.types.Operator):
             context.area.tag_redraw()
 
         if oii.running_state in (
-            "completed",
-            "failed",
-            "cancelled",
+                "completed",
+                "failed",
+                "cancelled",
         ):
             return {"FINISHED"}
-
         return {"PASS_THROUGH"}
 
     def execute(self, context):
@@ -480,9 +479,10 @@ class ApplyAiEditImage(bpy.types.Operator):
             self.report({"ERROR"}, "Enter ai edit prompt or select reference images")
             return {"CANCELLED"}
 
-        if not pref.nano_banana_api:
-            self.report({"ERROR"}, "NANO API key not set, Enter it in addon preferences")
-            return {"CANCELLED"}
+        if pref.is_account_mode:
+            if not pref.nano_banana_api:
+                self.report({"ERROR"}, "NANO API key not set, Enter it in addon preferences")
+                return {"CANCELLED"}
 
         oii.running_operator = self.running_operator
         generate_image_name = png_name_suffix(image.name, f"_{self.running_operator}")
@@ -520,10 +520,20 @@ class ApplyAiEditImage(bpy.types.Operator):
         print("mask_image_path", mask_image_path)
         print("aspect_ratio", aspect_ratio)
         print("resolution", resolution)
-        from .tasks import GeminiImageEditTask, Task, TaskState, TaskResult, TaskManager
+        from .account import Account
+        from .tasks import GeminiImageEditTask, AccountGeminiImageEditTask, Task, TaskState, TaskResult, TaskManager
+        from ..preferences import AuthMode
 
-        task = GeminiImageEditTask(
-            api_key=pref.nano_banana_api,
+        task_type_map = {
+            AuthMode.ACCOUNT.value: AccountGeminiImageEditTask,
+            AuthMode.API.value: GeminiImageEditTask,
+        }
+        account = Account.get_instance()
+        TaskType = task_type_map[account.auth_mode]
+        api_key = pref.nano_banana_api if account.auth_mode == AuthMode.API.value else account.token
+
+        task = TaskType(
+            api_key=api_key,
             image_path=origin_image_file_path,
             edit_prompt=oii.prompt,
             mask_path=mask_image_path,
@@ -896,6 +906,26 @@ class OpenImageInNewWindow(bpy.types.Operator):
         return {"CANCELLED"}
 
 
+class LoginAccountAuth(bpy.types.Operator):
+    bl_idname = "bas.login_account_auth"
+    bl_label = "Login"
+
+    def execute(self, context):
+        from .account import Account
+        Account.get_instance().login()
+        return {"FINISHED"}
+
+
+class LogoutAccountAuth(bpy.types.Operator):
+    bl_idname = "bas.logout_account_auth"
+    bl_label = "Logout"
+
+    def execute(self, context):
+        from .account import Account
+        Account.get_instance().logout()
+        return {"FINISHED"}
+
+
 clss = [
     AIStudioEntry,
     FileImporter,
@@ -915,6 +945,8 @@ clss = [
     ViewImage,
     RestoreHistory,
     OpenImageInNewWindow,
+    LoginAccountAuth,
+    LogoutAccountAuth,
 ]
 
 reg, unreg = bpy.utils.register_classes_factory(clss)
