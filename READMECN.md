@@ -60,6 +60,20 @@
 |:----|:----|:----|:----|
 |<img width="2252" height="947" alt="image" src="https://github.com/user-attachments/assets/2ec15c66-65a8-4da0-b9d9-6ccdb8509bf8" />|保持渲染图比例/构图/镜头不变，渲染图是一张分镜草图，请完善细节，一个巨型机器人驾驶员，穿着战斗服装，头戴玻璃头盔，凝视着镜头，漏出吃惊的表情。风格为2D风格，参考图角色|<img width="574" height="1031" alt="image" src="https://github.com/user-attachments/assets/1526b46c-5c5f-47a9-bda2-97569166898d" />|<img width="1738" height="742" alt="image" src="https://github.com/user-attachments/assets/71d52540-65df-4b69-8647-c12f99783461" />|
 
+### 深度渲染模式
+
+相较于渲染模式，深度图可以较为模糊的传递信息，避免过于详细的内容限制AI想象力
+
+#### 雾场生成场景
+
+|深度图|提示词|输出图像|
+|:----|:----|:----|:----|
+|<img width="1847" height="1034" alt="image" src="https://github.com/user-attachments/assets/d49c0fdd-e257-4631-bf31-da05e058b900" />|生成小镇写实游戏3D街景，不要出现角色|<img width="1509" height="835" alt="image" src="https://github.com/user-attachments/assets/d7a63c4c-fe04-47a7-abb6-3af3d540e62b" />|
+
+### 无输入模式（文生图）
+|提示词|输出图像|
+|:----|:----|
+|二次元插画，两人互动打闹的动态姿势，蓝发少年和金发猫耳少女，表情开心大笑，赛博朋克霓虹配色（粉/蓝/黄高光轮廓线），高饱和度色彩，卡通动漫风格，黑色背景突出人物，线条简洁锐利，充满活力的氛围|<img width="896" height="1200" alt="image" src="https://github.com/user-attachments/assets/1358486b-0022-4e18-8a5a-61d3fbcde790" />|
 
 ## 工具安装
 
