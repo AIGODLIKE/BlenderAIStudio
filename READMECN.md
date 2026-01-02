@@ -19,4 +19,4 @@
 # 用户界面——[Addon UI-Forge](https://github.com/AIGODLIKE/AddonUI-Forge)Demo
 
 
-<img width="2560" height="1380" alt="image" src="https://github.com/user-attachments/assets/9b8b5c81-6e52-4dea-b7ac-dade9f8fc774" />
+<img width="1280" height="690" alt="image" src="https://github.com/user-attachments/assets/9b8b5c81-6e52-4dea-b7ac-dade9f8fc774" />
