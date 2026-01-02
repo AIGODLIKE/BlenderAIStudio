@@ -6,6 +6,7 @@
 
 An addon to **fully enhance Blender's AI workflow**, serving as a demonstration for [Addon UI-Forge](https://github.com/AIGODLIKE/AddonUI-Forge) (next-gen Blender Addon UI framework).
 
+Note: This is not an official Blender project.
 
 
 ## Key Features
