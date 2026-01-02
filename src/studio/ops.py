@@ -480,6 +480,8 @@ class ApplyAiEditImage(bpy.types.Operator):
             return {"CANCELLED"}
 
         if pref.is_account_mode:
+            ...
+        else:
             if not pref.nano_banana_api:
                 self.report({"ERROR"}, "NANO API key not set, Enter it in addon preferences")
                 return {"CANCELLED"}
