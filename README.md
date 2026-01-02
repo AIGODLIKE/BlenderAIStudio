@@ -16,9 +16,10 @@ An addon to **fully enhance Blender's AI workflow**, serving as a demonstration 
 
 - Core capabilities: Image inpainting, image editing, task queuing, and history records.
 
-- Enhanced UI: Powered by Addon UI-Forge for intuitive interaction.
+- Enhanced UI: Powered by [Addon UI-Forge](https://github.com/AIGODLIKE/AddonUI-Forge) for intuitive interaction.
 
-<img width="425" height="343" alt="AddonUIForgeCN" src="https://github.com/user-attachments/assets/2c689bc5-3865-4102-aa77-c4af3edabca1" />
+<img width="425" height="343" alt="ADDON UI Forge" src="https://github.com/user-attachments/assets/b854c434-9780-44d7-b1b3-8aee240e8983" />
+
 
 ## UI Preview (Addon UI-Forge Concept)
 
