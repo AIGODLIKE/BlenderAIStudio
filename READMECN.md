@@ -67,10 +67,11 @@
 #### 雾场生成场景
 
 |深度图|提示词|输出图像|
-|:----|:----|:----|:----|
+|:----|:----|:----|
 |<img width="1847" height="1034" alt="image" src="https://github.com/user-attachments/assets/d49c0fdd-e257-4631-bf31-da05e058b900" />|生成小镇写实游戏3D街景，不要出现角色|<img width="1509" height="835" alt="image" src="https://github.com/user-attachments/assets/d7a63c4c-fe04-47a7-abb6-3af3d540e62b" />|
 
 ### 无输入模式（文生图）
+
 |提示词|输出图像|
 |:----|:----|
 |二次元插画，两人互动打闹的动态姿势，蓝发少年和金发猫耳少女，表情开心大笑，赛博朋克霓虹配色（粉/蓝/黄高光轮廓线），高饱和度色彩，卡通动漫风格，黑色背景突出人物，线条简洁锐利，充满活力的氛围|<img width="896" height="1200" alt="image" src="https://github.com/user-attachments/assets/1358486b-0022-4e18-8a5a-61d3fbcde790" />|
@@ -119,4 +120,6 @@
 
 ### 参考项目
 
-[nano-banana-render](https://github.com/Kovname/nano-banana-render)
+开发过程中[nano-banana-render](https://github.com/Kovname/nano-banana-render)给了我们相当多的启发
+
+
