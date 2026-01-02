@@ -79,11 +79,19 @@ Blurs details to avoid limiting AI imagination (vs. standard render mode).
 |Anime illustration: Blue-haired boy & blonde cat-eared girl (playful dynamic), laughing expressions, cyberpunk neon (pink/blue/yellow outlines), high saturation, black background, sharp lines, vibrant atmosphere|<img width="896" height="1200" alt="image" src="https://github.com/user-attachments/assets/1358486b-0022-4e18-8a5a-61d3fbcde790" />|
 ## Installation
 
-1. Download the latest `.zip` from [Releases](https://github.com/AIGODLIKE/BlenderAIStudio/releases).
+1. Download the latest `.zip` from [Releases](https://github.com/AIGODLIKE/BlenderAIStudio/releases).Open Blender →**Edit** → **Preferences** → **Add-ons** → **Install from Disk**.
 
-2. Open Blender →**Edit** → **Preferences** → **Add-ons** → **Install from Disk**.
+<img width="2560" height="1380" alt="image" src="https://github.com/user-attachments/assets/70240e61-4821-46c5-bf3c-4189f8fabacd" />
 
-3. Select the downloaded zip file and click **Install Add-on**.
+2. Select the downloaded zip file and click Install Add-on.
+
+<img width="2554" height="1378" alt="image" src="https://github.com/user-attachments/assets/d7b1ba7f-ca43-4164-9b80-a8db59687b96" />
+
+
+3. After installation is complete, you will see new buttons appear in the add-on list and panel.
+
+<img width="2560" height="1380" alt="image" src="https://github.com/user-attachments/assets/ee88e753-ce3d-402d-9fa6-d9cc726163cb" />
+
 
 4. Verify: New buttons appear in the add-on list/panel. Restart Blender if needed (first run).
 
@@ -95,23 +103,23 @@ Blurs details to avoid limiting AI imagination (vs. standard render mode).
 
 Adaptive scaling for Addon UI-Forge is in progress. Manually adjust the interface size in add-on settings if it’s too large/small.
 
+<img width="2560" height="1380" alt="image" src="https://github.com/user-attachments/assets/bffd0b13-3ced-4e2e-829a-10afca5a4d2b" />
 
 ### Cache/Output Settings
 
 Blender AI Studio saves all generated content to a customizable cache folder to prevent data loss (e.g., accidental Blender closure).
-
+<img width="2557" height="1379" alt="image" src="https://github.com/user-attachments/assets/02768078-2f01-4490-b5a5-f3312646f360" />
 
 ### API Configuration
 
 1. Go to **Service Settings** → Switch to**API Mode**.
-
+<img width="355" height="885" alt="image" src="https://github.com/user-attachments/assets/3b12f5e0-613c-483e-9980-7dd786779b46" />
 
 2. Create an API key at [Google AI Studio](https://aistudio.google.com/).
-
-
 3. Complete! Start using the addon.
+<img width="354" height="892" alt="image" src="https://github.com/user-attachments/assets/a447b34a-b731-4f1a-9f5d-26aa8ee75d31" />
 
 ## Credits
 
 Inspired by [nano-banana-render](https://github.com/Kovname/nano-banana-render) during development.
-> （注：文档部分内容可能由 AI 生成）
+
