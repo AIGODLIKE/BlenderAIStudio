@@ -20,12 +20,45 @@
 
 <img width="1280" height="690" alt="image" src="https://github.com/user-attachments/assets/f11f92b0-d5a6-48c1-a1f2-0b52df51ac65" />
 
-## 
+## 基本功能
 
+|功能名|描述|
+|:----|:----|
+|引擎|选择支持的生成引擎|
+|输入图（首图）|可选择输入渲染、深度图像或不输入图像(文生图)，如选择输入，则该图像为队列第一张图像，同时它的名字被称为**渲染图**或**原图**|
+|提示词|描述所需要生成的内容（不想要的也可以写）|
+|提示词优化|默认开启，用于定义第一张图为渲染图/原图，其它为参考图|
+|参考图|最多支持10张，可辅助生成效果/构成元素|
+|尺寸设置|自适应=根据当前渲染输出比例匹配分辨率其它=强制输出规定比例匹配分辨率|
+|分辨率|生成图像的分辨率，分辨率越大，生成时间越长。推荐2K分辨率，性价比高。4K容易产生涂抹还贵，不如自己放大。|
 
+## 使用示范
 
+### 相机渲染模式
 
+直接输出相机渲染内容，用作第一张输入图，此图像被称为渲染图/原图
 
+#### 01为模型匹配场景
+
+|渲染图/原图|提示词|输出图像|
+|:----|:----|:----|
+|<img width="1848" height="1035" alt="image" src="https://github.com/user-attachments/assets/1f56a53e-5077-47fc-88c3-8a0e8259b1d0" />|电商海报，米色石头上有一台参考图的平板电脑产品，品牌ACGGit，周围花花卉拥着，背景漂浮着很多模糊朦胧的花朵，真实的照片，极致的清晰度和细节，大师级摄影，强烈的光影，8k画质|<img width="1506" height="839" alt="image" src="https://github.com/user-attachments/assets/ebd1964b-09b9-420f-b403-51e7626ef591" />|
+
+#### 02替换场景中模型
+
+|渲染图/原图|提示词|参考图|输出图像|
+|:----|:----|:----|:----|
+|<img width="1848" height="1035" alt="image" src="https://github.com/user-attachments/assets/1f56a53e-5077-47fc-88c3-8a0e8259b1d0" />|将参考图场景中的产品，换成渲染图的平板电脑|<img width="852" height="1187" alt="image" src="https://github.com/user-attachments/assets/565c94b3-fdbc-43cd-9d0f-f95176d76253" />|<img width="1507" height="842" alt="image" src="https://github.com/user-attachments/assets/ec0cdd49-3fe7-4bc8-8359-24c80d21bd3d" />|
+
+#### 03渲染风格转换
+|渲染图/原图|提示词|输出图像|
+|:----|:----|:----|
+|<img width="587" height="1042" alt="image" src="https://github.com/user-attachments/assets/b34885ba-5d38-49b9-93fa-e28165390c4b" />|渲染2D风格海报，背景为地球地面，可以看到云和海洋，飞机，宇宙飞船。动漫风格|<img width="574" height="1041" alt="image" src="https://github.com/user-attachments/assets/53da8a81-9129-4f9b-8c9b-252dc595456f" />|
+
+#### 04草图转分镜
+|渲染图/原图|提示词|参考图|输出图像|
+|:----|:----|:----|:----|
+|<img width="2252" height="947" alt="image" src="https://github.com/user-attachments/assets/2ec15c66-65a8-4da0-b9d9-6ccdb8509bf8" />|保持渲染图比例/构图/镜头不变，渲染图是一张分镜草图，请完善细节，一个巨型机器人驾驶员，穿着战斗服装，头戴玻璃头盔，凝视着镜头，漏出吃惊的表情。风格为2D风格，参考图角色|<img width="574" height="1031" alt="image" src="https://github.com/user-attachments/assets/1526b46c-5c5f-47a9-bda2-97569166898d" />|<img width="1738" height="742" alt="image" src="https://github.com/user-attachments/assets/71d52540-65df-4b69-8647-c12f99783461" />|
 
 
 ## 工具安装
