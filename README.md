@@ -1,3 +1,7 @@
+
+I'm going to take a nap first. I've been working for over twenty hours ..
+
+
 # Blender-Ai-Studio
 A new generation of Ai Addon developed using Blender Addon UI Forge
 
