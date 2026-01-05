@@ -1,32 +1,31 @@
-import bpy
-import re
 import json
+import math
+import re
 import time
 import webbrowser
-import math
-import platform
-import subprocess
-from bpy.app.translations import pgettext
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from shutil import copyfile
 from traceback import print_exc
 
-from .clients import StudioHistoryItem, StudioHistory, StudioClient, NanoBanana
+import bpy
+from bpy.app.translations import pgettext
+
+from .account import AuthMode, Account
+from .clients import StudioHistoryItem, StudioHistory, StudioClient
 from .gui.app.animation import AnimationSystem, Easing, Tween, Sequence
 from .gui.app.app import AppHud
 from .gui.app.renderer import imgui
 from .gui.app.style import Const
 from .gui.texture import TexturePool
 from .gui.widgets import CustomWidgets, with_child
-from .account import AuthMode, Account
 from .tasks import TaskState
 from .wrapper import BaseAdapter, WidgetDescriptor, DescriptorFactory
+from ..i18n import STUDIO_TCTX
 from ..preferences import get_pref
 from ..timer import Timer
 from ..utils import get_version
-from ..i18n import STUDIO_TCTX
 
 
 def _T(msg, ctxt=STUDIO_TCTX):
@@ -60,14 +59,17 @@ def edit_image_with_meta_and_context(file_path, meta, context):
 
 
 def open_dir(path):
-    open_util = 'explorer "%s"'
-    if platform.system() != "Windows":
-        open_util = 'open /"%s"'
-
-    try:
-        subprocess.run(open_util % path, shell=True, check=True)
-    except Exception:
-        print_exc()
+    """
+    # open_util = 'explorer "%s"'
+    # if platform.system() != "Windows":
+    #     open_util = 'open /"%s"'
+    #
+    # try:
+    #     subprocess.run(open_util % path, shell=True, check=True)
+    # except Exception:
+    #     print_exc()
+    """
+    bpy.ops.wm.url_open(url=r"path")
 
 
 class AppHelperDraw:
@@ -642,14 +644,16 @@ class StorePanel:
 
             # --- 表格 1: 邮箱 + 登出
             bw = aw - bh - imgui.get_style().item_spacing[0]
-            CustomWidgets.icon_label_button("account_email", self.app.state.nickname, "BETWEEN", (bw, bh), isize, fpx * 2)
+            CustomWidgets.icon_label_button("account_email", self.app.state.nickname, "BETWEEN", (bw, bh), isize,
+                                            fpx * 2)
             imgui.same_line()
             if CustomWidgets.icon_label_button("account_logout", "", "CENTER", (bh, bh), isize):
                 self.app.state.logout()
 
             # --- 表格 2: Token + 刷新
             bw = aw - bh - imgui.get_style().item_spacing[0]
-            CustomWidgets.icon_label_button("account_token", str(self.app.state.credits), "BETWEEN", (bw, bh), isize, fpx * 2)
+            CustomWidgets.icon_label_button("account_token", str(self.app.state.credits), "BETWEEN", (bw, bh), isize,
+                                            fpx * 2)
             imgui.same_line()
             if CustomWidgets.icon_label_button("account_refresh", "", "CENTER", (bh, bh), isize):
                 self.app.state.fetch_credits()
@@ -948,7 +952,8 @@ class RedeemPanel:
                 icon = TexturePool.get_tex_id("redeem_header")
                 tex = TexturePool.get_tex(icon)
                 scale = imgui.get_text_line_height() / tex.height
-                imgui.image_button("Redeem", icon, (tex.width * scale, tex.height * scale), tint_col=Const.BUTTON_SELECTED)
+                imgui.image_button("Redeem", icon, (tex.width * scale, tex.height * scale),
+                                   tint_col=Const.BUTTON_SELECTED)
                 imgui.pop_style_color(3)
                 imgui.same_line()
 
@@ -1190,11 +1195,11 @@ class RedeemPanel:
 
 class ErrorLogBubble:
     def __init__(
-        self,
-        anim_system: AnimationSystem,
-        text: str,
-        pos: tuple[float, float] = (0, 0),
-        duration: float = 3,
+            self,
+            anim_system: AnimationSystem,
+            text: str,
+            pos: tuple[float, float] = (0, 0),
+            duration: float = 3,
     ) -> None:
         self.text = text
         self.x = pos[0]
@@ -1802,7 +1807,8 @@ class AIStudio(AppHud):
                 imgui.end_combo()
             if imgui.is_item_hovered():
                 title = _T("Please Select Generation Engine")
-                tip = _T("Select Engine and Fill API, You can use AI in Blender seamlessly. Note: This tool only has the function of connecting to the service. The generated content & fees are subject to the provider.")
+                tip = _T(
+                    "Select Engine and Fill API, You can use AI in Blender seamlessly. Note: This tool only has the function of connecting to the service. The generated content & fees are subject to the provider.")
                 imgui.set_next_window_size((759, 0))
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             imgui.pop_style_color(2)
@@ -2210,7 +2216,8 @@ class AIStudio(AppHud):
             if imgui.is_item_hovered():
                 imgui.set_next_window_size((580, 0))
                 title = _T("Prompt Optimization")
-                tip = _T("Enable Prompt Optimization to improve the quality of the generated image and the safety of the content.")
+                tip = _T(
+                    "Enable Prompt Optimization to improve the quality of the generated image and the safety of the content.")
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             imgui.end_child()
             imgui.set_cursor_pos(pos)
@@ -2226,7 +2233,8 @@ class AIStudio(AppHud):
             if imgui.is_item_hovered():
                 imgui.set_next_window_size((710, 0))
                 title = _T("Image Resolution")
-                tip = _T("Set the image resolution via both image size and aspect ratio, and the larger the resolution, the longer the generation time/resource required.")
+                tip = _T(
+                    "Set the image resolution via both image size and aspect ratio, and the larger the resolution, the longer the generation time/resource required.")
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             return
 

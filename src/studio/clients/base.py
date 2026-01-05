@@ -1,11 +1,23 @@
 import json
+import tempfile
 import time
-from typing import Self
 from pathlib import Path
-from ..account import Account
+from typing import Self
+
 from ..tasks import TaskManager
 from ..wrapper import BaseAdapter
 from ...i18n import PROP_TCTX
+
+GENERATE_HISTORY_PATH = Path(tempfile.gettempdir(), "aistudio/generate_history.json")  # 生成历史记录
+EDIT_HISTORY_PATH = Path(tempfile.gettempdir(), "aistudio/edit_history.json")  # 编辑历史记录
+try:
+    GENERATE_HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+except Exception as e:
+    print("mkdir file error", e.args)
+try:
+    EDIT_HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+except Exception as e:
+    print("mkdir file error", e.args)
 
 
 class StudioHistoryItem:
@@ -19,14 +31,33 @@ class StudioHistoryItem:
         self.show_detail: bool = False
 
     def stringify(self) -> str:
-        data = {
+        """序列化"""
+        return json.dumps(self.data)
+
+    @property
+    def data(self) -> dict:
+        """字典数据"""
+        return {
             "output_file": self.output_file,
             "metadata": self.metadata,
             "vendor": self.vendor,
             "index": self.index,
             "timestamp": self.timestamp,
         }
-        return json.dumps(data)
+
+    @staticmethod
+    def load(data: dict):
+        history = StudioHistoryItem()
+        for k in (
+                "output_file",
+                "metadata",
+                "vendor",
+                "index",
+                "timestamp",
+        ):
+            if k in data:
+                setattr(history, k, data[k])
+        return history
 
 
 class StudioHistory:
@@ -61,8 +92,35 @@ class StudioHistory:
         item.index = self.current_index
         self.items.insert(0, item)
 
+    def save_history(self):
+        if not GENERATE_HISTORY_PATH.parent.exists():
+            return
+        try:
+            items = [item.data for item in self.items]
+            GENERATE_HISTORY_PATH.write_text(json.dumps(items))
+        except Exception as e:
+            import traceback
+            print("保存历史记录失败", e.args)
+            traceback.print_exc()
+
+    def restore_history(self):
+        if not GENERATE_HISTORY_PATH.exists():
+            return
+        try:
+            data = json.loads(GENERATE_HISTORY_PATH.read_text())
+            if not isinstance(data, list):
+                print("Invalid history data")
+                print(data)
+            items = [StudioHistoryItem.load(item) for item in data]
+            self.items = items
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print("恢复历史记录失败", e.args)
+
 
 class StudioClient(BaseAdapter):
+    from ..account import Account
     VENDOR = ""
     _INSTANCE = None
 

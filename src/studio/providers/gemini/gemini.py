@@ -1,17 +1,16 @@
 import base64
+import json
+import tempfile
+from pathlib import Path
+from typing import Tuple
+
 import OpenImageIO as oiio
 import numpy as np
 import requests
-import json
-import tempfile
-
-from pathlib import Path
-from typing import Tuple
 
 from .config import Payload
 from ..base import BaseProvider
 from ...account import SERVICE_URL
-from ....logger import logger
 from ...exception import (
     StudioException,
     APIRequestException,
@@ -19,6 +18,8 @@ from ...exception import (
     InsufficientBalanceException,
     ToeknExpiredException,
 )
+from ....logger import logger
+
 
 ###############################################################################
 #         Reference: https://github.com/kovname/nano-banana-render            #
@@ -152,6 +153,7 @@ class AccountGeminiImageProvider(GeminiImageGenerateProvider):
         err_code = resp.get("errCode")
         if not err_msg:
             return
+        print("_check_response_custom", resp)
         err_type_map = {
             "余额不足": InsufficientBalanceException("Insufficient balance!"),
             "API请求错误!": APIRequestException("API Request Error!"),

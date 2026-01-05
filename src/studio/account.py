@@ -3,12 +3,13 @@ import json
 import tempfile
 import traceback
 import webbrowser
-import requests
-
-from typing import Self
 from pathlib import Path
 from threading import Thread
+from typing import Self
+
+import requests
 from bpy.app.translations import pgettext as _T
+
 from .exception import (
     APIRequestException,
     AuthFailedException,
@@ -19,8 +20,8 @@ from .exception import (
     DatabaseUpdateException,
     ToeknExpiredException,
 )
-from ..preferences import get_pref, AuthMode
 from ..logger import logger
+from ..preferences import get_pref, AuthMode
 
 try:
     from ...External.websockets.server import serve
@@ -39,8 +40,8 @@ LOGIN_URL = "https://addon-login.acggit.com"
 AUTH_PATH = Path(tempfile.gettempdir(), "aistudio/auth.json")
 try:
     AUTH_PATH.parent.mkdir(parents=True, exist_ok=True)
-except Exception:
-    pass
+except Exception as e:
+    print("mkdir file error", e.args)
 
 
 class Account:
@@ -175,14 +176,14 @@ class Account:
             self.push_error(_T("Can't load auth file"))
 
     def load_account_info(self, data: dict):
-        {
+        """{
             "id": 0,
             "email": "test@on.ink",
             "nickname": "TEST",
             "avatar": "xxx",
             "coin": 1564,
             "token": "xxx",
-        }
+        }"""
         if not isinstance(data, dict):
             print(data)
             self.push_error(_T("Invalid auth data"))
@@ -441,12 +442,17 @@ def init_account():
 def register():
     import bpy
 
+    from .clients.base import StudioHistory
+    StudioHistory.get_instance().restore_history()
+
     bpy.app.timers.register(init_account, first_interval=1, persistent=True)
 
 
 def unregister():
-    import bpy
+    from .clients.base import StudioHistory
+    StudioHistory.get_instance().save_history()
 
+    import bpy
     bpy.app.timers.unregister(init_account)
 
 
