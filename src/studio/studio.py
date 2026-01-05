@@ -69,7 +69,7 @@ def open_dir(path):
     # except Exception:
     #     print_exc()
     """
-    bpy.ops.wm.url_open(url=r"path")
+    bpy.ops.wm.url_open(url=path)
 
 
 class AppHelperDraw:
