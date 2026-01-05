@@ -58,6 +58,14 @@ class AIStudioEntry(bpy.types.Operator):
             return {"PASS_THROUGH"}
         return {"RUNNING_MODAL"}
 
+    @classmethod
+    def close_all(cls):
+        """关闭所有的窗口
+        避免出现在显示窗口时关闭插件bug
+        """
+        for app in cls.entry_pool.values():
+            app.shutdown()
+
 
 class FileCallbackRegistry:
     """管理文件选择回调的注册表"""
@@ -960,5 +968,6 @@ def register():
 
 
 def unregister():
+    AIStudioEntry.close_all()
     unreg()
     PromptSave.unregister_ui()

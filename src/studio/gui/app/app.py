@@ -1,20 +1,20 @@
 import platform
-import traceback
 import time
-import bpy
-import numpy as np
-from math import radians
+import traceback
 from collections.abc import Callable
-from mathutils import Matrix, Vector
+from math import radians
 from pathlib import Path
 from platform import system
 from queue import Queue
 from uuid import uuid4
 
+import bpy
+import numpy as np
+from mathutils import Matrix, Vector
+
 from .animation import AnimationSystem
 from .event import Event
 from .renderer import Renderer as ImguiRenderer, imgui
-
 from ....logger import logger, DEBUG
 
 
@@ -234,7 +234,8 @@ class App:
         return self.any_window_focused or self.any_item_focused or self.item_focused
 
     def is_mouse_dragging(self):
-        return imgui.is_mouse_dragging(imgui.MouseButton.LEFT) or imgui.is_mouse_dragging(imgui.MouseButton.RIGHT) or imgui.is_mouse_dragging(imgui.MouseButton.MIDDLE)
+        return imgui.is_mouse_dragging(imgui.MouseButton.LEFT) or imgui.is_mouse_dragging(
+            imgui.MouseButton.RIGHT) or imgui.is_mouse_dragging(imgui.MouseButton.MIDDLE)
 
     def want_events(self):
         return self.io.want_capture_keyboard or self.io.want_capture_mouse or self.io.want_text_input
@@ -249,7 +250,7 @@ class App:
     def draw(self, area):
         try:
             self._draw_ex(area)
-        except ReferenceError:
+        except ReferenceError or RuntimeError:
             self.shutdown()
         except Exception:
             traceback.print_exc()
