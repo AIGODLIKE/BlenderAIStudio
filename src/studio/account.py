@@ -158,11 +158,14 @@ class Account:
         headers = {
             "Content-Type": "application/json",
         }
-        try:
-            resp = requests.get(url, headers=headers)
-            self.services_connected = resp.status_code == 200
-        except Exception:
-            self.services_connected = False
+        def job():
+            try:
+                resp = requests.get(url, headers=headers, timeout=2)
+                self.services_connected = resp.status_code == 200
+            except Exception:
+                self.services_connected = False
+
+        Thread(target=job, daemon=True).start()
 
     def load_account_info_from_local(self):
         if not self._AUTH_PATH.exists():
