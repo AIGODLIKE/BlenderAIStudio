@@ -82,7 +82,7 @@ class App:
         self.animation_system = AnimationSystem.get_instance()
 
         logger.debug("App Backend created")
-        logger.debug(f"\t{self.backend}")
+        logger.debug(f"backend\t{self.backend}")
 
         self.io = self.backend.io
         self.io.ini_filename = Path(__file__).parent.joinpath("imgui.ini").as_posix()

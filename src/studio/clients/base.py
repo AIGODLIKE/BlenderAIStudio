@@ -2,21 +2,16 @@ import json
 import tempfile
 import time
 from pathlib import Path
-from threading import Thread
 from typing import Self
 
 from ..tasks import TaskManager
 from ..wrapper import BaseAdapter
+from ... import logger
 from ...i18n import PROP_TCTX
 
 GENERATE_HISTORY_PATH = Path(tempfile.gettempdir(), "aistudio/generate_history.json")  # 生成历史记录
-EDIT_HISTORY_PATH = Path(tempfile.gettempdir(), "aistudio/edit_history.json")  # 编辑历史记录
 try:
     GENERATE_HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
-except Exception as e:
-    print("mkdir file error", e.args)
-try:
-    EDIT_HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
 except Exception as e:
     print("mkdir file error", e.args)
 
@@ -101,7 +96,7 @@ class StudioHistory:
             GENERATE_HISTORY_PATH.write_text(json.dumps(items))
         except Exception as e:
             import traceback
-            print("保存历史记录失败", e.args)
+            logger.debug("保存历史记录失败", e.args)
             traceback.print_exc()
 
     def restore_history(self):
@@ -110,14 +105,14 @@ class StudioHistory:
         try:
             data = json.loads(GENERATE_HISTORY_PATH.read_text())
             if not isinstance(data, list):
-                print("Invalid history data")
-                print(data)
+                logger.debug("Invalid history data")
+                logger.debug(data)
             items = [StudioHistoryItem.load(item) for item in data]
             self.items = items
         except Exception as e:
             import traceback
             traceback.print_exc()
-            print("恢复历史记录失败", e.args)
+            logger.debug("恢复历史记录失败", e.args)
 
 
 class StudioClient(BaseAdapter):

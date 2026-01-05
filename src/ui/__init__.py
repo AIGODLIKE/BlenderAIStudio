@@ -15,8 +15,6 @@ clss = [
 register_classes, unregister_classes = bpy.utils.register_classes_factory(clss)
 
 
-from ..utils import debug_time
-@debug_time
 def draw_ai_studio_button(self, context):
     from ..studio.ops import AIStudioEntry
 

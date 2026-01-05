@@ -1,7 +1,6 @@
 import bpy
 
 from .logger import logger
-from .utils import debug_time
 
 modules = [
     # 模块列表
@@ -18,7 +17,6 @@ modules = [
 reg, unreg = bpy.utils.register_submodule_factory(__package__, modules)
 
 
-@debug_time
 def register():
     reg()
     logger.debug(f"{__package__} registered")

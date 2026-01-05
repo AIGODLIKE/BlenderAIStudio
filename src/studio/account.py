@@ -8,7 +8,6 @@ from threading import Thread
 from typing import Self
 
 import bpy
-import requests
 from bpy.app.translations import pgettext as _T
 
 from .exception import (
@@ -23,7 +22,6 @@ from .exception import (
 )
 from ..logger import logger
 from ..preferences import get_pref, AuthMode
-from ..utils import debug_time
 
 try:
     from ...External.websockets.server import serve
@@ -94,7 +92,7 @@ class Account:
     def init(self):
         if self.initialized:
             return
-        print("初始化账户")
+        logger.debug("初始化账户")
         self.initialized = True
         self.fetch_credits_price()
 
@@ -156,7 +154,6 @@ class Account:
         job = Thread(target=run, args=((55441, 55451),), daemon=True)
         job.start()
 
-    @debug_time
     def ping_once(self):
         url = f"{SERVICE_URL}/billing/model-price"
         headers = {
@@ -165,6 +162,7 @@ class Account:
 
         def job():
             try:
+                import requests
                 resp = requests.get(url, headers=headers, timeout=2)
                 self.services_connected = resp.status_code == 200
             except Exception:
@@ -234,6 +232,7 @@ class Account:
             "code": code,
         }
         try:
+            import requests
             resp = requests.post(url, headers=headers, json=payload)
         except ConnectionError:
             self.push_error(_T("Network connection failed"))
@@ -275,7 +274,6 @@ class Account:
             print("兑换失败:", resp.status_code, resp.text)
         return 0
 
-    @debug_time
     def fetch_credits_price(self):
         def _fetch_credits_price():
             if self.price_table:
@@ -285,6 +283,7 @@ class Account:
                 "Content-Type": "application/json",
             }
             try:
+                import requests
                 resp = requests.get(url, headers=headers)
             except ConnectionError:
                 self.push_error(_T("Network connection failed"))
@@ -335,6 +334,7 @@ class Account:
                 "Content-Type": "application/json",
             }
             try:
+                import requests
                 resp = requests.get(url, headers=headers)
             except ConnectionError:
                 self.push_error(_T("Network connection failed"))
@@ -448,7 +448,6 @@ class WebSocketServer:
         self.loop.run_until_complete(self.main())
 
 
-@debug_time
 def init_account():
     def init():
         account = Account.get_instance()
@@ -458,14 +457,12 @@ def init_account():
     return 1
 
 
-@debug_time
 def register():
     def load():
         from .clients.base import StudioHistory
         StudioHistory.get_instance().restore_history()
 
     Thread(target=load, daemon=True).start()
-    
     bpy.app.timers.register(init_account, first_interval=1, persistent=True)
 
 
@@ -473,35 +470,5 @@ def unregister():
     from .clients.base import StudioHistory
     StudioHistory.get_instance().save_history()
 
-    import bpy
     if bpy.app.timers.is_registered(init_account):
         bpy.app.timers.unregister(init_account)
-
-
-if __name__ == "__main__":
-    account = Account()
-    account.auth_mode = AuthMode.ACCOUNT.value
-    account.account_name = "test"
-    account.credits = 100
-    account.fetch_credits_price()
-    print(account.take_errors())
-    print(account.auth_mode)
-    print(account.account_name)
-    print(account.credits)
-    redeem_codes_test = [
-        "BG030-43CD-8B9A-6B038795C00F",
-        "BG064-4AF6-A608-590D571E3C56",
-        "BG064-41B8-84E3-BF8D81833323",
-        "BG030-46C2-86BF-935805F8CB2F",
-        "BG064-44B3-84CF-E32E27170A9E",
-        "BG100-4E82-96FC-E2B5C968A18B",
-        "BG006-4EC3-80B3-ABDA0A592EB7",
-        "BG006-430F-A7A8-67AF3F5093B9",
-        "BG100-43A1-BAE7-658074646973",
-        "BG030-4EB5-9756-0003E23FF052",
-        "BG130-4EB5-9756-0003E23FF053",
-    ]
-    for code_test in redeem_codes_test:
-        account.redeem_credits(code_test)
-    print(account.take_errors())
-    print(account.credits)
