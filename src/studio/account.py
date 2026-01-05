@@ -10,6 +10,7 @@ from typing import Self
 import requests
 from bpy.app.translations import pgettext as _T
 
+from ..utils import debug_time
 from .exception import (
     APIRequestException,
     AuthFailedException,
@@ -92,6 +93,7 @@ class Account:
     def init(self):
         if self.initialized:
             return
+        print("初始化账户")
         self.initialized = True
         self.fetch_credits_price()
 
@@ -153,18 +155,19 @@ class Account:
         job = Thread(target=run, args=((55441, 55451),), daemon=True)
         job.start()
 
+    @debug_time
     def ping_once(self):
         url = f"{SERVICE_URL}/billing/model-price"
         headers = {
             "Content-Type": "application/json",
         }
+
         def job():
             try:
                 resp = requests.get(url, headers=headers, timeout=2)
                 self.services_connected = resp.status_code == 200
             except Exception:
                 self.services_connected = False
-
         Thread(target=job, daemon=True).start()
 
     def load_account_info_from_local(self):
@@ -270,36 +273,39 @@ class Account:
             print("兑换失败:", resp.status_code, resp.text)
         return 0
 
+    @debug_time
     def fetch_credits_price(self):
-        if self.price_table:
-            return
-        url = f"{SERVICE_URL}/billing/model-price"
-        headers = {
-            "Content-Type": "application/json",
-        }
-        try:
-            resp = requests.get(url, headers=headers)
-        except ConnectionError:
-            self.push_error(_T("Network connection failed"))
-            return
-        if resp.status_code == 404:
-            self.push_error(_T("Price fetch failed"))
-            return
-        if resp.status_code == 502:
-            self.push_error(_T("Server Error: Bad Gateway"))
-            return
-        resp.raise_for_status()
-        if resp.status_code == 200:
-            resp_json: dict = resp.json()
-            code = resp_json.get("code")
-            err_msg = resp_json.get("errMsg")
-            if code != 0:
-                self.push_error(_T("Price fetch failed") + ": " + err_msg)
+        def _fetch_credits_price():
+            if self.price_table:
                 return
-            data: dict = resp_json.get("data", {})
-            self.price_table = data
-        else:
-            self.push_error(_T("Price fetch failed") + ": " + resp.text)
+            url = f"{SERVICE_URL}/billing/model-price"
+            headers = {
+                "Content-Type": "application/json",
+            }
+            try:
+                resp = requests.get(url, headers=headers)
+            except ConnectionError:
+                self.push_error(_T("Network connection failed"))
+                return
+            if resp.status_code == 404:
+                self.push_error(_T("Price fetch failed"))
+                return
+            if resp.status_code == 502:
+                self.push_error(_T("Server Error: Bad Gateway"))
+                return
+            resp.raise_for_status()
+            if resp.status_code == 200:
+                resp_json: dict = resp.json()
+                code = resp_json.get("code")
+                err_msg = resp_json.get("errMsg")
+                if code != 0:
+                    self.push_error(_T("Price fetch failed") + ": " + err_msg)
+                    return
+                data: dict = resp_json.get("data", {})
+                self.price_table = data
+            else:
+                self.push_error(_T("Price fetch failed") + ": " + resp.text)
+        Thread(target=_fetch_credits_price, daemon=True).start()
 
     def get_model_price_table(self, provider: str = "") -> dict:
         if not self.price_table:
@@ -317,42 +323,43 @@ class Account:
         return {}
 
     def fetch_credits(self):
-        if self.auth_mode != AuthMode.ACCOUNT.value:
-            return
-        url = f"{SERVICE_URL}/billing/balance"
-        headers = {
-            "X-Auth-T": self.token,
-            "Content-Type": "application/json",
-        }
-        try:
-            resp = requests.get(url, headers=headers)
-        except ConnectionError:
-            self.push_error(_T("Network connection failed"))
-            return
-        if resp.status_code == 404:
-            self.push_error(_T("Credits fetch failed"))
-            return
-        if resp.status_code == 502:
-            self.push_error(_T("Server Error: Bad Gateway"))
-            return
-        resp.raise_for_status()
-        if resp.status_code == 200:
-            resp_json: dict = resp.json()
-            code = resp_json.get("code")
-            err_code = resp_json.get("errCode")
-            err_msg = resp_json.get("errMsg", "")
-            match code, err_code:
-                case (-4, -4000):
-                    self.push_error(AuthFailedException("Authentication failed!"))
-                case (-4, -4001):
-                    self.push_error(ToeknExpiredException("Token expired!"))
-            if code != 0:
-                self.push_error(_T("Credits fetch failed") + ": " + err_msg)
+        def _fetch_credits():
+            if self.auth_mode != AuthMode.ACCOUNT.value:
                 return
-            self.credits = resp_json.get("data", 0)
-        else:
-            self.push_error(_T("Credits fetch failed") + ": " + resp.text)
-
+            url = f"{SERVICE_URL}/billing/balance"
+            headers = {
+                "X-Auth-T": self.token,
+                "Content-Type": "application/json",
+            }
+            try:
+                resp = requests.get(url, headers=headers)
+            except ConnectionError:
+                self.push_error(_T("Network connection failed"))
+                return
+            if resp.status_code == 404:
+                self.push_error(_T("Credits fetch failed"))
+                return
+            if resp.status_code == 502:
+                self.push_error(_T("Server Error: Bad Gateway"))
+                return
+            resp.raise_for_status()
+            if resp.status_code == 200:
+                resp_json: dict = resp.json()
+                code = resp_json.get("code")
+                err_code = resp_json.get("errCode")
+                err_msg = resp_json.get("errMsg", "")
+                match code, err_code:
+                    case (-4, -4000):
+                        self.push_error(AuthFailedException("Authentication failed!"))
+                    case (-4, -4001):
+                        self.push_error(ToeknExpiredException("Token expired!"))
+                if code != 0:
+                    self.push_error(_T("Credits fetch failed") + ": " + err_msg)
+                    return
+                self.credits = resp_json.get("data", 0)
+            else:
+                self.push_error(_T("Credits fetch failed") + ": " + resp.text)
+        Thread(target=_fetch_credits, daemon=True).start()
 
 class WebSocketServer:
     _host = "127.0.0.1"
@@ -435,20 +442,21 @@ class WebSocketServer:
         asyncio.set_event_loop(self.loop)
         self.loop.run_until_complete(self.main())
 
-
+@debug_time
 def init_account():
-    account = Account.get_instance()
-    Thread(target=account.init, daemon=True).start()
+    def init():
+        account = Account.get_instance()
+        account.init()
+
+    Thread(target=init, daemon=True).start()
     return 1
 
 
 def register():
-    import bpy
-
     from .clients.base import StudioHistory
     StudioHistory.get_instance().restore_history()
 
-    bpy.app.timers.register(init_account, first_interval=1, persistent=True)
+    # bpy.app.timers.register(init_account, first_interval=1, persistent=True)
 
 
 def unregister():
@@ -456,7 +464,8 @@ def unregister():
     StudioHistory.get_instance().save_history()
 
     import bpy
-    bpy.app.timers.unregister(init_account)
+    if bpy.app.timers.is_registered(init_account):
+        bpy.app.timers.unregister(init_account)
 
 
 if __name__ == "__main__":

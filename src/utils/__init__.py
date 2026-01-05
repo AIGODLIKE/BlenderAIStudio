@@ -186,6 +186,21 @@ def refresh_image_preview(image: bpy.types.Image):
             image.preview_ensure()
 
 
+def debug_time(func, print_time=True):
+    import time
+
+    def wap(*args, **kwargs):
+        if print_time:
+            st = time.time()
+        func_return = func(*args, **kwargs)
+        if print_time:
+            et = time.time()
+            print(f"dt {func.__module__} {func.__name__}", et - st)
+        return func_return
+
+    return wap
+
+
 def register():
     pass
 
