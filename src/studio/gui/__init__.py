@@ -1,8 +1,12 @@
-from ...utils import PkgInstaller
+from threading import Thread
 
 
 def register():
-    PkgInstaller.try_install("slimgui")
+    def install():
+        from ...utils import PkgInstaller
+        PkgInstaller.try_install("slimgui")
+
+    Thread(target=install, daemon=True).start()
 
 
 def unregister():

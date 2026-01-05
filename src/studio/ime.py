@@ -1,5 +1,7 @@
-import bpy
 from queue import Queue
+
+import bpy
+
 from ...External.input_method_hook import input_manager
 
 IME_BUFFER = Queue()

@@ -16,7 +16,10 @@ modules = [
 
 reg, unreg = bpy.utils.register_submodule_factory(__package__, modules)
 
+from .src.utils import debug_time
 
+
+@debug_time
 def register():
     reg()
 

@@ -19,6 +19,7 @@ class PkgInstaller:
     @staticmethod
     def select_pip_source():
         if not PkgInstaller.fast_url:
+
             import requests
 
             t, PkgInstaller.fast_url = 999, PkgInstaller.source[0]
