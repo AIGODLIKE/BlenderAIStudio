@@ -171,9 +171,7 @@ class RenderAgent:
     def _write(self, sce, _):
         if self._write_cb:
             try:
-                print("write1", self)
                 self._write_cb(sce)
-                print("write2", self)
             except Exception:
                 print_exc()
         self.detach()
