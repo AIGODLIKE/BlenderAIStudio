@@ -7,10 +7,10 @@ from pathlib import Path
 from threading import Thread
 from typing import Self
 
+import bpy
 import requests
 from bpy.app.translations import pgettext as _T
 
-from ..utils import debug_time
 from .exception import (
     APIRequestException,
     AuthFailedException,
@@ -23,6 +23,7 @@ from .exception import (
 )
 from ..logger import logger
 from ..preferences import get_pref, AuthMode
+from ..utils import debug_time
 
 try:
     from ...External.websockets.server import serve
@@ -168,6 +169,7 @@ class Account:
                 self.services_connected = resp.status_code == 200
             except Exception:
                 self.services_connected = False
+
         Thread(target=job, daemon=True).start()
 
     def load_account_info_from_local(self):
@@ -305,6 +307,7 @@ class Account:
                 self.price_table = data
             else:
                 self.push_error(_T("Price fetch failed") + ": " + resp.text)
+
         Thread(target=_fetch_credits_price, daemon=True).start()
 
     def get_model_price_table(self, provider: str = "") -> dict:
@@ -359,7 +362,9 @@ class Account:
                 self.credits = resp_json.get("data", 0)
             else:
                 self.push_error(_T("Credits fetch failed") + ": " + resp.text)
+
         Thread(target=_fetch_credits, daemon=True).start()
+
 
 class WebSocketServer:
     _host = "127.0.0.1"
@@ -442,6 +447,7 @@ class WebSocketServer:
         asyncio.set_event_loop(self.loop)
         self.loop.run_until_complete(self.main())
 
+
 @debug_time
 def init_account():
     def init():
@@ -452,11 +458,15 @@ def init_account():
     return 1
 
 
+@debug_time
 def register():
-    from .clients.base import StudioHistory
-    StudioHistory.get_instance().restore_history()
+    def load():
+        from .clients.base import StudioHistory
+        StudioHistory.get_instance().restore_history()
 
-    # bpy.app.timers.register(init_account, first_interval=1, persistent=True)
+    Thread(target=load, daemon=True).start()
+    
+    bpy.app.timers.register(init_account, first_interval=1, persistent=True)
 
 
 def unregister():

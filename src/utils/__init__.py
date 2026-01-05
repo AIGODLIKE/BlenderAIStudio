@@ -195,7 +195,8 @@ def debug_time(func, print_time=True):
         func_return = func(*args, **kwargs)
         if print_time:
             et = time.time()
-            print(f"dt {func.__module__} {func.__name__}", et - st)
+            s = et - st
+            print(f"dt {func.__module__} {func.__name__} {(s * 1000):.2f}ms", )
         return func_return
 
     return wap

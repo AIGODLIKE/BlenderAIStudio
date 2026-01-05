@@ -2,6 +2,8 @@ import os
 
 import bpy.utils.previews
 
+from ..utils import debug_time
+
 previews_icons = bpy.utils.previews.new()  # 用于存所有的缩略图
 thumbnail_suffix = [".png", ".jpg"]  # 缩略图后缀列表
 
@@ -30,6 +32,7 @@ def clear():
     previews_icons.clear()
 
 
+@debug_time
 def register():
     load_icons()
 

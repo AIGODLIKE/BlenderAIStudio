@@ -10,6 +10,8 @@ __all__ = [
 ]
 
 
+from ..utils import debug_time
+@debug_time
 def register():
     translations = load_translations()
     bpy.app.translations.register(__name__, translations)

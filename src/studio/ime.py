@@ -1,5 +1,7 @@
 import bpy
 from queue import Queue
+
+from .. import debug_time
 from ...External.input_method_hook import input_manager
 
 IME_BUFFER = Queue()
@@ -192,6 +194,7 @@ def on_save_pre(dummy):
     input_manager.refresh_input_method()
 
 
+@debug_time
 def register():
     bpy.utils.register_class(IM_OT_enable_chinese_input)
     bpy.utils.register_class(IM_OT_disable_chinese_input)

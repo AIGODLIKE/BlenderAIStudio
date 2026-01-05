@@ -962,6 +962,11 @@ clss = [
 reg, unreg = bpy.utils.register_classes_factory(clss)
 
 
+
+from ..utils import debug_time
+
+
+@debug_time
 def register():
     reg()
     PromptSave.register_ui()

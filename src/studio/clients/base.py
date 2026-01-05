@@ -2,6 +2,7 @@ import json
 import tempfile
 import time
 from pathlib import Path
+from threading import Thread
 from typing import Self
 
 from ..tasks import TaskManager
