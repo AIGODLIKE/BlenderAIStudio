@@ -1,19 +1,14 @@
 import json
-import tempfile
 import time
 from pathlib import Path
 from typing import Self
+
+import bpy
 
 from ..tasks import TaskManager
 from ..wrapper import BaseAdapter
 from ... import logger
 from ...i18n import PROP_TCTX
-
-GENERATE_HISTORY_PATH = Path(tempfile.gettempdir(), "aistudio/generate_history.json")  # 生成历史记录
-try:
-    GENERATE_HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
-except Exception as e:
-    print("mkdir file error", e.args)
 
 
 class StudioHistoryItem:
@@ -87,27 +82,28 @@ class StudioHistory:
         self.current_index += 1
         item.index = self.current_index
         self.items.insert(0, item)
+        self.save_history()
 
     def save_history(self):
-        if not GENERATE_HISTORY_PATH.parent.exists():
-            return
+        """在添加的时候就保存到场景一下"""
         try:
             items = [item.data for item in self.items]
-            GENERATE_HISTORY_PATH.write_text(json.dumps(items))
+            stringify = json.dumps(items, ensure_ascii=True, indent=2)
+            bpy.context.scene.blender_ai_studio_property.generate_history = stringify
+            logger.debug(f"save history {len(items)}")
         except Exception as e:
             import traceback
             logger.debug("保存历史记录失败", e.args)
             traceback.print_exc()
 
     def restore_history(self):
-        if not GENERATE_HISTORY_PATH.exists():
-            return
         try:
-            data = json.loads(GENERATE_HISTORY_PATH.read_text())
+            data = json.loads(bpy.context.scene.blender_ai_studio_property.generate_history)
             if not isinstance(data, list):
                 logger.debug("Invalid history data")
                 logger.debug(data)
             items = [StudioHistoryItem.load(item) for item in data]
+            logger.debug(f"load history {len(items)}")
             self.items = items
         except Exception as e:
             import traceback

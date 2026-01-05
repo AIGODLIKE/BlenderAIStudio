@@ -12,6 +12,7 @@ modules = [
     "property",
     "preferences",
     "icons",
+    "update"
 ]
 
 reg, unreg = bpy.utils.register_submodule_factory(__package__, modules)

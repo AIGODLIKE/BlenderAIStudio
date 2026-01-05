@@ -23,6 +23,7 @@ from .exception import (
 from ..logger import logger
 from ..preferences import get_pref, AuthMode
 
+# TODO 导入耗时+300~ms
 try:
     from ...External.websockets.server import serve
     from ...External.websockets.legacy.server import WebSocketServer
@@ -204,7 +205,7 @@ class Account:
             self.push_error(_T("Can't create auth directory"))
             return
         try:
-            self._AUTH_PATH.write_text(json.dumps(data))
+            self._AUTH_PATH.write_text(json.dumps(data, ensure_ascii=True, indent=2))
         except Exception:
             traceback.print_exc()
             self.push_error(_T("Can't save auth file"))
@@ -458,17 +459,9 @@ def init_account():
 
 
 def register():
-    def load():
-        from .clients.base import StudioHistory
-        StudioHistory.get_instance().restore_history()
-
-    Thread(target=load, daemon=True).start()
     bpy.app.timers.register(init_account, first_interval=1, persistent=True)
 
 
 def unregister():
-    from .clients.base import StudioHistory
-    StudioHistory.get_instance().save_history()
-
     if bpy.app.timers.is_registered(init_account):
         bpy.app.timers.unregister(init_account)

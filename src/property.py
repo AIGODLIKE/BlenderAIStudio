@@ -150,6 +150,8 @@ class History:
                 f"{self.prompt}\n"
                 )
 
+    generate_history: bpy.props.StringProperty(default="[]", name="3d视图的生成记录")
+
 
 class State:
     running_operator: bpy.props.StringProperty()

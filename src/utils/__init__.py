@@ -18,6 +18,7 @@ __all__ = [
 ]
 
 
+
 def get_custom_icon(name="None"):
     """
     获取自定义图标
@@ -188,6 +189,7 @@ def refresh_image_preview(image: bpy.types.Image):
 
 def debug_time(func, print_time=True):
     import time
+    from .. import logger
 
     def wap(*args, **kwargs):
         if print_time:
@@ -196,7 +198,7 @@ def debug_time(func, print_time=True):
         if print_time:
             et = time.time()
             s = et - st
-            print(f"dt {func.__module__} {func.__name__} {(s * 1000):.2f}ms", )
+            logger.debug(f"dt {func.__module__} {func.__name__} {(s * 1000):.2f}ms", )
         return func_return
 
     return wap
