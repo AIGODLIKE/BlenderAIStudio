@@ -40,8 +40,24 @@ def render_scene_viewport_opengl_to_png(scene: bpy.types.Scene, image_path: str,
 
 def render_scene_to_png(scene: bpy.types.Scene, image_path: str):
     check_scene_camera_with_exception(scene)
-    with with_scene_render_output_settings(scene, image_path):
-        bpy.ops.render.render(write_still=True)
+    render = scene.render
+    old = render.filepath
+    old_fmt = render.image_settings.file_format
+
+    render.filepath = image_path
+    if bpy.app.version >= (5, 0):
+        old_media_type = render.image_settings.media_type
+        render.image_settings.media_type = "IMAGE"
+    render.image_settings.file_format = "PNG"
+
+    def on_finish(_sce):
+        render.filepath = old
+        if bpy.app.version >= (5, 0):
+            render.image_settings.media_type = old_media_type
+        render.image_settings.file_format = old_fmt
+
+    bpy.app.handlers.render_complete.append(on_finish)
+    bpy.ops.render.render("INVOKE_DEFAULT", write_still=True)
 
 
 def render_scene_depth_to_png(scene: bpy.types.Scene, image_path: str):

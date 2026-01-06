@@ -152,7 +152,18 @@ class NanoBanana(StudioClient):
         # 渲染图片
         scene = bpy.context.scene
         if self.input_image_type == "CameraRender":
+            render_agent = RenderAgent()
+            self.is_rendering = True
+
+            def on_write(_sce):
+                self.is_rendering = False
+
+            render_agent.on_write(on_write)
+            render_agent.attach()
             Timer.put((render_scene_to_png, scene, _temp_image_path))
+
+            while self.is_rendering:
+                time.sleep(0.5)
         elif self.input_image_type == "CameraDepth":
             render_agent = RenderAgent()
             self.is_rendering = True
