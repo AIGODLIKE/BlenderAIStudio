@@ -16,6 +16,7 @@ from .animation import AnimationSystem
 from .event import Event
 from .renderer import Renderer as ImguiRenderer, imgui
 from ....logger import logger, DEBUG
+from .....External.input_method_hook import input_manager
 
 
 class FakeContext:
@@ -234,8 +235,7 @@ class App:
         return self.any_window_focused or self.any_item_focused or self.item_focused
 
     def is_mouse_dragging(self):
-        return imgui.is_mouse_dragging(imgui.MouseButton.LEFT) or imgui.is_mouse_dragging(
-            imgui.MouseButton.RIGHT) or imgui.is_mouse_dragging(imgui.MouseButton.MIDDLE)
+        return imgui.is_mouse_dragging(imgui.MouseButton.LEFT) or imgui.is_mouse_dragging(imgui.MouseButton.RIGHT) or imgui.is_mouse_dragging(imgui.MouseButton.MIDDLE)
 
     def want_events(self):
         return self.io.want_capture_keyboard or self.io.want_capture_mouse or self.io.want_text_input
@@ -315,38 +315,28 @@ class App:
         enable = self.io.want_text_input
         if enable:
             self.try_enable_ime()
+            print(input_manager.get_composition_string())
         else:
             self.try_disable_ime()
 
     def try_enable_ime(self):
         if self.ime_enabled:
             return
-        if platform.system() != "Windows":
-            return
-        from .....External.input_method_hook import input_manager
 
         # 设置输入回调
         def on_input_received(text):
             self.ime_buffer.put(text)
 
-        input_manager.set_input_callback(on_input_received)
-        input_manager.enable_chinese_input()
+        input_manager.set_commit_callback(on_input_received)
+        input_manager.enable_ime()
         self.ime_enabled = True
 
     def try_disable_ime(self):
         if not self.ime_enabled:
             return
-        if platform.system() != "Windows":
-            return
 
-        from .....External.input_method_hook import input_manager
-
-        # 设置输入回调
-        def on_input_received(_):
-            return
-
-        input_manager.set_input_callback(on_input_received)
-        input_manager.disable_chinese_input()
+        input_manager.set_commit_callback(None)
+        input_manager.disable_ime()
         self.ime_enabled = False
 
     def push_event(self, event: "bpy.types.Event"):
