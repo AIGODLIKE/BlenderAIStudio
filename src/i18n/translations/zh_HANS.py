@@ -44,6 +44,7 @@ studio_panel_translations = (
     ("Start", "运行", STUDIO_TCTX),
     ("Task Submitting...", "任务提交中...", None),
     ("Rendering", "渲染中", None),
+    ("Generating", "生成中", None),
     ("Stop AI Rendering", "停止AI渲染", None),
     ("Engine", "引擎", STUDIO_TCTX),
     ("Please Select Generation Engine", "请选择生成式引擎", None),

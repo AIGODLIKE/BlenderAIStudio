@@ -185,14 +185,14 @@ class StudioClient(BaseAdapter):
             return 0
         return task.get_elapsed_time()
 
-    def query_task_status(self) -> dict:
+    def query_status(self) -> dict:
         if not self.task_id:
             return {}
         if not (task := self.task_manager.get_task(self.task_id)):
             return {}
         return task.get_info()
 
-    def query_task_result(self):
+    def query_result(self):
         if not self.task_id:
             return None
         # 无任务

@@ -30,6 +30,7 @@ class NanoBanana(StudioClient):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.is_rendering = False
+        self.rendering_time_start = 0
         self.input_image_type = "CameraRender"
         self.help_url = "https://ai.google.dev/gemini-api/docs/image-generation?hl=zh-cn"
         self.prompt = ""
@@ -118,6 +119,17 @@ class NanoBanana(StudioClient):
     def get_meta(self, prop: str):
         return self.meta.get(prop, {})
 
+    def query_status(self) -> dict:
+        if self.is_rendering:
+            return {
+                "state": "rendering",
+                "elapsed_time": self.get_rendering_time(),
+            }
+        return super().query_status()
+
+    def get_rendering_time(self) -> float:
+        return time.time() - self.rendering_time_start
+
     def on_image_action(self, prop: str, action: str, index: int = -1) -> None:
         if action == "upload_image":
             upload_image(self, prop)
@@ -154,6 +166,7 @@ class NanoBanana(StudioClient):
         if self.input_image_type == "CameraRender":
             render_agent = RenderAgent()
             self.is_rendering = True
+            self.rendering_time_start = time.time()
 
             def on_write(_sce):
                 self.is_rendering = False
@@ -167,6 +180,7 @@ class NanoBanana(StudioClient):
         elif self.input_image_type == "CameraDepth":
             render_agent = RenderAgent()
             self.is_rendering = True
+            self.rendering_time_start = time.time()
 
             def on_write(_sce):
                 self.is_rendering = False
