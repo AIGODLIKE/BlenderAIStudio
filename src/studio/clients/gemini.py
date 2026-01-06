@@ -1,17 +1,15 @@
-from traceback import print_exc
-import bpy
 import tempfile
 import time
-
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable
 from threading import Thread
+from traceback import print_exc
+from typing import Iterable
+
+import bpy
 
 from .base import StudioClient, StudioHistory, StudioHistoryItem
 from ..account import AuthMode, Account
-from ...preferences import get_pref
-
 from ..tasks import (
     Task,
     TaskResult,
@@ -19,9 +17,10 @@ from ..tasks import (
     GeminiImageGenerationTask,
     AccountGeminiImageGenerateTask,
 )
-
+from ... import logger
+from ...preferences import get_pref
 from ...timer import Timer
-from ...utils import calc_appropriate_aspect_ratio
+from ...utils import calc_appropriate_aspect_ratio, get_temp_folder
 from ...utils.render import render_scene_to_png, render_scene_depth_to_png, RenderAgent
 
 
@@ -147,11 +146,8 @@ class NanoBanana(StudioClient):
     def job(self, account: "Account"):
         self.is_task_submitting = False
         # 1. 创建任务
-        # path_dir = Path.home().joinpath("Desktop/OutputImage/AIStudio")
-        # path_dir.mkdir(parents=True, exist_ok=True)
-        # temp_image_path = path_dir.joinpath("Depth.png")
-        # _temp_image_path = temp_image_path.as_posix()
-        temp_image_path = tempfile.NamedTemporaryFile(suffix=".png", prefix="Depth", delete=False)
+        temp_folder = get_temp_folder(prefix="generate_ai_image_")
+        temp_image_path = tempfile.NamedTemporaryFile(suffix=".png", prefix="Depth", delete=False, dir=temp_folder)
         _temp_image_path = temp_image_path.name
         # 渲染图片
         scene = bpy.context.scene
@@ -163,6 +159,7 @@ class NanoBanana(StudioClient):
 
             def on_write(_sce):
                 self.is_rendering = False
+
             render_agent.on_write(on_write)
             render_agent.attach()
             Timer.put((render_scene_depth_to_png, scene, _temp_image_path))
@@ -210,18 +207,14 @@ class NanoBanana(StudioClient):
             aspect_ratio=size_config,
         )
         if _temp_image_path:
-            print("渲染到：", _temp_image_path)
-
-        # temp_image_path.close()
-        # if Path(_temp_image_path).exists():
-        #     Path(_temp_image_path).unlink()
+            logger.info(f"渲染到：{_temp_image_path}")
 
         # 2. 注册回调
         def on_state_changed(event_data):
             _task: Task = event_data["task"]
             old_state: TaskState = event_data["old_state"]
             new_state: TaskState = event_data["new_state"]
-            print(f"状态改变: {old_state.value} -> {new_state.value}")
+            logger.info(f"状态改变: {old_state.value} -> {new_state.value}")
 
         def on_progress(event_data):
             {
@@ -235,7 +228,7 @@ class NanoBanana(StudioClient):
             progress: dict = event_data["progress"]
             percent = progress["percentage"]
             message = progress["message"]
-            print(f"进度: {percent * 100}% - {message}")
+            logger.info(f"进度: {percent * 100}% - {message}")
 
         def on_completed(event_data):
             # result_data = {
@@ -251,8 +244,7 @@ class NanoBanana(StudioClient):
             # 存储结果
             timestamp = time.time()
             time_str = datetime.fromtimestamp(timestamp).strftime("%Y%m%d%H%M%S")
-            output_dir = get_pref().output_cache_dir
-            save_file = Path(output_dir, f"Gen_{time_str}.png")
+            save_file = Path(temp_folder, f"Gen_{time_str}.png")
             save_file.write_bytes(result_data["image_data"])
 
             def load_image_into_blender(file_path: str):
@@ -262,8 +254,8 @@ class NanoBanana(StudioClient):
                     print_exc()
 
             Timer.put((load_image_into_blender, save_file.as_posix()))
-            print(f"任务完成: {_task.task_id}")
-            print(f"结果已保存到: {save_file.as_posix()}")
+            logger.info(f"任务完成: {_task.task_id}")
+            logger.info(f"结果已保存到: {save_file.as_posix()}")
             # 存储历史记录
             history_item = StudioHistoryItem()
             history_item.result = result_data
@@ -279,7 +271,7 @@ class NanoBanana(StudioClient):
             try:
                 if self.task_id == _task.task_id:
                     self.task_id = None
-                    print(f"任务已取消: {_task.task_id}")
+                    logger.info(f"任务已取消: {_task.task_id}")
             except Exception:
                 pass
 
@@ -289,7 +281,7 @@ class NanoBanana(StudioClient):
             if not result.success:
                 self.push_error(result.error)
                 print(result.error)
-                print(f"任务失败: {_task.task_id}")
+                logger.debug(f"任务失败: {_task.task_id}")
             account.fetch_credits()
 
         task.register_callback("state_changed", on_state_changed)
@@ -297,7 +289,7 @@ class NanoBanana(StudioClient):
         task.register_callback("completed", on_completed)
         task.register_callback("cancelled", on_cancelled)
         task.register_callback("failed", on_failed)
-        print(f"任务提交: {task.task_id}")
+        logger.info(f"任务提交: {task.task_id}")
 
         # 3. 提交到管理器
         self.task_id = self.task_manager.submit_task(task)

@@ -15,8 +15,8 @@ __all__ = [
     "get_version",
     "calc_appropriate_aspect_ratio",
     "refresh_image_preview",
+    "get_temp_folder",
 ]
-
 
 
 def get_custom_icon(name="None"):
@@ -204,9 +204,6 @@ def debug_time(func, print_time=True):
     return wap
 
 
-def register():
-    pass
-
-
-def unregister():
-    pass
+def get_temp_folder(suffix=None, prefix=None):
+    import tempfile
+    return tempfile.mkdtemp(prefix=prefix, suffix=suffix, dir=get_pref().output_cache_dir)

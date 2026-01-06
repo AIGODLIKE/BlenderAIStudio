@@ -13,7 +13,7 @@ from ..utils import (
     save_image_to_temp_folder,
     png_name_suffix,
     load_image,
-    refresh_image_preview,
+    refresh_image_preview, get_temp_folder,
 )
 
 
@@ -498,9 +498,8 @@ class ApplyAiEditImage(bpy.types.Operator):
         generate_image_name = png_name_suffix(image.name, f"_{self.running_operator}")
 
         # 将blender图片保存到临时文件夹
-        import tempfile
+        temp_folder = get_temp_folder(prefix="edit_ai_image_")
 
-        temp_folder = tempfile.mkdtemp(prefix="bas_nano_banana_ai_image_")
         origin_image_file_path = save_image_to_temp_folder(image, temp_folder)
         reference_images_path = []
         mask_image_path = None
