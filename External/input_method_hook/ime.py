@@ -33,6 +33,10 @@ class IMEManager(ABC):
         """获取当前组字串"""
         pass
 
+    def get_result_string(self) -> str:
+        """获取当前结果串"""
+        pass
+
     @abstractmethod
     def set_composition_position(self, x: int, y: int):
         """设置候选窗口位置"""
