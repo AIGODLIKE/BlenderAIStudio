@@ -6,6 +6,8 @@ from .task import (
     TaskState,
 )
 
+from .sequence_task import SequenceTask
+
 from .gemini_tasks import (
     GeminiImageGenerationTask,
     AccountGeminiImageGenerateTask,
@@ -20,6 +22,7 @@ __all__ = [
     "TaskProgress",
     "TaskResult",
     "TaskState",
+    "SequenceTask",
     "GeminiImageGenerationTask",
     "AccountGeminiImageGenerateTask",
     "GeminiImageEditTask",
