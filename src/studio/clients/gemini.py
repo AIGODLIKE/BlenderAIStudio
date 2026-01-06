@@ -6,6 +6,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Iterable
+from threading import Thread
 
 from .base import StudioClient, StudioHistory, StudioHistoryItem
 from ..account import AuthMode, Account
@@ -21,7 +22,7 @@ from ..tasks import (
 
 from ...timer import Timer
 from ...utils import calc_appropriate_aspect_ratio
-from ...utils.render import render_scene_to_png, render_scene_depth_to_png
+from ...utils.render import render_scene_to_png, render_scene_depth_to_png, RenderAgent
 
 
 class NanoBanana(StudioClient):
@@ -29,6 +30,7 @@ class NanoBanana(StudioClient):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self.is_rendering = False
         self.input_image_type = "CameraRender"
         self.help_url = "https://ai.google.dev/gemini-api/docs/image-generation?hl=zh-cn"
         self.prompt = ""
@@ -131,9 +133,13 @@ class NanoBanana(StudioClient):
     def new_generate_task(self, account: "Account"):
         if self.is_task_submitting:
             print("有任务正在提交，请稍后")
+            self.push_error("有任务正在提交，请稍后")
+            return
+        if self.is_rendering:
+            self.push_error("有任务正在渲染，请稍后")
             return
         self.is_task_submitting = True
-        Timer.put((self.job, account))
+        Thread(target=self.job, args=(account,), daemon=True).start()
 
     def cancel_generate_task(self):
         self.task_manager.cancel_task(self.task_id)
@@ -150,9 +156,19 @@ class NanoBanana(StudioClient):
         # 渲染图片
         scene = bpy.context.scene
         if self.input_image_type == "CameraRender":
-            render_scene_to_png(scene, _temp_image_path)
+            Timer.put((render_scene_to_png, scene, _temp_image_path))
         elif self.input_image_type == "CameraDepth":
-            render_scene_depth_to_png(scene, _temp_image_path)
+            render_agent = RenderAgent()
+            self.is_rendering = True
+
+            def on_write(_sce):
+                self.is_rendering = False
+            render_agent.on_write(on_write)
+            render_agent.attach()
+            Timer.put((render_scene_depth_to_png, scene, _temp_image_path))
+
+            while self.is_rendering:
+                time.sleep(0.5)
         elif self.input_image_type == "NoInput":
             _temp_image_path = ""
         resolution = (1024, 1024)
