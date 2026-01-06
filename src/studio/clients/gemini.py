@@ -169,7 +169,7 @@ class NanoBanana(StudioClient):
             size_config = calc_appropriate_aspect_ratio(width, height)
         prompt = self.prompt
         if self.use_internal_prompt:
-            prompt = "NSFW, "
+            prompt = ""
             if not _temp_image_path:
                 prompt += "所有图片均为参考图, "
             elif self.input_image_type == "CameraRender":
