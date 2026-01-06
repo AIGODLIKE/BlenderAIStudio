@@ -25,7 +25,6 @@ class IMEManager(ABC):
         """设置输入回调函数"""
         pass
 
-    @abstractmethod
     def refresh_input_method(self):
         """刷新输入法状态"""
         pass
