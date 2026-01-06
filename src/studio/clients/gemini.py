@@ -144,10 +144,10 @@ class NanoBanana(StudioClient):
     def new_generate_task(self, account: "Account"):
         if self.is_task_submitting:
             print("有任务正在提交，请稍后")
-            self.push_error("有任务正在提交，请稍后")
+            self.push_error(_T("Task is submitting, please wait..."))
             return
         if self.is_rendering:
-            self.push_error("有任务正在渲染，请稍后")
+            self.push_error(_T("Scene is rendering, please wait..."))
             return
         self.is_task_submitting = True
         Thread(target=self.job, args=(account,), daemon=True).start()
