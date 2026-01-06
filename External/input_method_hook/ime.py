@@ -20,7 +20,6 @@ class IMEManager(ABC):
         """禁用输入法"""
         pass
 
-    @abstractmethod
     def set_commit_callback(self, callback):
         """设置输入回调函数"""
         pass
