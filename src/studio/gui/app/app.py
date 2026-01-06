@@ -270,7 +270,7 @@ class App:
         frame.push_id(self._id)
 
         # 2. 输入处理
-        self.refresh_ime_status()
+        self.poll_ime()
         self.process_inputs()
 
         # 3. 窗口状态更新
@@ -311,31 +311,33 @@ class App:
         draw_list = imgui.get_foreground_draw_list()
         draw_list.add_circle_filled(self.io.mouse_pos, 2, imgui.get_color_u32((0, 1, 0, 1)))
 
+    def poll_ime(self):
+        self.refresh_ime_status()
+        self.refresh_ime_result()
+
+    def refresh_ime_result(self):
+        if not self.ime_enabled:
+            return
+        res_str = input_manager.get_result_string()
+        if res_str:
+            self.ime_buffer.put(res_str)
+
     def refresh_ime_status(self):
         enable = self.io.want_text_input
         if enable:
             self.try_enable_ime()
-            print(input_manager.get_composition_string())
         else:
             self.try_disable_ime()
 
     def try_enable_ime(self):
         if self.ime_enabled:
             return
-
-        # 设置输入回调
-        def on_input_received(text):
-            self.ime_buffer.put(text)
-
-        input_manager.set_commit_callback(on_input_received)
         input_manager.enable_ime()
         self.ime_enabled = True
 
     def try_disable_ime(self):
         if not self.ime_enabled:
             return
-
-        input_manager.set_commit_callback(None)
         input_manager.disable_ime()
         self.ime_enabled = False
 
