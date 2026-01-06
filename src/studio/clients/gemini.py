@@ -7,7 +7,7 @@ from traceback import print_exc
 from typing import Iterable
 
 import bpy
-
+from bpy.app.translations import pgettext_iface as _T
 from .base import StudioClient, StudioHistory, StudioHistoryItem
 from ..account import AuthMode, Account
 from ..tasks import (
@@ -164,6 +164,9 @@ class NanoBanana(StudioClient):
         # 渲染图片
         scene = bpy.context.scene
         if self.input_image_type == "CameraRender":
+            if not bpy.context.scene.camera:
+                self.push_error(_T("Scene Camera Not Found"))
+                return
             render_agent = RenderAgent()
             self.is_rendering = True
             self.rendering_time_start = time.time()
@@ -178,6 +181,9 @@ class NanoBanana(StudioClient):
             while self.is_rendering:
                 time.sleep(0.5)
         elif self.input_image_type == "CameraDepth":
+            if not bpy.context.scene.camera:
+                self.push_error(_T("Scene Camera Not Found"))
+                return
             render_agent = RenderAgent()
             self.is_rendering = True
             self.rendering_time_start = time.time()

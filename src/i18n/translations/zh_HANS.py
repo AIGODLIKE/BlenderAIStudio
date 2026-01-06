@@ -38,6 +38,7 @@ error_translations = (
     ("Server Error: Bad Gateway", "服务器错误：Bad Gateway", None),
     ("Can't load auth file", "加载账户信息失败", None),
     ("Can't create auth directory", "创建账户目录失败", None),
+    ("Scene Camera Not Found", "场景相机未找到", None),
 )
 
 studio_panel_translations = (
