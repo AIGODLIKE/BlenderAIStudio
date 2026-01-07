@@ -51,7 +51,7 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences):
     )
 
     @property
-    def is_account_mode(self):
+    def is_backup_mode(self):  # 是稳定模式
         return self.account_auth_mode == "Backup Mode"
 
     def set_ui_offset(self, value):
@@ -73,7 +73,7 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences):
         from .studio.account import Account
         layout.label(text="Service")
         layout.prop(self, "account_auth_mode", text="Operating Mode", )
-        if self.is_account_mode:
+        if self.is_backup_mode:
             account = Account.get_instance()
             if account.is_logged_in():
                 layout.label(text=bpy.app.translations.pgettext_iface("Logged in") + account.nickname)

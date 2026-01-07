@@ -1,9 +1,10 @@
-import bpy
-from uuid import uuid4
-from pathlib import Path
 from contextlib import contextmanager
-from bpy.app.translations import pgettext as _T
+from pathlib import Path
 from traceback import print_exc
+from uuid import uuid4
+
+import bpy
+from bpy.app.translations import pgettext as _T
 
 
 def check_scene_camera_with_exception(scene: bpy.types.Scene):
@@ -17,12 +18,14 @@ def with_scene_render_output_settings(scene: bpy.types.Scene, image_path: str):
     render = scene.render
     old = render.filepath
     old_fmt = render.image_settings.file_format
-
     render.filepath = image_path
     if bpy.app.version >= (5, 0):
         old_media_type = render.image_settings.media_type
         render.image_settings.media_type = "IMAGE"
     render.image_settings.file_format = "PNG"
+
+    last_display_type = bpy.context.preferences.view.render_display_type  # 渲染不弹出
+    bpy.context.preferences.view.render_display_type = "NONE"
     try:
         yield
     finally:
@@ -30,6 +33,7 @@ def with_scene_render_output_settings(scene: bpy.types.Scene, image_path: str):
         if bpy.app.version >= (5, 0):
             render.image_settings.media_type = old_media_type
         render.image_settings.file_format = old_fmt
+        bpy.context.preferences.view.render_display_type = last_display_type
 
 
 def render_scene_viewport_opengl_to_png(scene: bpy.types.Scene, image_path: str, view_context: bool):
@@ -180,14 +184,18 @@ class RenderAgent:
 if __name__ == "__main__":
     render_agent = RenderAgent()
 
+
     def on_complete(sce):
         print("on_complete", sce)
+
 
     def on_post(sce):
         print("on_post", sce)
 
+
     def on_write(sce):
         print("Render Finished")
+
 
     render_agent.on_complete(on_complete)
     render_agent.on_post(on_post)

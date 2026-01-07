@@ -69,7 +69,6 @@ class AIStudioImagePanel(bpy.types.Panel):
             co = col.column(align=True)
             co.alert = True
             co.label(text="During task execution, parameters cannot be modified")
-
         layout.separator(factor=1)
         ai.draw_state(context, layout)
 
@@ -146,15 +145,18 @@ class AIStudioImagePanel(bpy.types.Panel):
         if w == 0 and h == 0:
             box.alert = True
             box.label(text="The image is empty", icon="ERROR")
-        box.operator("image.clipboard_copy",icon="COPYDOWN",text="Copy image to clipboard")
+        box.operator("image.clipboard_copy", icon="COPYDOWN", text="Copy image to clipboard")
 
     @staticmethod
     def draw_ai_edit_layout(context, layout: bpy.types.UILayout):
         ai = context.scene.blender_ai_studio_property
+        points_consumption = bpy.app.translations.pgettext("(%s/use)") % ai.get_points_consumption(context)
 
-        column = layout.column(align=True)
+        column = layout.box().column(align=True)
+        column.label(text=bpy.app.translations.pgettext("AI Edit") + points_consumption)
         row = column.row(align=True)
         row.scale_y = 1.2
+
         row.operator("bas.rerender_image", icon="RENDER_STILL")
         row.operator("bas.smart_fix", icon="RENDERLAYERS")
 

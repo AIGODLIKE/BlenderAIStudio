@@ -487,7 +487,7 @@ class ApplyAiEditImage(bpy.types.Operator):
             self.report({"ERROR"}, "Enter ai edit prompt or select reference images")
             return {"CANCELLED"}
 
-        if pref.is_account_mode:
+        if pref.is_backup_mode:
             ...
         else:
             if not pref.nano_banana_api:

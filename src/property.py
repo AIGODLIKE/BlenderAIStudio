@@ -6,7 +6,8 @@ from datetime import datetime
 import bpy
 
 from .i18n import PROP_TCTX
-from .utils import get_custom_icon, time_diff_to_str, calc_appropriate_aspect_ratio, refresh_image_preview
+from .studio.account import Account
+from .utils import get_custom_icon, time_diff_to_str, calc_appropriate_aspect_ratio, refresh_image_preview, get_pref
 
 
 class ImageItem(bpy.types.PropertyGroup):
@@ -310,7 +311,7 @@ class SceneProperty(bpy.types.PropertyGroup, History, State):
     def get_out_resolution(self, context) -> str:
         resolution = self.resolution
         if resolution == "AUTO":
-            if image := context.space_data.image:
+            if image := getattr(context.space_data, "image", None):
                 w, h = image.size
                 resolution_str = "1K"
                 if w >= 4096 or h >= 4096:
@@ -318,6 +319,7 @@ class SceneProperty(bpy.types.PropertyGroup, History, State):
                 elif w >= 2048 or h >= 2048:
                     resolution_str = "2K"
                 return resolution_str
+            return "1K"
         return resolution
 
     @property
@@ -409,6 +411,25 @@ class SceneProperty(bpy.types.PropertyGroup, History, State):
             box.label(text="Click top right ops to reference")
 
     scale: bpy.props.FloatProperty(default=2.75)
+
+    def get_points_consumption(self, context):
+        """
+        获取消耗的价格
+        [{'modelId': 'gemini-3-pro-image-preview', 'price': {'1K': 36, '2K': 36, '4K': 63}}]
+        :return:
+        """
+        pref = get_pref()
+        price_table = Account.get_instance().price_table
+        if pref.is_backup_mode:
+            resolution = self.get_out_resolution(bpy.context)
+            model_item = [i for i in price_table if
+                          isinstance(i, dict) and i.get('modelId', None) == 'gemini-3-pro-image-preview']
+            if model_item:  # 模型项
+                if price := model_item[0].get('price', None):  # 价格项
+                    return price.get(resolution, -999)
+        else:
+            ...
+        return -999
 
 
 class_list = [
