@@ -8,15 +8,15 @@ from .ime import IMEManager
 
 # Windows 常量
 IME_CMODE_NATIVE = 0x0001
-GCS_COMPSTR = 0x0008
-GCS_RESULTSTR = 0x0800
+GCS_COMPSTR = 0x0008  # 获取当前的组合字符串, 正在编辑但未确认的字符串（用户正在输入的内容）
+GCS_RESULTSTR = 0x0800  # 获取结果字符串, 用户确认完成输入后的最终字符串
 WM_IME_COMPOSITION = 0x010F
 WM_IME_STARTCOMPOSITION = 0x010E
 WM_IME_ENDCOMPOSITION = 0x010F
 WM_CHAR = 0x0102
 CFS_POINT = 0x0002
 WH_GETMESSAGE = 3
-PM_NOREMOVE = 0x0000
+WH_CALLWNDPROC = 4
 
 # 类型定义
 LRESULT = c_longlong
@@ -74,14 +74,22 @@ class WindowsIMEManager(IMEManager):
 
         self._himc = None
         self._initialized = False
+        self._ime_enabled = False
         self._hwnd = None
 
         # 消息钩子相关
         self._hook_handle = None
         self._hook_callback = None  # 保持引用防止被回收
+        self._callwndproc_hook_handle = None
+        self._callwndproc_hook_callback = None
 
         # 内部输入缓冲队列
         self._input_queue: deque = deque(maxlen=100)  # 最多缓存100个输入
+
+        # 输入法状态追踪
+        self._composition_active = False  # 是否正在组字
+        self._last_comp_string = ""  # 上次的组字字符串
+        self._last_poll_time = 0  # 上次轮询时间
 
     def _get_foreground_window(self) -> int:
         """获取前台窗口句柄"""
@@ -89,7 +97,7 @@ class WindowsIMEManager(IMEManager):
 
     def _message_hook_proc(self, nCode: int, wParam, lParam) -> int:
         """消息钩子回调函数"""
-        if nCode >= 0:
+        if self._ime_enabled and nCode >= 0:
             # 获取消息结构
             msg = ctypes.cast(lParam, POINTER(MSG)).contents
 
@@ -100,19 +108,23 @@ class WindowsIMEManager(IMEManager):
                     result = self._get_result_string_from_ime(msg.hwnd)
                     if result:
                         # 将结果放入队列
-                        self._input_queue.append(result)
+                        # self._input_queue.append(result) # 已移至 _poll_input 中处理
                         # 如果设置了外部回调,也调用它
                         if self.commit_callback:
                             self.commit_callback(result)
+                        self._composition_active = False
                 elif msg.lParam & GCS_COMPSTR:
                     # 正在组合输入(预览)
                     comp_str = self._get_composition_string_from_ime(msg.hwnd)
                     if comp_str and self.composition_callback:
                         self.composition_callback(comp_str)
+                    self._last_comp_string = comp_str
+                    self._composition_active = True
 
             elif msg.message == WM_IME_STARTCOMPOSITION:
                 # 开始输入法组合
-                pass
+                self._composition_active = True
+                self._last_comp_string = ""
 
             elif msg.message == WM_IME_ENDCOMPOSITION:
                 # 结束输入法组合
@@ -127,13 +139,13 @@ class WindowsIMEManager(IMEManager):
                     char = chr(msg.wParam)
                     if char.isprintable():
                         # 将字符放入队列
-                        self._input_queue.append(char)
-                        # 如果设置了外部回调,也调用它
-                        if self.commit_callback:
-                            self.commit_callback(char)
-
-        # 调用下一个钩子
-        return self.user32.CallNextHookEx(None, nCode, wParam, lParam)
+                        self._enqueue_input(char)
+        return self.user32.CallNextHookEx(
+            None,
+            nCode,
+            wintypes.WPARAM(wParam if wParam is not None else 0),
+            wintypes.LPARAM(lParam if lParam is not None else 0),
+        )
 
     def _get_result_string_from_ime(self, hwnd: int) -> str:
         """从 IME 上下文获取结果字符串"""
@@ -224,7 +236,7 @@ class WindowsIMEManager(IMEManager):
             # 设置为中文输入模式
             conversion.value |= IME_CMODE_NATIVE
             self.imm32.ImmSetConversionStatus(himc, conversion.value, sentence.value)
-
+            self._ime_enabled = True
             return True
         finally:
             self.imm32.ImmReleaseContext(hwnd, himc)
@@ -249,6 +261,7 @@ class WindowsIMEManager(IMEManager):
             # 禁用中文输入模式
             conversion.value &= ~IME_CMODE_NATIVE
             self.imm32.ImmSetConversionStatus(himc, conversion.value, sentence.value)
+            self._ime_enabled = False
 
             return True
         finally:
@@ -320,6 +333,56 @@ class WindowsIMEManager(IMEManager):
         Returns:
             输入的文本,如果队列为空则返回空字符串
         """
+        # 主动轮询输入法状态(每50ms检查一次)
+        current_time = time.time()
+        if current_time - self._last_poll_time > 0.05:  # 50ms轮询间隔
+            self._last_poll_time = current_time
+            self._poll_input()
+
+        return self._dequeue_input(consume)
+
+    def _poll_input(self):
+        """
+        主动检查组字状态并获取结果
+        """
+        if not self._composition_active:
+            return
+
+        hwnd = self._get_foreground_window()
+        if not hwnd:
+            return
+
+        # 先尝试获取当前的组字字符串
+        current_comp_str = self._get_composition_string_from_ime(hwnd)
+
+        # 如果组字字符串消失了,说明已经提交
+        result = self._last_comp_string
+        if not current_comp_str and result:
+            self._proc_input_string(result)
+            return
+
+        # 尝试获取结果字符串
+        result = self._get_result_string_from_ime(hwnd)
+        self._proc_input_string(result)
+
+    def _proc_input_string(self, result: str):
+        if not result:
+            return
+        # 避免重复添加
+        self._push_input(result)
+        self._composition_active = False
+        self._last_comp_string = ""
+
+    def _push_input(self, result: str):
+        if not self._input_queue or self._input_queue[-1] != result:
+            self._enqueue_input(result)
+
+    def _enqueue_input(self, result: str):
+        self._input_queue.append(result)
+        if self.commit_callback:
+            self.commit_callback(result)
+
+    def _dequeue_input(self, consume: bool = True) -> str:
         if not self._input_queue:
             return ""
 
@@ -393,6 +456,15 @@ class WindowsIMEManager(IMEManager):
             thread_id,
         )
 
+        # 同时安装 CallWndProc 钩子(捕获更多消息)
+        self._callwndproc_hook_callback = HOOKPROC(self._message_hook_proc)
+        self._callwndproc_hook_handle = self.user32.SetWindowsHookExW(
+            WH_CALLWNDPROC,
+            self._callwndproc_hook_callback,
+            None,
+            thread_id,
+        )
+
         return self._hook_handle is not None
 
     def uninstall_message_hook(self) -> bool:
@@ -401,14 +473,20 @@ class WindowsIMEManager(IMEManager):
         Returns:
             是否成功卸载
         """
-        if not self._hook_handle:
-            return True
+        result1 = True
+        result2 = True
 
-        result = self.user32.UnhookWindowsHookEx(self._hook_handle)
-        self._hook_handle = None
-        self._hook_callback = None
+        if self._hook_handle:
+            result1 = self.user32.UnhookWindowsHookEx(self._hook_handle)
+            self._hook_handle = None
+            self._hook_callback = None
 
-        return bool(result)
+        if self._callwndproc_hook_handle:
+            result2 = self.user32.UnhookWindowsHookEx(self._callwndproc_hook_handle)
+            self._callwndproc_hook_handle = None
+            self._callwndproc_hook_callback = None
+
+        return bool(result1 and result2)
 
     def reset_result_tracking(self):
         """重置结果追踪状态(已废弃,仅为兼容性保留)"""
