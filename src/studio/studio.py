@@ -1694,7 +1694,7 @@ class AIStudio(AppHud):
                 full_width = imgui.get_content_region_avail()[0]
                 self.font_manager.push_h1_font()
                 client = self.get_active_client()
-                status = client.query_task_status()
+                status = client.query_status()
                 # 按钮状态:
                 #   1. 无状态
                 #   2. 正在提交
@@ -1716,12 +1716,16 @@ class AIStudio(AppHud):
                 if task_state == "running":
                     is_rendering = True
                     elapsed_time = client.query_task_elapsed_time()
-                    label = f"  {_T('Rendering')}({elapsed_time:.1f})s"
+                    label = f"  {_T('Generating')}({elapsed_time:.1f})s"
                     rmin = imgui.get_cursor_screen_pos()
                     rmax = (rmin[0] + full_width, rmin[1] + gen_btn_height)
                     if imgui.is_mouse_hovering_rect(rmin, rmax):
                         label = "  " + _T("Stop AI Rendering")
                         show_stop_btn = True
+                if task_state == "rendering":
+                    is_rendering = True
+                    elapsed_time = status.get("elapsed_time", 0)
+                    label = f"  {_T('Rendering')}({elapsed_time:.1f})s"
                 col_btn = Const.SLIDER_NORMAL
                 col_btn_hover = (77 / 255, 161 / 255, 255 / 255, 1)
                 col_btn_active = (26 / 255, 112 / 255, 208 / 255, 1)

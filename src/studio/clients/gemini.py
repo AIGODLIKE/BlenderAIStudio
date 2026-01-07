@@ -7,7 +7,7 @@ from traceback import print_exc
 from typing import Iterable
 
 import bpy
-
+from bpy.app.translations import pgettext_iface as _T
 from .base import StudioClient, StudioHistory, StudioHistoryItem
 from ..account import AuthMode, Account
 from ..tasks import (
@@ -30,6 +30,7 @@ class NanoBanana(StudioClient):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.is_rendering = False
+        self.rendering_time_start = 0
         self.input_image_type = "CameraRender"
         self.help_url = "https://ai.google.dev/gemini-api/docs/image-generation?hl=zh-cn"
         self.prompt = ""
@@ -118,6 +119,17 @@ class NanoBanana(StudioClient):
     def get_meta(self, prop: str):
         return self.meta.get(prop, {})
 
+    def query_status(self) -> dict:
+        if self.is_rendering:
+            return {
+                "state": "rendering",
+                "elapsed_time": self.get_rendering_time(),
+            }
+        return super().query_status()
+
+    def get_rendering_time(self) -> float:
+        return time.time() - self.rendering_time_start
+
     def on_image_action(self, prop: str, action: str, index: int = -1) -> None:
         if action == "upload_image":
             upload_image(self, prop)
@@ -132,10 +144,10 @@ class NanoBanana(StudioClient):
     def new_generate_task(self, account: "Account"):
         if self.is_task_submitting:
             print("有任务正在提交，请稍后")
-            self.push_error("有任务正在提交，请稍后")
+            self.push_error(_T("Task is submitting, please wait..."))
             return
         if self.is_rendering:
-            self.push_error("有任务正在渲染，请稍后")
+            self.push_error(_T("Scene is rendering, please wait..."))
             return
         self.is_task_submitting = True
         Thread(target=self.job, args=(account,), daemon=True).start()
@@ -152,10 +164,29 @@ class NanoBanana(StudioClient):
         # 渲染图片
         scene = bpy.context.scene
         if self.input_image_type == "CameraRender":
-            Timer.put((render_scene_to_png, scene, _temp_image_path))
-        elif self.input_image_type == "CameraDepth":
+            if not bpy.context.scene.camera:
+                self.push_error(_T("Scene Camera Not Found"))
+                return
             render_agent = RenderAgent()
             self.is_rendering = True
+            self.rendering_time_start = time.time()
+
+            def on_write(_sce):
+                self.is_rendering = False
+
+            render_agent.on_write(on_write)
+            render_agent.attach()
+            Timer.put((render_scene_to_png, scene, _temp_image_path))
+
+            while self.is_rendering:
+                time.sleep(0.5)
+        elif self.input_image_type == "CameraDepth":
+            if not bpy.context.scene.camera:
+                self.push_error(_T("Scene Camera Not Found"))
+                return
+            render_agent = RenderAgent()
+            self.is_rendering = True
+            self.rendering_time_start = time.time()
 
             def on_write(_sce):
                 self.is_rendering = False
