@@ -36,6 +36,16 @@ def with_scene_render_output_settings(scene: bpy.types.Scene, image_path: str):
         bpy.context.preferences.view.render_display_type = last_display_type
 
 
+@contextmanager
+def silent_rendering():
+    last_display_type = bpy.context.preferences.view.render_display_type  # 渲染不弹出
+    bpy.context.preferences.view.render_display_type = "NONE"
+    try:
+        yield
+    finally:
+        bpy.context.preferences.view.render_display_type = last_display_type
+
+
 def render_scene_viewport_opengl_to_png(scene: bpy.types.Scene, image_path: str, view_context: bool):
     check_scene_camera_with_exception(scene)
     with with_scene_render_output_settings(scene, image_path):
@@ -61,7 +71,8 @@ def render_scene_to_png(scene: bpy.types.Scene, image_path: str):
         render.image_settings.file_format = old_fmt
 
     bpy.app.handlers.render_complete.append(on_finish)
-    bpy.ops.render.render("INVOKE_DEFAULT", write_still=True)
+    with silent_rendering():
+        bpy.ops.render.render("INVOKE_DEFAULT", write_still=True)
 
 
 def render_scene_depth_to_png(scene: bpy.types.Scene, image_path: str):
@@ -106,7 +117,8 @@ def render_scene_depth_to_png(scene: bpy.types.Scene, image_path: str):
         bpy.app.handlers.render_complete.remove(on_finish)
 
     bpy.app.handlers.render_complete.append(on_finish)
-    bpy.ops.render.render("INVOKE_DEFAULT", write_still=True)
+    with silent_rendering():
+        bpy.ops.render.render("INVOKE_DEFAULT", write_still=True)
 
 
 def ensure_comp_node_tree(sce: bpy.types.Scene):
@@ -121,6 +133,19 @@ def get_comp_node_tree(sce: bpy.types.Scene) -> bpy.types.CompositorNodeTree:
     if bpy.app.version >= (5, 0):
         return sce.compositing_node_group
     return sce.node_tree
+
+
+def check_image_valid(image_path: str) -> bool:
+    try:
+        image = bpy.data.images.load(image_path, check_existing=True)
+        w, h = image.size[:]
+        if w == 0 or h == 0:
+            return False
+        bpy.data.images.remove(image)
+        return True
+    except  Exception as e:
+        print(e.args)
+        return False
 
 
 class RenderAgent:
@@ -213,9 +238,19 @@ if __name__ == "__main__":
         print("Render Finished")
 
 
+    def on_cancel(sce):
+        print("Render Cancel")
+
+
+    bpy.app.handlers.render_cancel.append(on_cancel)
+    bpy.app.handlers.render_complete.append(on_complete)
+    bpy.app.handlers.render_post.append(on_post)
+    bpy.app.handlers.render_write.append(on_write)
+
     render_agent.on_complete(on_complete)
     render_agent.on_post(on_post)
     render_agent.on_write(on_write)
+    render_agent.on_cancel(on_write)
 
     render_agent.attach()
     bpy.context.scene.render.engine = "CYCLES"

@@ -39,8 +39,9 @@ error_translations = (
     ("Can't load auth file", "加载账户信息失败", None),
     ("Can't create auth directory", "创建账户目录失败", None),
     ("Scene Camera Not Found", "场景相机未找到", None),
+    ("Scene Camera Not Found", "场景相机未找到", None),
     ("Task is submitting, please wait...", "任务提交中，请稍后...", None),
-    ("Scene is rendering, please wait...", "场景渲染中，请稍后...", None),
+    ("Render Canceled", "渲染取消", None),
 )
 
 studio_panel_translations = (

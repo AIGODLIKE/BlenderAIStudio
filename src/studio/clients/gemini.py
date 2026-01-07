@@ -8,6 +8,7 @@ from typing import Iterable
 
 import bpy
 from bpy.app.translations import pgettext_iface as _T
+
 from .base import StudioClient, StudioHistory, StudioHistoryItem
 from ..account import AuthMode, Account
 from ..tasks import (
@@ -21,7 +22,7 @@ from ... import logger
 from ...preferences import get_pref
 from ...timer import Timer
 from ...utils import calc_appropriate_aspect_ratio, get_temp_folder
-from ...utils.render import render_scene_to_png, render_scene_depth_to_png, RenderAgent
+from ...utils.render import render_scene_to_png, render_scene_depth_to_png, RenderAgent, check_image_valid
 
 
 class NanoBanana(StudioClient):
@@ -30,6 +31,8 @@ class NanoBanana(StudioClient):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.is_rendering = False
+        self.render_cancel = False
+
         self.rendering_time_start = 0
         self.input_image_type = "CameraRender"
         self.help_url = "https://ai.google.dev/gemini-api/docs/image-generation?hl=zh-cn"
@@ -172,14 +175,23 @@ class NanoBanana(StudioClient):
             self.rendering_time_start = time.time()
 
             def on_write(_sce):
+                if not check_image_valid(_temp_image_path):  # 渲染的图片错误
+                    self.render_cancel = True
+
                 self.is_rendering = False
+                render_agent.detach()
+                logger.info("on_write")
 
             render_agent.on_write(on_write)
             render_agent.attach()
             Timer.put((render_scene_to_png, scene, _temp_image_path))
 
-            while self.is_rendering:
+            while self.is_rendering or self.render_cancel:
                 time.sleep(0.5)
+                if self.render_cancel:
+                    self.push_error(_T("Render Canceled"))
+                    self.render_cancel = False
+                    return
         elif self.input_image_type == "CameraDepth":
             if not bpy.context.scene.camera:
                 self.push_error(_T("Scene Camera Not Found"))
@@ -189,14 +201,22 @@ class NanoBanana(StudioClient):
             self.rendering_time_start = time.time()
 
             def on_write(_sce):
+                if not check_image_valid(_temp_image_path):  # 渲染的图片错误
+                    self.render_cancel = True
                 self.is_rendering = False
+                render_agent.detach()
+                logger.info("on_write")
 
             render_agent.on_write(on_write)
             render_agent.attach()
             Timer.put((render_scene_depth_to_png, scene, _temp_image_path))
 
-            while self.is_rendering:
+            while self.is_rendering or self.render_cancel:
                 time.sleep(0.5)
+                if self.render_cancel:
+                    self.push_error(_T("Render Canceled"))
+                    self.render_cancel = False
+                    return
         elif self.input_image_type == "NoInput":
             _temp_image_path = ""
         resolution = (1024, 1024)
