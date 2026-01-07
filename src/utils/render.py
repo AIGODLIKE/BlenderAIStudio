@@ -65,10 +65,11 @@ def render_scene_to_png(scene: bpy.types.Scene, image_path: str):
     render.image_settings.file_format = "PNG"
 
     def on_finish(_sce):
-        render.filepath = old
+        r = _sce.render
+        r.filepath = old
         if bpy.app.version >= (5, 0):
-            render.image_settings.media_type = old_media_type
-        render.image_settings.file_format = old_fmt
+            r.image_settings.media_type = old_media_type
+        r.image_settings.file_format = old_fmt
 
     bpy.app.handlers.render_complete.append(on_finish)
     with silent_rendering():
@@ -107,12 +108,13 @@ def render_scene_depth_to_png(scene: bpy.types.Scene, image_path: str):
     render.image_settings.file_format = "PNG"
 
     def on_finish(_sce):
-        render.filepath = old
+        r = _sce.render
+        r.filepath = old
         if bpy.app.version >= (5, 0):
-            render.image_settings.media_type = old_media_type
-        render.image_settings.file_format = old_fmt
+            r.image_settings.media_type = old_media_type
+        r.image_settings.file_format = old_fmt
         if bpy.app.version >= (5, 0):
-            scene.compositing_node_group = old_tree
+            _sce.compositing_node_group = old_tree
             bpy.data.node_groups.remove(tree)
         bpy.app.handlers.render_complete.remove(on_finish)
 
