@@ -329,6 +329,9 @@ class App:
         else:
             self.try_disable_ime()
 
+    def is_ime_enabled(self):
+        return self.ime_enabled and input_manager.is_composing()
+
     def try_enable_ime(self):
         if self.ime_enabled:
             return
@@ -361,6 +364,11 @@ class App:
         self._gui_time = current_time
 
     def poll_event(self, event: "Event"):
+        self.poll_mouse_event(event)
+        self.poll_key_event(event)
+        self.poll_input_event(event)
+
+    def poll_mouse_event(self, event: "bpy.types.Event"):
         is_press = event.value == "PRESS"
         # 鼠标
         if event.type == "LEFTMOUSE":
@@ -377,6 +385,10 @@ class App:
             mpos = event.mouse_region_x, event.mouse_region_y
             self.update_mouse_pos(mpos)
 
+    def poll_key_event(self, event: "bpy.types.Event"):
+        if self.is_ime_enabled():
+            return
+        is_press = event.value == "PRESS"
         # 键盘
         #     1. 修饰
         self.io.add_key_event(imgui.Key.MOD_CTRL, event.ctrl)
@@ -388,6 +400,7 @@ class App:
             if key := self.key_map.get(event.type):
                 self.io.add_key_event(key, is_press)
 
+    def poll_input_event(self, event: "bpy.types.Event"):
         # 输入
         if system() == "Windows" and self.io.want_text_input:
             if self.ime_buffer.qsize() == 0:

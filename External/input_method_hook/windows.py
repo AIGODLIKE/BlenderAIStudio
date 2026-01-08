@@ -209,6 +209,9 @@ class WindowsIMEManager(IMEManager):
 
         return self._initialized
 
+    def is_composing(self) -> bool:
+        return self._composition_active
+
     def enable_ime(self) -> bool:
         """启用输入法"""
         # 自动安装钩子
