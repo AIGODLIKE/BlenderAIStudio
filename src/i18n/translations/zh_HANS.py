@@ -41,7 +41,9 @@ error_translations = (
     ("Scene Camera Not Found", "场景相机未找到", None),
     ("Scene Camera Not Found", "场景相机未找到", None),
     ("Task is submitting, please wait...", "任务提交中，请稍后...", None),
+    ("Cache folder not find, please change...", "缓存文件夹未找到，请修改...", None),
     ("Render Canceled", "渲染取消", None),
+    ("Not logged in", "未登录", None),
 )
 
 studio_panel_translations = (

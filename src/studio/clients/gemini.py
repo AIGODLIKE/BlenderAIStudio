@@ -144,6 +144,18 @@ class NanoBanana(StudioClient):
     def calc_price(self, price_table: dict) -> int | None:
         return price_table.get("price", {}).get(self.resolution, None)
 
+    def start_check(self):
+        """运行时检查"""
+        pref = get_pref()
+        if not Path(pref.output_cache_dir).exists():
+            self.push_error(_T("Cache folder not find, please change..."))
+            return False
+        if pref.is_backup_mode:
+            ...
+        else:  # api模式
+            ...
+        return True
+
     def new_generate_task(self, account: "Account"):
         if self.is_task_submitting:
             print("有任务正在提交，请稍后")
@@ -153,7 +165,10 @@ class NanoBanana(StudioClient):
             self.push_error(_T("Scene is rendering, please wait..."))
             return
         self.is_task_submitting = True
-        Thread(target=self.job, args=(account,), daemon=True).start()
+        if self.start_check():
+            Thread(target=self.job, args=(account,), daemon=True).start()
+        else:
+            self.is_task_submitting = False
 
     def cancel_generate_task(self):
         self.task_manager.cancel_task(self.task_id)

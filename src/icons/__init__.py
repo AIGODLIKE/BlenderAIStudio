@@ -1,5 +1,6 @@
 import os
 
+import bpy
 import bpy.utils.previews
 
 previews_icons = None  # 用于存所有的缩略图
