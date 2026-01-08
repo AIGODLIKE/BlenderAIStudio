@@ -1,24 +1,18 @@
-from threading import Thread
-
 import bpy
 
 
 @bpy.app.handlers.persistent
-def restore_history(a, b):
+def load_post(a, b):
     """在加载新文件及打开blender的时候"""
-
-    def load():
-        from .studio.clients.base import StudioHistory
-        StudioHistory.get_instance().restore_history()
-
-    Thread(target=load, daemon=True).start()
+    from .studio.clients.base import StudioHistory
+    StudioHistory.thread_restore_history()
 
 
 # TODO 如果有多个场景?
 def register():
-    bpy.app.handlers.load_post.append(restore_history)
+    bpy.app.handlers.load_post.append(load_post)
 
 
 def unregister():
-    if restore_history in bpy.app.handlers.load_post:
-        bpy.app.handlers.load_post.remove(restore_history)
+    if load_post in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.remove(load_post)

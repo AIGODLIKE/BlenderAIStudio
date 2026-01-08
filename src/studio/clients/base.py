@@ -110,6 +110,15 @@ class StudioHistory:
             traceback.print_exc()
             logger.debug("恢复历史记录失败", e.args)
 
+    @classmethod
+    def thread_restore_history(cls):
+        """子线程恢复历史"""
+        from threading import Thread
+        def load():
+            cls.get_instance().restore_history()
+
+        Thread(target=load, daemon=True).start()
+
 
 class StudioClient(BaseAdapter):
     from ..account import Account
