@@ -11,7 +11,6 @@ import bpy  # noqa: E402
 
 modules = [
     "src",
-    "ops",
 ]
 
 reg, unreg = bpy.utils.register_submodule_factory(__package__, modules)

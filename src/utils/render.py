@@ -132,12 +132,17 @@ def ensure_comp_node_tree(sce: bpy.types.Scene):
 
 
 def get_comp_node_tree(sce: bpy.types.Scene) -> bpy.types.CompositorNodeTree:
+    """获取合成节点树"""
     if bpy.app.version >= (5, 0):
         return sce.compositing_node_group
     return sce.node_tree
 
 
 def check_image_valid(image_path: str) -> bool:
+    """验证图片是否有效
+    如果图片无法加载或是加载的宽或高为0
+    那么这个图片就是错误的
+    """
     try:
         image = bpy.data.images.load(image_path, check_existing=True)
         w, h = image.size[:]
