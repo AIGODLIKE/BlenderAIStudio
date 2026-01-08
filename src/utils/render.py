@@ -46,11 +46,11 @@ def silent_rendering():
         bpy.context.preferences.view.render_display_type = last_display_type
 
 
-def render_scene_viewport_opengl_to_png(scene: bpy.types.Scene, image_path: str, view_context: bool):
-    check_scene_camera_with_exception(scene)
-    with with_scene_render_output_settings(scene, image_path):
-        bpy.ops.render.opengl(write_still=True, view_context=view_context)
-
+# def render_scene_viewport_opengl_to_png(scene: bpy.types.Scene, image_path: str, view_context: bool):
+#     check_scene_camera_with_exception(scene)
+#     with with_scene_render_output_settings(scene, image_path):
+#         bpy.ops.render.opengl(write_still=True, view_context=view_context)
+#
 
 def render_scene_to_png(scene: bpy.types.Scene, image_path: str):
     check_scene_camera_with_exception(scene)
@@ -65,11 +65,11 @@ def render_scene_to_png(scene: bpy.types.Scene, image_path: str):
     render.image_settings.file_format = "PNG"
 
     def on_finish(_sce):
-        r = _sce.render
-        r.filepath = old
+        ren = _sce.render
+        ren["filepath"] = old
         if bpy.app.version >= (5, 0):
-            r.image_settings.media_type = old_media_type
-        r.image_settings.file_format = old_fmt
+            ren.image_settings["media_type"] = old_media_type
+        ren.image_settings["file_format"] = old_fmt
 
     bpy.app.handlers.render_complete.append(on_finish)
     with silent_rendering():
@@ -98,7 +98,7 @@ def render_scene_depth_to_png(scene: bpy.types.Scene, image_path: str):
         output = tree.nodes.new(type="CompositorNodeComposite")
         tree.links.new(render_layer.outputs["Mist"], output.inputs["Image"])
     render = scene.render
-    old = render.filepath
+    old_filepath = render.filepath
     old_fmt = render.image_settings.file_format
 
     render.filepath = image_path
@@ -108,13 +108,13 @@ def render_scene_depth_to_png(scene: bpy.types.Scene, image_path: str):
     render.image_settings.file_format = "PNG"
 
     def on_finish(_sce):
-        r = _sce.render
-        r.filepath = old
+        ren = _sce.render
+        ren["filepath"] = old_filepath
         if bpy.app.version >= (5, 0):
-            r.image_settings.media_type = old_media_type
-        r.image_settings.file_format = old_fmt
+            ren.image_settings["media_type"] = old_media_type
+        ren.image_settings["file_format"] = old_fmt
         if bpy.app.version >= (5, 0):
-            _sce.compositing_node_group = old_tree
+            _sce["compositing_node_group"] = old_tree
             bpy.data.node_groups.remove(tree)
         bpy.app.handlers.render_complete.remove(on_finish)
 
