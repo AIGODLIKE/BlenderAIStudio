@@ -26,8 +26,8 @@ def get_custom_icon(name="None"):
     :param name:
     :return: int icon_id
     """
-    from ..icons import previews_icons
-    return previews_icons[name.lower()].icon_id
+    from ..icons import get_icon
+    return get_icon(name.lower())
 
 
 def get_version():

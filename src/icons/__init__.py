@@ -10,13 +10,21 @@ def get_dat_icon(name):
     return os.path.normpath(os.path.join(os.path.dirname(__file__), name))
 
 
+def get_icon(name) -> int:
+    """获取图标
+    """
+    global previews_icons
+    if not previews_icons:
+        load_icons()
+    return previews_icons.get(name).icon_id
+
+
 def load_icons():
     """预加载图标
     在启动blender或是启用插件时加载图标
     """
     global previews_icons
-    if previews_icons is None:
-        previews_icons = bpy.utils.previews.new()
+    previews_icons = bpy.utils.previews.new()
     from os.path import dirname, join, isfile
     for root, dirs, files in os.walk(dirname(__file__)):
         for file in files:

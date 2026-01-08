@@ -81,7 +81,7 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences):
             elif account.is_waiting_for_login():
                 layout.label(text="Waiting for login...")
             else:
-                layout.label(text="Not Logged in")
+                layout.label(text="Not Logged")
                 layout.operator("bas.login_account_auth")
         else:
             layout.prop(self, "nano_banana_api")
