@@ -8,6 +8,7 @@ modules = [
     "studio",
     "timer",
     "ui",
+    "ops",
     "property",
     "preferences",
     "icons",

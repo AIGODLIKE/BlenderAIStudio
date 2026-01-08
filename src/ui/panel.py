@@ -76,7 +76,7 @@ class AIStudioImagePanel(bpy.types.Panel):
     def draw_mask(context, layout: bpy.types.UILayout):
         from bl_ui.properties_paint_common import UnifiedPaintPanel
         from ..utils import get_custom_icon
-        from ..studio.ops import SelectMask
+        from ..ops import SelectMask
 
         is_draw_mask = check_is_draw_mask(context)
         is_paint_2d = check_is_paint_2d(context)
