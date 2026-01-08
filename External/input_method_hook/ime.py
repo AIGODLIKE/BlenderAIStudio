@@ -20,6 +20,10 @@ class IMEManager(ABC):
         """禁用输入法"""
         pass
 
+    def is_composing(self) -> bool:
+        """是否正在输入"""
+        return False
+
     def set_commit_callback(self, callback):
         """设置输入回调函数"""
         pass

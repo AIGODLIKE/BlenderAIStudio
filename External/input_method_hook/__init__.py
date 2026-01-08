@@ -3,7 +3,17 @@ from .ime import IMEManager
 
 
 class DummyIMEManager(IMEManager):
-    pass
+    def enable_ime(self) -> bool:
+        return False
+
+    def disable_ime(self) -> bool:
+        return False
+
+    def get_composition_string(self) -> str:
+        return ""
+
+    def set_composition_position(self, x: int, y: int):
+        pass
 
 
 def create_ime_manager() -> IMEManager:
