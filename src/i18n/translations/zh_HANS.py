@@ -44,6 +44,7 @@ error_translations = (
     ("Cache folder not find, please change...", "缓存文件夹未找到，请修改...", None),
     ("Render Canceled", "渲染取消", None),
     ("Not logged in", "未登录", None),
+    ("Please input your API Key", "请输入您的API密钥", None),
 )
 
 studio_panel_translations = (
