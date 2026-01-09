@@ -1,3 +1,6 @@
+import os
+import time
+
 import bpy
 
 from .pkg_installer import PkgInstaller
@@ -206,4 +209,6 @@ def debug_time(func, print_time=True):
 
 def get_temp_folder(suffix=None, prefix=None):
     import tempfile
-    return tempfile.mkdtemp(prefix=prefix, suffix=suffix, dir=get_pref().output_cache_dir)
+    file_name = os.path.basename(bpy.data.filepath)[:-6] if bpy.data.is_saved else ''  # 'Untitled.blend' -> 'Untitled'
+    time_str = time.strftime("%Y%m%d_%H_%M_%S", time.localtime())
+    return tempfile.mkdtemp(prefix=f"{file_name}_{time_str}_{prefix}_", suffix=suffix, dir=get_pref().output_cache_dir)

@@ -62,7 +62,7 @@ class ApplyAiEditImage(bpy.types.Operator):
         generate_image_name = png_name_suffix(image.name, f"_{self.running_operator}")
 
         # 将blender图片保存到临时文件夹
-        temp_folder = get_temp_folder(prefix="edit_ai_image_")
+        temp_folder = get_temp_folder(prefix="edit")
 
         origin_image_file_path = save_image_to_temp_folder(image, temp_folder)
         reference_images_path = []

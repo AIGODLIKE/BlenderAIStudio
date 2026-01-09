@@ -234,7 +234,7 @@ def _create_placeholder_image() -> Tuple[bytes, str]:
 
 
 def _create_empty_image(width: int, height: int, color: tuple) -> bytes:
-    temp_folder = get_temp_folder(prefix="generate_ai_image_")
+    temp_folder = get_temp_folder(prefix="gen")
     with tempfile.NamedTemporaryFile(suffix=".png", dir=temp_folder) as f:
         spec = oiio.ImageSpec(width, height, len(color), oiio.UINT8)
         out = oiio.ImageOutput.create(f.name)

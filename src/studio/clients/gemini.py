@@ -176,7 +176,7 @@ class NanoBanana(StudioClient):
     def job(self, account: "Account"):
         self.is_task_submitting = False
         # 1. 创建任务
-        temp_folder = get_temp_folder(prefix="generate_ai_image_")
+        temp_folder = get_temp_folder(prefix="generate")
         temp_image_path = tempfile.NamedTemporaryFile(suffix=".png", prefix="Depth", delete=False, dir=temp_folder)
         _temp_image_path = temp_image_path.name
         # 渲染图片
