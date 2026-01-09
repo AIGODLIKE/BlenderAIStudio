@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 from uuid import uuid4
 
@@ -6,9 +5,6 @@ import bpy
 from bpy_extras.io_utils import ImportHelper, ExportHelper
 
 from ..i18n import OPS_TCTX
-from ..utils import (
-    load_image,
-)
 
 
 class AIStudioEntry(bpy.types.Operator):
@@ -93,13 +89,27 @@ class FileImporter(bpy.types.Operator, ImportHelper):
     filepath: bpy.props.StringProperty(subtype="FILE_PATH")
     callback_id: bpy.props.StringProperty()
 
+    # 定义一个用于多文件选择的集合属性
+    files: bpy.props.CollectionProperty(
+        type=bpy.types.OperatorFileListElement,
+        options={'HIDDEN', 'SKIP_SAVE'}
+    )
+    # 用于存放所选文件夹路径的属性
+    directory: bpy.props.StringProperty(
+        subtype='DIR_PATH',
+        options={'HIDDEN', 'SKIP_SAVE'}
+    )
+
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event):
         bpy.context.window_manager.fileselect_add(self)
         return {"RUNNING_MODAL"}
 
     def execute(self, context):
-        img_path = Path(self.filepath).as_posix()
-        FileCallbackRegistry.execute_callback(self.callback_id, img_path)
+        images = []
+        for file in self.files:
+            img_path = Path(self.directory).joinpath(file.name).as_posix()
+            images.append(img_path)
+        FileCallbackRegistry.execute_callback(self.callback_id, images)
         return {"FINISHED"}
 
 
@@ -117,7 +127,6 @@ class FileExporter(bpy.types.Operator, ExportHelper):
         img_path = Path(self.filepath).as_posix()
         FileCallbackRegistry.execute_callback(self.callback_id, img_path)
         return {"FINISHED"}
-
 
 
 clss = [

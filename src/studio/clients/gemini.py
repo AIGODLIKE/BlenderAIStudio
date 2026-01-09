@@ -362,8 +362,9 @@ class NanoBanana(StudioClient):
 
 
 def upload_image(client: StudioClient, prop: str):
-    def upload_image_callback(file_path: str):
-        client.get_value(prop).append(file_path)
+    def upload_image_callback(files_path: [str]):
+        # TODO 参考图片数量有限制,需要处理
+        client.get_value(prop).extend(files_path)
 
     from ..ops import FileCallbackRegistry
 
