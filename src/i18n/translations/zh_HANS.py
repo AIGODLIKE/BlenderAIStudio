@@ -78,7 +78,7 @@ studio_panel_translations = (
     ("Service from API provider.", "服务由API方提供，注意网络畅通", None),
     ("Proceeds → open source", "收益将 100% 用于支持开源开发", None),
     ("Redeem for ice pops", "兑换冰糕", None),
-    ("Store", "获取冰糕", None),
+    ("Buy", "获取冰糕", STUDIO_TCTX),
     ("Edit", "编辑", None),
     ("Edit Image", "编辑图像", None),
     ("Open image editor and edit current image.", "打开图像编辑器，编辑当前图像。（可执行重绘、融图等编辑操作）", None),

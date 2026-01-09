@@ -660,7 +660,7 @@ class StorePanel:
 
             # --- 表格 3: 功能按钮 (50% + 50%) ---
             bw = (aw - imgui.get_style().item_spacing[0]) * 0.5
-            label = _T("Store")
+            label = _T("Buy", STUDIO_TCTX)
             if CustomWidgets.icon_label_button("account_buy", label, "CENTER", (bw, bh), isize):
                 print("获取冰糕")
                 imgui.open_popup("##Buy")
