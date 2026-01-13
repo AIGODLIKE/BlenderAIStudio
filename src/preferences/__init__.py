@@ -3,10 +3,13 @@ from enum import Enum
 
 import bpy
 
-from .i18n import PROP_TCTX
-from .. import __package__ as base_name
+from ..i18n import PROP_TCTX
+from ..online_update_addon import UpdateService
+from ... import __package__ as base_name
+from .online_update import OnlineUpdate
 
 translation_context = {}
+
 if bpy.app.version >= (4, 0, 0):
     translation_context["translation_context"] = PROP_TCTX
 
@@ -16,7 +19,7 @@ class AuthMode(Enum):
     API = "API Key Mode"
 
 
-class BlenderAIStudioPref(bpy.types.AddonPreferences):
+class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate):
     bl_idname = base_name
     ui_pre_scale: bpy.props.FloatProperty(
         name="UI Pre Scale Factor",
@@ -49,6 +52,14 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences):
         name="Nano Banana API Key",
         subtype="PASSWORD",
     )
+    page_type: bpy.props.EnumProperty(
+        name="Page Type",
+        items=[
+            ("SETTING", "Setting", ""),
+            ("ONLINE_UPDATE", "Update Addon", ""),
+        ],
+        **translation_context,
+    )
 
     @property
     def is_backup_mode(self):  # 是稳定模式
@@ -64,13 +75,22 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences):
 
     def draw(self, context):
         layout = self.layout
+        column = layout.column()
+        column.row(align=True).prop(self, "page_type", expand=True)
+        if draw_func := getattr(self, f"draw_{self.page_type.lower()}", None):
+            draw_func(column.box())
+
+    def draw_setting(self, layout):
         layout.prop(self, "ui_pre_scale")
         layout.prop(self, "ui_offset")
         layout.prop(self, "output_cache_dir")
         self.draw_api(layout.box())
 
+    def draw_online_update(self, layout):
+        UpdateService.draw_update_info(layout)
+
     def draw_api(self, layout):
-        from .studio.account import Account
+        from ..studio.account import Account
         layout.label(text="Service")
         layout.prop(self, "account_auth_mode", text="Operating Mode", )
         if self.is_backup_mode:
@@ -87,10 +107,6 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences):
             layout.prop(self, "nano_banana_api")
             if self.nano_banana_api == "":
                 layout.label(text="Please input your API Key")
-
-
-def get_pref() -> BlenderAIStudioPref:
-    return bpy.context.preferences.addons[base_name].preferences
 
 
 def register():

@@ -10,7 +10,8 @@ import bpy
 from bpy.app.translations import pgettext_iface as _T
 
 from .base import StudioClient, StudioHistory, StudioHistoryItem
-from ..account import AuthMode, Account
+from ..account import Account
+from ...preferences import AuthMode
 from ..tasks import (
     Task,
     TaskResult,
@@ -19,9 +20,8 @@ from ..tasks import (
     AccountGeminiImageGenerateTask,
 )
 from ... import logger
-from ...preferences import get_pref
 from ...timer import Timer
-from ...utils import calc_appropriate_aspect_ratio, get_temp_folder
+from ...utils import calc_appropriate_aspect_ratio, get_temp_folder, get_pref
 from ...utils.render import render_scene_to_png, render_scene_depth_to_png, RenderAgent, check_image_valid
 
 

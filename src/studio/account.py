@@ -21,7 +21,8 @@ from .exception import (
     ToeknExpiredException,
 )
 from ..logger import logger
-from ..preferences import get_pref, AuthMode
+from ..preferences import AuthMode
+from ..utils import get_pref
 
 # TODO 导入耗时+300~ms
 try:
