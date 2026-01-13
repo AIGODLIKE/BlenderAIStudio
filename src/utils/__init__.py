@@ -1,3 +1,4 @@
+import hashlib
 import os
 import time
 
@@ -15,7 +16,8 @@ __all__ = [
     "png_name_suffix",
     "load_image",
     "time_diff_to_str",
-    "get_version",
+    "get_addon_version",
+    "get_addon_version_str",
     "calc_appropriate_aspect_ratio",
     "refresh_image_preview",
     "get_temp_folder",
@@ -33,10 +35,18 @@ def get_custom_icon(name="None"):
     return get_icon(name.lower())
 
 
-def get_version():
+def get_addon_version():
     from ...__init__ import bl_info
 
     return bl_info.get("version", (0, 0, 0))
+
+
+def get_addon_version_str():
+    return ".".join(map(str, get_addon_version()))
+
+
+def str_version_to_int(version_str):
+    return tuple(map(int, version_str.split(".")))
 
 
 def get_pref():
@@ -212,3 +222,42 @@ def get_temp_folder(suffix=None, prefix=None):
     file_name = os.path.basename(bpy.data.filepath)[:-6] if bpy.data.is_saved else ''  # 'Untitled.blend' -> 'Untitled'
     time_str = time.strftime("%Y%m%d_%H_%M_%S", time.localtime())
     return tempfile.mkdtemp(prefix=f"{file_name}_{time_str}_{prefix}_", suffix=suffix, dir=get_pref().output_cache_dir)
+
+def calculate_md5(file_path, chunk_size=8192):
+    """
+    计算文件的 MD5 哈希值。
+    这是计算的核心函数，采用分块读取以支持大文件。
+    """
+    hash_md5 = hashlib.md5()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(chunk_size), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()  # 返回16进制字符串
+
+
+def start_blender(step=1):
+    """Create a new Blender thread through subprocess
+
+    offset
+
+    -p, --window-geometry <sx> <sy> <w> <h>
+        Open with lower left corner at <sx>, <sy> and width and height as <w>, <h>.
+    https://docs.blender.org/manual/en/4.3/advanced/command_line/arguments.html#window-options
+    """
+    import subprocess
+    bpy.ops.wm.save_userpref()
+
+    args = [bpy.app.binary_path, ]
+
+    window = bpy.context.window
+    offset = step * 20
+
+    args.append("-p")
+    args.extend((
+        str(window.x + offset),
+        str(window.y - offset),
+        str(window.width),
+        str(window.height),
+    ))
+
+    subprocess.Popen(args)

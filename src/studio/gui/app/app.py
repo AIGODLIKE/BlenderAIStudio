@@ -513,7 +513,7 @@ class AppHud(App):
 
     @property
     def screen_scale(self):
-        from ....preferences import get_pref
+        from ....utils import get_pref
 
         return bpy.context.preferences.view.ui_scale * get_pref().ui_pre_scale
 

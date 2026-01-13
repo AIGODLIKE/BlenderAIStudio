@@ -12,7 +12,8 @@ from traceback import print_exc
 import bpy
 from bpy.app.translations import pgettext
 
-from .account import AuthMode, Account
+from .account import Account
+from ..preferences import AuthMode
 from .clients import StudioHistoryItem, StudioHistory, StudioClient
 from .gui.app.animation import AnimationSystem, Easing, Tween, Sequence
 from .gui.app.app import AppHud
@@ -23,9 +24,9 @@ from .gui.widgets import CustomWidgets, with_child
 from .tasks import TaskState
 from .wrapper import BaseAdapter, WidgetDescriptor, DescriptorFactory
 from ..i18n import STUDIO_TCTX
-from ..preferences import get_pref
+from ..logger import logger
 from ..timer import Timer
-from ..utils import get_version
+from ..utils import get_addon_version, get_pref
 
 
 def _T(msg, ctxt=STUDIO_TCTX):
@@ -54,7 +55,8 @@ def edit_image_with_meta_and_context(file_path, meta, context):
     try:
         with bpy.context.temp_override(**context):
             bpy.ops.bas.open_image_in_new_window("INVOKE_DEFAULT", image_path=file_path, data=meta)
-    except Exception:
+    except Exception as e:
+        logger.error(f"编辑图片失败: {e}")
         print_exc()
 
 
@@ -1509,7 +1511,7 @@ class AIStudio(AppHud):
                     imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
                     imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
                     imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
-                    imgui.button(f"V{'.'.join(map(str, get_version()))}")
+                    imgui.button(f"V{'.'.join(map(str, get_addon_version()))}")
                     imgui.pop_style_color(3)
                     self.font_manager.pop_font()
 
