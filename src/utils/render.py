@@ -73,7 +73,8 @@ def render_scene_to_png(scene: bpy.types.Scene, image_path: str):
         setattr(ren.image_settings, "file_format", old_fmt)
 
     def on_finish(_sce):
-        bpy.app.timers.register(restore, first_interval=1, persistent=True)
+        bpy.app.timers.register(restore, first_interval=5, persistent=False)
+        bpy.app.handlers.render_complete.remove(on_finish)
 
     bpy.app.handlers.render_complete.append(on_finish)
     with silent_rendering():
@@ -121,10 +122,10 @@ def render_scene_depth_to_png(scene: bpy.types.Scene, image_path: str):
             setattr(ren.image_settings, "media_type", old_media_type)
             setattr(sce, "compositing_node_group", old_tree)
             bpy.data.node_groups.remove(tree)
-        bpy.app.handlers.render_complete.remove(on_finish)
 
     def on_finish(_sce):
-        bpy.app.timers.register(restore, first_interval=1, persistent=True)
+        bpy.app.timers.register(restore, first_interval=5, persistent=False)
+        bpy.app.handlers.render_complete.remove(on_finish)
 
     bpy.app.handlers.render_complete.append(on_finish)
     with silent_rendering():
