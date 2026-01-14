@@ -1,9 +1,11 @@
 import json
+from threading import Thread
 
 import bpy
 
 from ..i18n.translations.zh_HANS import OPS_TCTX
 from ..utils import load_image
+from ..utils.ctypes.window import foreground_image_edit_window
 
 
 class ViewImage(bpy.types.Operator):
@@ -86,6 +88,7 @@ class OpenImageInNewWindow(bpy.types.Operator):
         self.load_data(context)
         image_window = self.get_image_window(context)
         if image_window:
+            Thread(target=foreground_image_edit_window, daemon=True).start()
             return self.execute(context)
         else:
             bpy.ops.wm.window_new("EXEC_DEFAULT", False)
@@ -145,7 +148,7 @@ class OpenImageInNewWindow(bpy.types.Operator):
         except Exception as e:
             print(e)
             import traceback
-
             traceback.print_exc()
             traceback.print_stack()
+            self.report({"ERROR"}, str(e.args))
         return {"CANCELLED"}
