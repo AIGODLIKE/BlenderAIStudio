@@ -2,6 +2,7 @@ from pathlib import Path
 
 import bpy
 
+from .. import logger
 from ..i18n.translations.zh_HANS import OPS_TCTX
 from ..utils import png_name_suffix, get_pref, get_temp_folder, save_image_to_temp_folder
 
@@ -13,6 +14,8 @@ class ApplyAiEditImage(bpy.types.Operator):
     bl_label = "Apply AI Edit"
     bl_options = {"REGISTER"}
     running_operator: bpy.props.StringProperty(default=bl_label, options={"HIDDEN", "SKIP_SAVE"})
+
+    task = None
 
     def invoke(self, context, event):
         self.execute(context)
@@ -123,8 +126,10 @@ class ApplyAiEditImage(bpy.types.Operator):
             _task: Task = event_data["task"]
             old_state: TaskState = event_data["old_state"]
             new_state: TaskState = event_data["new_state"]
-            print(f"状态改变: {old_state.value} -> {new_state.value}")
-            oii.running_state = new_state.value
+            text = f"状态改变: {old_state.value} -> {new_state.value}"
+            ai_oii = bpy.context.scene.blender_ai_studio_property
+            ai_oii.running_state = new_state.value
+            logger.info(text)
 
         def on_progress(event_data):
             # {
@@ -140,8 +145,10 @@ class ApplyAiEditImage(bpy.types.Operator):
             message = progress["message"]
             p = bpy.app.translations.pgettext("Progress")
             text = f"{p}: {percent * 100}% - {message}"
-            print(text)
-            oii.running_message = text
+
+            ai_oii = bpy.context.scene.blender_ai_studio_property
+            ai_oii.running_message = text
+            logger.info(text)
 
         def on_completed(event_data):
             # result_data = {
@@ -150,18 +157,17 @@ class ApplyAiEditImage(bpy.types.Operator):
             #     "width": 1024,
             #     "height": 1024,
             # }
-            oii.origin_image = image
+
+            ai_oii = bpy.context.scene.blender_ai_studio_property
+            ai_oii.origin_image = image
             _task: Task = event_data["task"]
             result: TaskResult = event_data["result"]
             result_data: dict = result.data
             # 存储结果
             save_file = Path(temp_folder).joinpath(f"{generate_image_name}_Output.png")
             save_file.write_bytes(result_data["image_data"])
-            text = f"任务完成: {_task.task_id}"
-            print(text, save_file)
-            oii.running_message = "Running completed"
-
-            import bpy
+            text = f"任务完成: {_task.task_id} {save_file}"
+            ai_oii.running_message = "Running completed"
 
             if gi := bpy.data.images.load(str(save_file), check_existing=False):
                 oii.generated_image = gi
@@ -177,29 +183,39 @@ class ApplyAiEditImage(bpy.types.Operator):
                     traceback.print_stack()
             else:
                 ut = bpy.app.translations.pgettext("Unable to load generated image!")
-                oii.running_message = ut + " " + str(save_file)
-            oii.stop_running()
-            oii.save_to_history()
+                ai_oii.running_message = ut + " " + str(save_file)
+            ai_oii.stop_running()
+            ai_oii.save_to_history()
+            logger.info(text)
 
         def on_failed(event_data):
-            print("on_failed", event_data)
+            text = f"on_failed {event_data}"
+            logger.info(text)
+
+            ai_oii = bpy.context.scene.blender_ai_studio_property
+
             _task: Task = event_data["task"]
             result: TaskResult = event_data["result"]
             if not result.success:
-                print(result.error)
-                oii.running_message = str(result.error)
+                ai_oii.running_message = str(result.error)
+                logger.info(ai_oii.running_message)
             else:
-                oii.running_message = "Unknown error" + " " + str(result.data)
-            oii.stop_running()
+                ai_oii.running_message = "Unknown error" + " " + str(result.data)
+            ai_oii.stop_running()
 
         task.register_callback("state_changed", on_state_changed)
         task.register_callback("progress_updated", on_progress)
         task.register_callback("completed", on_completed)
         task.register_callback("failed", on_failed)
         TaskManager.get_instance().submit_task(task)
-        print(f"任务提交: {task.task_id}")
-        print("task", task)
+        logger.info(f"任务提交: {task.task_id}")
+        self.task = task
         return {"FINISHED"}
+
+    def cancel(self, context):
+        logger.info("task cancel")
+        if self.task:
+            self.task.cancel()
 
 
 class SmartFixImage(bpy.types.Operator):
@@ -215,7 +231,10 @@ class SmartFixImage(bpy.types.Operator):
         oii.prompt = "[智能修复]"
 
         self.report({"INFO"}, "Smart Fix - unifying colors, contrast, lighting...")
-        bpy.ops.bas.apply_ai_edit_image("INVOKE_DEFAULT", running_operator=self.bl_label)
+        try:
+            bpy.ops.bas.apply_ai_edit_image("INVOKE_DEFAULT", running_operator=self.bl_label)
+        except Exception as e:
+            self.report({"ERROR"}, str(e))
         return {"FINISHED"}
 
 
@@ -237,11 +256,15 @@ class ReRenderImage(bpy.types.Operator):
             return {"CANCELLED"}
 
         if len(oii.history) == 0:
-            self.report({"INFO"}, "No history - use 'Apply AI Edit' first")
+            self.report({"INFO"}, "No history - use 'Render' first")
             return {"CANCELLED"}
         last = oii.history[-1]
         oii.prompt = last.prompt
 
-        bpy.ops.bas.apply_ai_edit_image("INVOKE_DEFAULT", running_operator=self.bl_label)
         self.report({"INFO"}, "Re-rendering with previous settings...")
+
+        try:
+            bpy.ops.bas.apply_ai_edit_image("INVOKE_DEFAULT", running_operator=self.bl_label)
+        except Exception as e:
+            self.report({"ERROR"}, str(e))
         return {"FINISHED"}

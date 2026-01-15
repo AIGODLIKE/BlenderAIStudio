@@ -6,6 +6,8 @@ from uuid import uuid4
 import bpy
 from bpy.app.translations import pgettext as _T
 
+from .. import logger
+
 
 def check_scene_camera_with_exception(scene: bpy.types.Scene):
     if scene.camera:
@@ -43,7 +45,8 @@ def silent_rendering():
     try:
         yield
     finally:
-        bpy.context.preferences.view.render_display_type = last_display_type
+        if hasattr(bpy.context.preferences.view, "render_display_type"):
+            setattr(bpy.context.preferences.view, "render_display_type", last_display_type)
 
 
 # def render_scene_viewport_opengl_to_png(scene: bpy.types.Scene, image_path: str, view_context: bool):
@@ -65,7 +68,7 @@ def render_scene_to_png(scene: bpy.types.Scene, image_path: str):
     render.image_settings.file_format = "PNG"
 
     def restore():
-        print("restore pref")
+        logger.info("restore render setting")
         ren = bpy.context.scene.render
         setattr(ren, "filepath", old)
         if bpy.app.version >= (5, 0):
@@ -113,7 +116,7 @@ def render_scene_depth_to_png(scene: bpy.types.Scene, image_path: str):
     render.image_settings.file_format = "PNG"
 
     def restore():
-        print("restore pref")
+        logger.info("restore render setting")
         sce = bpy.context.scene
         ren = sce.render
         setattr(ren, "filepath", old_filepath)
