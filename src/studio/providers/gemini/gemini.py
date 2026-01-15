@@ -95,7 +95,7 @@ class GeminiImageGenerateProvider(GeminiProvider):
             return _parse_image_data_from_response_json(resp)
         except requests.RequestException as e:
             logger.debug(str(e))
-            raise GeminiAPIError("Network error")
+            raise GeminiAPIError("Network error,Please check the network and proxy")
         except json.JSONDecodeError:
             raise GeminiAPIError("Failed to parse API response")
         except GeminiAPIError as e:
@@ -104,15 +104,15 @@ class GeminiImageGenerateProvider(GeminiProvider):
     def _check_response_status(self, resp: requests.Response):
         code = resp.status_code
         if code == 403:
-            raise GeminiAPIError("API key invalid or quota exceeded. Check your Google AI Studio account.")
+            raise GeminiAPIError("API key invalid or quota exceeded,Please Check your Google AI Studio account")
         elif code == 429:
-            raise GeminiAPIError("Rate limit exceeded.")
+            raise GeminiAPIError("Rate limit exceeded,Please check your API key and Google AI Studio account")
         elif code == 400:
             logger.debug(resp.text)
-            raise GeminiAPIError("Bad request (400).")
+            raise GeminiAPIError("Bad request (400),Please check the network and proxy")
         elif code == 502:
             logger.debug(resp.text)
-            raise GeminiAPIError("Server Error: Bad Gateway")
+            raise GeminiAPIError("Server Error: Bad Gateway,Please check the network and proxy.")
         elif code != 200:
             logger.debug(resp.text)
             raise GeminiAPIError("API request failed. Unknown error.")

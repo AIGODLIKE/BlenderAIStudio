@@ -1201,7 +1201,7 @@ class ErrorLogBubble:
             anim_system: AnimationSystem,
             text: str,
             pos: tuple[float, float] = (0, 0),
-            duration: float = 3,
+            duration: float = 10,
     ) -> None:
         self.text = text
         self.x = pos[0]

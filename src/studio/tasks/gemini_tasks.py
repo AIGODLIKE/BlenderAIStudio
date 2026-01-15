@@ -155,7 +155,7 @@ class GeminiImageGenerationTask(GeminiTaskBase):
             self.update_progress(2, "正在调用 Gemini API...")
 
             # 调用 API
-            image_data, mime_type = b"", "image/png"
+            # image_data, mime_type = b"", "image/png"
             payload = GeminiImageGeneratePayload(
                 image_path=self.image_path,
                 user_prompt=self.user_prompt,
