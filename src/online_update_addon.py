@@ -6,11 +6,12 @@ import os
 import tempfile
 
 import bpy
+from bpy.app.translations import pgettext_iface as iface
 
 from . import logger
 from .utils import get_addon_version_str, get_pref, get_addon_version, str_version_to_int, calculate_md5, start_blender
 from .utils.async_request import GetRequestThread, DownloadZipRequestThread
-from bpy.app.translations import pgettext_iface as iface
+
 VERSION_URL = f"https://api-addon.acggit.com/v1/sys/version"
 DOWNLOAD_URL = f"https://launcher.aigodlike.com/v1/launcher/addons/download?addonId=2006941642182885376&addonVersion="
 
@@ -25,10 +26,9 @@ class UpdateService:
     """
     version_info = None
     is_refreshing = False  # 正在刷新中
-    is_updating = False  # 正在更新中
 
     @staticmethod
-    def update_addon_version_info():
+    def update_addon_version_info() -> None:
         """更新插件版本信息"""
         cls = UpdateService
 
@@ -38,13 +38,14 @@ class UpdateService:
             else:
                 # 存储版本信息
                 try:
-                    cls.is_refreshing = False
                     res = json.loads(result)
                     cls.version_info = json.loads(result)
                     vs = res['data']['versions']
                     logger.info(f"请求版本信息成功, 获取到 {len(vs)} 个版本数据")
                 except Exception as e:
                     print(f"解析版本信息失败: {e}")
+                finally:
+                    cls.is_refreshing = False
 
         if cls.is_refreshing:
             return
@@ -65,7 +66,20 @@ class UpdateService:
         return None
 
     @staticmethod
+    def get_last_version() -> str:
+        """获取最新版本号"""
+        cls = UpdateService
+        try:
+            if last_version_data := cls.get_last_version_data():
+                last_version = last_version_data.get("version", "unknown")
+                return last_version
+        except Exception as e:
+            print(f"获取最新版本失败: {e}")
+        return "unknown"
+
+    @staticmethod
     def get_update_log() -> str:
+        """反回更新日志"""
         cls = UpdateService
         try:
             update_log = cls.version_info['data']['updateLog']
@@ -88,13 +102,6 @@ class UpdateService:
         except Exception as e:
             print(f"检查更新失败: {e}")
             return False
-
-    @staticmethod
-    def update_addon(version: str):
-        """更新插件
-        1.下载插件到临时文件夹
-        2.安装插件
-        """
 
     @staticmethod
     def draw_update_info(layout: bpy.types.UILayout):
@@ -151,6 +158,39 @@ class UpdateAddonUpdateVersionInfo(bpy.types.Operator):
     """更新插件信息"""
     bl_idname = "bas.update_addon_update_version_info"
     bl_label = "Update Addon Info"
+
+    timer = None
+    time = 0
+
+    def invoke(self, context, event):
+        self.execute(context)
+        context.window_manager.modal_handler_add(self)
+        self.timer = context.window_manager.event_timer_add(1, window=context.window)
+        self.time = 0
+        return {"RUNNING_MODAL"}
+
+    def modal(self, context, event):
+        if event.type == "TIMER":
+            self.time += 1
+        if self.time > 30:
+            self.exit(context)
+            self.report({"ERROR"}, "Check version timeout")
+            return {"FINISHED"}
+        elif not UpdateService.is_refreshing:  # 不在刷新中,已获取到数据
+            if UpdateService.is_update_available():
+                text = bpy.app.translations.pgettext_iface("Update available %s")
+                self.report({"INFO"}, text % UpdateService.get_last_version())
+            else:
+                self.report({"INFO"}, "No updates available")
+            self.exit(context)
+            return {"FINISHED"}
+        return {"PASS_THROUGH"}
+
+    def exit(self, context):
+        if self.timer:
+            context.window_manager.event_timer_remove(self.timer)
+        if context.area:
+            context.area.tag_redraw()
 
     def execute(self, context):
         UpdateService.update_addon_version_info()
