@@ -16,6 +16,7 @@ from .animation import AnimationSystem
 from .event import Event
 from .renderer import Renderer as ImguiRenderer, imgui
 from ....logger import logger, DEBUG
+from .....External.input_method_hook import input_manager
 
 
 class FakeContext:
@@ -234,8 +235,7 @@ class App:
         return self.any_window_focused or self.any_item_focused or self.item_focused
 
     def is_mouse_dragging(self):
-        return imgui.is_mouse_dragging(imgui.MouseButton.LEFT) or imgui.is_mouse_dragging(
-            imgui.MouseButton.RIGHT) or imgui.is_mouse_dragging(imgui.MouseButton.MIDDLE)
+        return imgui.is_mouse_dragging(imgui.MouseButton.LEFT) or imgui.is_mouse_dragging(imgui.MouseButton.RIGHT) or imgui.is_mouse_dragging(imgui.MouseButton.MIDDLE)
 
     def want_events(self):
         return self.io.want_capture_keyboard or self.io.want_capture_mouse or self.io.want_text_input
@@ -270,7 +270,7 @@ class App:
         frame.push_id(self._id)
 
         # 2. 输入处理
-        self.refresh_ime_status()
+        self.poll_ime()
         self.process_inputs()
 
         # 3. 窗口状态更新
@@ -311,6 +311,17 @@ class App:
         draw_list = imgui.get_foreground_draw_list()
         draw_list.add_circle_filled(self.io.mouse_pos, 2, imgui.get_color_u32((0, 1, 0, 1)))
 
+    def poll_ime(self):
+        self.refresh_ime_status()
+        self.refresh_ime_result()
+
+    def refresh_ime_result(self):
+        if not self.ime_enabled:
+            return
+        res_str = input_manager.get_result_string()
+        if res_str:
+            self.ime_buffer.put(res_str)
+
     def refresh_ime_status(self):
         enable = self.io.want_text_input
         if enable:
@@ -318,35 +329,19 @@ class App:
         else:
             self.try_disable_ime()
 
+    def is_ime_enabled(self):
+        return self.ime_enabled and input_manager.is_composing()
+
     def try_enable_ime(self):
         if self.ime_enabled:
             return
-        if platform.system() != "Windows":
-            return
-        from .....External.input_method_hook import input_manager
-
-        # 设置输入回调
-        def on_input_received(text):
-            self.ime_buffer.put(text)
-
-        input_manager.set_input_callback(on_input_received)
-        input_manager.enable_chinese_input()
+        input_manager.enable_ime()
         self.ime_enabled = True
 
     def try_disable_ime(self):
         if not self.ime_enabled:
             return
-        if platform.system() != "Windows":
-            return
-
-        from .....External.input_method_hook import input_manager
-
-        # 设置输入回调
-        def on_input_received(_):
-            return
-
-        input_manager.set_input_callback(on_input_received)
-        input_manager.disable_chinese_input()
+        input_manager.disable_ime()
         self.ime_enabled = False
 
     def push_event(self, event: "bpy.types.Event"):
@@ -369,6 +364,11 @@ class App:
         self._gui_time = current_time
 
     def poll_event(self, event: "Event"):
+        self.poll_mouse_event(event)
+        self.poll_key_event(event)
+        self.poll_input_event(event)
+
+    def poll_mouse_event(self, event: "bpy.types.Event"):
         is_press = event.value == "PRESS"
         # 鼠标
         if event.type == "LEFTMOUSE":
@@ -385,6 +385,10 @@ class App:
             mpos = event.mouse_region_x, event.mouse_region_y
             self.update_mouse_pos(mpos)
 
+    def poll_key_event(self, event: "bpy.types.Event"):
+        if self.is_ime_enabled():
+            return
+        is_press = event.value == "PRESS"
         # 键盘
         #     1. 修饰
         self.io.add_key_event(imgui.Key.MOD_CTRL, event.ctrl)
@@ -396,6 +400,7 @@ class App:
             if key := self.key_map.get(event.type):
                 self.io.add_key_event(key, is_press)
 
+    def poll_input_event(self, event: "bpy.types.Event"):
         # 输入
         if system() == "Windows" and self.io.want_text_input:
             if self.ime_buffer.qsize() == 0:
