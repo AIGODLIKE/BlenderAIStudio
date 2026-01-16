@@ -92,7 +92,7 @@ class History:
             nmi.name = mi.name
             nmi.image = mi.image
 
-    def draw_history(self, layout: bpy.types.UILayout):
+    def draw_history(self, layout: bpy.types.UILayout,index):
         box = layout.box()
 
         column = box.column()
@@ -102,14 +102,12 @@ class History:
                  icon="RIGHTARROW" if not self.expand_history else "DOWNARROW_HLT",
                  emboss=False,
                  )
-
         column.label(text=self.prompt)
         if not self.expand_history:
             row.context_pointer_set("history", self)
-            row.operator("bas.restore_history", icon="FILE_PARENT", text="",
-                         emboss=False,
-                         )
+            row.operator("bas.remove_history", icon="PANEL_CLOSE", text="", emboss=False).index = index
             return
+        row.operator("bas.restore_history", icon="FILE_PARENT", text="", emboss=False)
 
         column = box.column()
         gi = self.generated_image

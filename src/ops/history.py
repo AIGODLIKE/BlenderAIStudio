@@ -152,3 +152,17 @@ class OpenImageInNewWindow(bpy.types.Operator):
             traceback.print_stack()
             self.report({"ERROR"}, str(e.args))
         return {"CANCELLED"}
+
+
+class RemoveHistory(bpy.types.Operator):
+    bl_idname = "bas.remove_history"
+    bl_label = "Remove History"
+    bl_translation_context = OPS_TCTX
+
+    index: bpy.props.IntProperty()
+
+    def execute(self, context):
+        oii = context.scene.blender_ai_studio_property
+        index = self.index
+        oii.history.remove(index)
+        return {"FINISHED"}

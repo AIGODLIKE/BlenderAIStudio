@@ -6,6 +6,11 @@ from .ai_edit_image import (
     SmartFixImage,
     ReRenderImage,
 )
+from .history import (
+    ViewImage,
+    RestoreHistory,
+    OpenImageInNewWindow, RemoveHistory,
+)
 from .mask_image import DrawImageMask, ApplyImageMask, SelectMask
 from .prompt_edit import (
     PromptEdit,
@@ -16,11 +21,6 @@ from .references_image import (
     ReplaceReferenceImage,
     SelectReferenceImageByFile,
     SelectReferenceImageByImage,
-)
-from .history import (
-    ViewImage,
-    RestoreHistory,
-    OpenImageInNewWindow,
 )
 
 class_list = [
@@ -43,6 +43,7 @@ class_list = [
     ViewImage,
     RestoreHistory,
     OpenImageInNewWindow,
+    RemoveHistory,
 
     LoginAccountAuth,
     LogoutAccountAuth,

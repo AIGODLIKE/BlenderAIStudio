@@ -2,7 +2,7 @@ import bpy
 
 from ..i18n import PANEL_TCTX
 from ..online_update_addon import UpdateService
-from ..utils import get_custom_icon, get_addon_version_str
+from ..utils import get_custom_icon, get_addon_version_str, get_pref
 
 
 def check_is_draw_mask(context):
@@ -152,10 +152,14 @@ class AIStudioImagePanel(bpy.types.Panel):
     @staticmethod
     def draw_ai_edit_layout(context, layout: bpy.types.UILayout):
         ai = context.scene.blender_ai_studio_property
-        points_consumption = bpy.app.translations.pgettext("(%s/use)") % ai.get_points_consumption(context)
+        pref = get_pref()
 
         column = layout.box().column(align=True)
-        column.label(text=bpy.app.translations.pgettext("AI Edit") + points_consumption)
+        
+        if pref.account_auth_mode == "Backup Mode":
+            points_consumption = bpy.app.translations.pgettext("(%s/use)") % ai.get_points_consumption(context)
+            column.label(text=bpy.app.translations.pgettext("AI Edit") + points_consumption)
+
         row = column.row(align=True)
         row.scale_y = 1.2
 
@@ -201,7 +205,9 @@ class AIStudioHistoryPanel(bpy.types.Panel):
     def draw(self, context):
         oii = context.scene.blender_ai_studio_property
         layout = self.layout
-        for h in reversed(oii.history[:]):
-            h.draw_history(layout)
+        items = oii.history[:]
+        il = len(items)
+        for index, h in enumerate(reversed(items)):
+            h.draw_history(layout, il - index)
         if len(oii.history) == 0:
             layout.label(text="No history available at the moment")
