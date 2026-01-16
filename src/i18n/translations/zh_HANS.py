@@ -21,6 +21,7 @@ error_translations = (
     ("Rate limit exceeded,Please check your API key and Google AI Studio account",
      "超过速率限制,请检查您的Api key及请Google AI Studio 账户", None),
     ("Bad request (400).", "错误的请求 (400),请检查网络及代理", None),
+    ("Bad request (400),Please check the network and proxy", "错误的请求 (400),请检查网络及代理", None),
     ("API request failed. Unknown error.", "API 请求失败。未知错误。", None),
     ("NanoBanana Blocked by PROHIBITED_CONTENT", "请求被阻止: 提示词因包含禁止的内容而被屏蔽。", None),
     ("NanoBanana Blocked by SAFETY", "请求被阻止: 出于安全原因，系统屏蔽了相应提示。", None),
