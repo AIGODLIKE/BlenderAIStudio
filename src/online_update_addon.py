@@ -35,6 +35,7 @@ class UpdateService:
         def on_request_finished(result, error):
             if error:
                 print(f"获取插件版本信息失败 {type(error).__name__}: {error}")
+                cls.is_refreshing = False
             else:
                 # 存储版本信息
                 try:

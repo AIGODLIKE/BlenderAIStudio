@@ -69,7 +69,6 @@ class GeminiProvider(BaseProvider):
 
     def generate_image(self, payload: Payload) -> Tuple[bytes, str]:
         raise NotImplementedError
-
     def _process_resp_json(self, resp) -> dict:
         return resp
 

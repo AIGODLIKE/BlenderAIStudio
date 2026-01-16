@@ -1201,7 +1201,7 @@ class ErrorLogBubble:
             anim_system: AnimationSystem,
             text: str,
             pos: tuple[float, float] = (0, 0),
-            duration: float = 10,
+            duration: float = 15,
     ) -> None:
         self.text = text
         self.x = pos[0]
@@ -1302,7 +1302,7 @@ class ErrorLog:
     def draw_and_update(self):
         while self.error_messages:
             msg = self.error_messages.pop()
-            bubble = ErrorLogBubble(self.animation_system, msg, duration=5)
+            bubble = ErrorLogBubble(self.animation_system, msg)
             self.error_bubbles[msg] = bubble
         for message, bubble in list(self.error_bubbles.items()):
             if bubble.is_alive:

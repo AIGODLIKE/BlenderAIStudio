@@ -11,7 +11,6 @@ from bpy.app.translations import pgettext_iface as _T
 
 from .base import StudioClient, StudioHistory, StudioHistoryItem
 from ..account import Account
-from ...preferences import AuthMode
 from ..tasks import (
     Task,
     TaskResult,
@@ -20,6 +19,7 @@ from ..tasks import (
     AccountGeminiImageGenerateTask,
 )
 from ... import logger
+from ...preferences import AuthMode
 from ...timer import Timer
 from ...utils import calc_appropriate_aspect_ratio, get_temp_folder, get_pref
 from ...utils.render import render_scene_to_png, render_scene_depth_to_png, RenderAgent, check_image_valid
@@ -364,7 +364,11 @@ class NanoBanana(StudioClient):
 def upload_image(client: StudioClient, prop: str):
     def upload_image_callback(files_path: [str]):
         # TODO 参考图片数量有限制,需要处理
-        client.get_value(prop).extend(files_path)
+        l = client.get_value(prop)
+        for file_path in files_path:
+            if file_path not in l:
+                l.append(file_path)
+        client.get_value(prop)[:] = client.get_value(prop)[:10]
 
     from ..ops import FileCallbackRegistry
 
@@ -373,11 +377,13 @@ def upload_image(client: StudioClient, prop: str):
 
 
 def replace_image(client: StudioClient, prop: str, index: int = -1):
-    def replace_image_callback(file_path: str):
-        try:
-            client.get_value(prop)[index] = file_path
-        except IndexError:
-            client.get_value(prop).append(file_path)
+    def replace_image_callback(files_path: [str]):
+        if len(files_path) >= 1:
+            file_path = files_path[0]
+            try:
+                client.get_value(prop)[index] = file_path
+            except IndexError:
+                client.get_value(prop).append(file_path)
 
     from ..ops import FileCallbackRegistry
 
