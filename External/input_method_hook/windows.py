@@ -210,7 +210,7 @@ class WindowsIMEManager(IMEManager):
         return self._initialized
 
     def is_composing(self) -> bool:
-        return self._composition_active
+        return self._composition_active and self._last_comp_string != ""
 
     def enable_ime(self) -> bool:
         """启用输入法"""
