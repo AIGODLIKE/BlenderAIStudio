@@ -154,6 +154,16 @@ class UpdateService:
     def open_update_page():
         """ TODO"""
 
+    @classmethod
+    def draw_update_info_panel(cls, layout: bpy.types.UILayout):
+        if cls.is_update_available():
+            box = layout.box()
+            col = box.column()
+            col.alert = True
+            col.label(text=iface("Update available"))
+            cls.draw_update_log(box)
+            box.operator(OnlineUpdateAddon.bl_idname, text=iface("Update to %s") % cls.get_last_version())
+
 
 class UpdateAddonUpdateVersionInfo(bpy.types.Operator):
     """更新插件信息"""

@@ -60,6 +60,7 @@ studio_panel_translations = (
     ("Check version timeout", "检查版本超时", None),
     ("No updates available", "暂无更新", None),
     ("Update available %s", "更新可用 %s", None),
+    ("Update available", "更新可用", None),
     ("Engine", "引擎", STUDIO_TCTX),
     ("Please Select Generation Engine", "请选择生成式引擎", None),
     (

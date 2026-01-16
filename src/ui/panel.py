@@ -1,7 +1,8 @@
 import bpy
 
 from ..i18n import PANEL_TCTX
-from ..utils import get_custom_icon
+from ..online_update_addon import UpdateService
+from ..utils import get_custom_icon, get_addon_version_str
 
 
 def check_is_draw_mask(context):
@@ -21,7 +22,7 @@ def check_is_paint_2d(context):
 class AIStudioImagePanel(bpy.types.Panel):
     bl_idname = "SDN_PT_BLENDER_AI_STUDIO_PT_Image"
     bl_translation_context = PANEL_TCTX
-    bl_label = "Blender AI Studio"
+    bl_label = f"Blender AI Studio {get_addon_version_str()}"
     bl_space_type = "IMAGE_EDITOR"
     bl_region_type = "UI"
     bl_category = "AIStudio"
@@ -34,6 +35,7 @@ class AIStudioImagePanel(bpy.types.Panel):
     def draw(self, context):
         ai = context.scene.blender_ai_studio_property
         layout = self.layout
+        UpdateService.draw_update_info_panel(layout)
         if check_is_draw_mask(context):
             self.draw_mask(context, layout)
             return
