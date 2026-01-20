@@ -11,8 +11,8 @@ IME_CMODE_NATIVE = 0x0001
 GCS_COMPSTR = 0x0008  # 获取当前的组合字符串, 正在编辑但未确认的字符串（用户正在输入的内容）
 GCS_RESULTSTR = 0x0800  # 获取结果字符串, 用户确认完成输入后的最终字符串
 WM_IME_COMPOSITION = 0x010F
-WM_IME_STARTCOMPOSITION = 0x010E
-WM_IME_ENDCOMPOSITION = 0x010F
+WM_IME_STARTCOMPOSITION = 0x010D
+WM_IME_ENDCOMPOSITION = 0x010E
 WM_CHAR = 0x0102
 CFS_POINT = 0x0002
 WH_GETMESSAGE = 3
@@ -88,12 +88,18 @@ class WindowsIMEManager(IMEManager):
 
         # 输入法状态追踪
         self._composition_active = False  # 是否正在组字
-        self._last_comp_string = ""  # 上次的组字字符串
-        self._last_poll_time = 0  # 上次轮询时间
 
     def _get_foreground_window(self) -> int:
         """获取前台窗口句柄"""
         return self.user32.GetForegroundWindow()
+
+    def _update_ime_info(self):
+        res = self._get_result_string_from_ime(self._hwnd)
+        comp = self._get_composition_string_from_ime(self._hwnd)
+        if res:
+            self._push_input(res)
+        if comp and not self._composition_active:
+            self._push_input(comp)
 
     def _message_hook_proc(self, nCode: int, wParam, lParam) -> int:
         """消息钩子回调函数"""
@@ -103,32 +109,16 @@ class WindowsIMEManager(IMEManager):
 
             # 处理 IME 组合消息
             if msg.message == WM_IME_COMPOSITION:
-                if msg.lParam & GCS_RESULTSTR:
-                    # 有确认的输入结果
-                    result = self._get_result_string_from_ime(msg.hwnd)
-                    if result:
-                        # 将结果放入队列
-                        # self._input_queue.append(result) # 已移至 _poll_input 中处理
-                        # 如果设置了外部回调,也调用它
-                        if self.commit_callback:
-                            self.commit_callback(result)
-                        self._composition_active = False
-                elif msg.lParam & GCS_COMPSTR:
-                    # 正在组合输入(预览)
-                    comp_str = self._get_composition_string_from_ime(msg.hwnd)
-                    if comp_str and self.composition_callback:
-                        self.composition_callback(comp_str)
-                    self._last_comp_string = comp_str
-                    self._composition_active = True
+                self._update_ime_info()
 
-            elif msg.message == WM_IME_STARTCOMPOSITION:
+            if msg.message == WM_IME_STARTCOMPOSITION:
                 # 开始输入法组合
                 self._composition_active = True
-                self._last_comp_string = ""
 
             elif msg.message == WM_IME_ENDCOMPOSITION:
                 # 结束输入法组合
-                pass
+                self._composition_active = False
+                self._update_ime_info()
 
             elif msg.message == WM_CHAR:
                 # 处理普通字符输入(英文等)
@@ -149,37 +139,24 @@ class WindowsIMEManager(IMEManager):
 
     def _get_result_string_from_ime(self, hwnd: int) -> str:
         """从 IME 上下文获取结果字符串"""
-        himc = self.imm32.ImmGetContext(hwnd)
-        if not himc:
-            return ""
-
-        try:
-            length = self.imm32.ImmGetCompositionStringW(himc, GCS_RESULTSTR, None, 0)
-            if length <= 0:
-                return ""
-
-            buffer = ctypes.create_unicode_buffer(length // 2 + 1)
-            actual_length = self.imm32.ImmGetCompositionStringW(himc, GCS_RESULTSTR, buffer, length)
-
-            if actual_length > 0:
-                return buffer.value
-            return ""
-        finally:
-            self.imm32.ImmReleaseContext(hwnd, himc)
+        return self._get_string(hwnd, GCS_RESULTSTR)
 
     def _get_composition_string_from_ime(self, hwnd: int) -> str:
         """从 IME 上下文获取组合字符串"""
+        return self._get_string(hwnd, GCS_COMPSTR)
+
+    def _get_string(self, hwnd, stype: int) -> str:
         himc = self.imm32.ImmGetContext(hwnd)
         if not himc:
             return ""
 
         try:
-            length = self.imm32.ImmGetCompositionStringW(himc, GCS_COMPSTR, None, 0)
+            length = self.imm32.ImmGetCompositionStringW(himc, stype, None, 0)
             if length <= 0:
                 return ""
 
             buffer = ctypes.create_unicode_buffer(length // 2 + 1)
-            actual_length = self.imm32.ImmGetCompositionStringW(himc, GCS_COMPSTR, buffer, length)
+            actual_length = self.imm32.ImmGetCompositionStringW(himc, stype, buffer, length)
 
             if actual_length > 0:
                 return buffer.value
@@ -210,7 +187,7 @@ class WindowsIMEManager(IMEManager):
         return self._initialized
 
     def is_composing(self) -> bool:
-        return self._composition_active and self._last_comp_string != ""
+        return self._composition_active
 
     def enable_ime(self) -> bool:
         """启用输入法"""
@@ -270,32 +247,6 @@ class WindowsIMEManager(IMEManager):
         finally:
             self.imm32.ImmReleaseContext(hwnd, himc)
 
-    def get_ime_state(self) -> int:
-        """获取输入法状态
-
-        Returns:
-            1: 启用
-            0: 禁用
-            -1: 错误
-        """
-        if not self._initialized:
-            return -1
-
-        hwnd = self._get_foreground_window()
-        himc = self.imm32.ImmGetContext(hwnd)
-
-        if not himc:
-            return -1
-
-        try:
-            conversion = wintypes.DWORD()
-            sentence = wintypes.DWORD()
-            self.imm32.ImmGetConversionStatus(himc, byref(conversion), byref(sentence))
-
-            return 1 if (conversion.value & IME_CMODE_NATIVE) else 0
-        finally:
-            self.imm32.ImmReleaseContext(hwnd, himc)
-
     def get_composition_string(self) -> str:
         """获取当前组字串（输入过程中的预览文本）"""
         if not self._initialized:
@@ -336,45 +287,7 @@ class WindowsIMEManager(IMEManager):
         Returns:
             输入的文本,如果队列为空则返回空字符串
         """
-        # 主动轮询输入法状态(每50ms检查一次)
-        current_time = time.time()
-        if current_time - self._last_poll_time > 0.05:  # 50ms轮询间隔
-            self._last_poll_time = current_time
-            self._poll_input()
-
         return self._dequeue_input(consume)
-
-    def _poll_input(self):
-        """
-        主动检查组字状态并获取结果
-        """
-        if not self._composition_active:
-            return
-
-        hwnd = self._get_foreground_window()
-        if not hwnd:
-            return
-
-        # 先尝试获取当前的组字字符串
-        current_comp_str = self._get_composition_string_from_ime(hwnd)
-
-        # 如果组字字符串消失了,说明已经提交
-        result = self._last_comp_string
-        if not current_comp_str and result:
-            self._proc_input_string(result)
-            return
-
-        # 尝试获取结果字符串
-        result = self._get_result_string_from_ime(hwnd)
-        self._proc_input_string(result)
-
-    def _proc_input_string(self, result: str):
-        if not result:
-            return
-        # 避免重复添加
-        self._push_input(result)
-        self._composition_active = False
-        self._last_comp_string = ""
 
     def _push_input(self, result: str):
         if not self._input_queue or self._input_queue[-1] != result:
