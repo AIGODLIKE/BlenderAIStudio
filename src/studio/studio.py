@@ -673,8 +673,8 @@ class StorePanel:
             imgui.same_line()
             label = _T("Redeem")
             if CustomWidgets.icon_label_button("account_certificate", label, "CENTER", (bw, bh), isize):
-                self.app.store_panel.should_draw_redeem = True
-            self.app.store_panel.draw()
+                self.should_draw_redeem = True
+            self.draw()
             imgui.pop_style_var(2)
 
         # --- 底部: 警告信息 (单行全宽) ---
@@ -809,7 +809,7 @@ class StorePanel:
 
             imgui.dummy((0, style.window_padding[0] - style.item_spacing[1] * 2))
             # 购买规格
-            products = self.app.store_panel.PRODUCTS
+            products = self.PRODUCTS
             if imgui.begin_table("##BuyTable", len(products), imgui.TableFlags.SIZING_STRETCH_SAME):
                 for config in products:
                     imgui.table_next_column()
