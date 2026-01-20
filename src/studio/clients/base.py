@@ -166,15 +166,6 @@ class StudioClient(BaseAdapter):
     def get_properties(self) -> list[str]:
         return []
 
-    def draw_generation_panel(self):
-        pass
-
-    def draw_setting_panel(self):
-        pass
-
-    def draw_history_panel(self):
-        pass
-
     def add_history(self, item: "StudioHistoryItem"):
         self.history.add(item)
 
