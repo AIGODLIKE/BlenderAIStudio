@@ -5,7 +5,9 @@ import bpy
 def load_post(a, b):
     """在加载新文件及打开blender的时候"""
     from .studio.clients.base import StudioHistory
+    from .studio.ops import AIStudioEntry
     StudioHistory.thread_restore_history()
+    AIStudioEntry.close_all()  # 如果打开了新场景操作符会停止
 
 
 # TODO 如果有多个场景?
