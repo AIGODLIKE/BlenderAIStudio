@@ -387,6 +387,7 @@ class App:
 
     def poll_key_event(self, event: "bpy.types.Event"):
         if self.is_ime_enabled():
+            self.io.clear_input_keys()
             return
         is_press = event.value == "PRESS"
         # 键盘
