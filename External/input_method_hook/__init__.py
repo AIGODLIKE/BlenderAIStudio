@@ -19,6 +19,7 @@ class DummyIMEManager(IMEManager):
 def create_ime_manager() -> IMEManager:
     """工厂函数创建平台特定的IME管理器"""
     if sys.platform == "darwin":
+        return DummyIMEManager()
         from .macosx import MacOSIMEManager
 
         return MacOSIMEManager()
