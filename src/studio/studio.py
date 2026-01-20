@@ -1,6 +1,8 @@
 import json
 import math
+import platform
 import re
+import subprocess
 import time
 import webbrowser
 from datetime import datetime
@@ -62,16 +64,17 @@ def edit_image_with_meta_and_context(file_path, meta, context):
 
 def open_dir(path):
     """
-    # open_util = 'explorer "%s"'
-    # if platform.system() != "Windows":
-    #     open_util = 'open /"%s"'
-    #
-    # try:
-    #     subprocess.run(open_util % path, shell=True, check=True)
-    # except Exception:
-    #     print_exc()
-    """
     bpy.ops.wm.url_open(url=path)
+    """
+    open_util = 'explorer "%s"'
+    if platform.system() != "Windows":
+        open_util = 'open /"%s"'
+
+    try:
+        subprocess.run(open_util % path, shell=True, check=True)
+    except Exception as e:
+        print(e.args)
+        print_exc()
 
 
 class AppHelperDraw:
