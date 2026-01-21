@@ -255,11 +255,22 @@ class StudioImagesDescriptor(WidgetDescriptor):
         imgui.end_group()
 
 
-class StudioHistoryItemViewer:
-    def __init__(self, item: StudioHistoryItem) -> None:
-        self.item = item
+class StudioHistoryViewer:
+    def __init__(self, app: "AIStudio", history: StudioHistory) -> None:
+        self.history = history
+        self.app = app
 
-    def draw(self, app: "AIStudio"):
+    def draw_all(self):
+        for item in self.history.items:
+            self._draw(item)
+
+    def draw_first(self):
+        if not self.history.items:
+            return
+        item = self.history.items[0]
+        self._draw(item)
+
+    def _draw(self, item: StudioHistoryItem):
         col_bg = Const.WINDOW_BG
         col_widget = Const.FRAME_BG
         flags = 0
@@ -269,7 +280,7 @@ class StudioHistoryItemViewer:
         imgui.push_style_color(imgui.Col.FRAME_BG, col_bg)
         imgui.push_style_var_y(imgui.StyleVar.CELL_PADDING, 0)
         imgui.push_style_var_y(imgui.StyleVar.ITEM_SPACING, Const.CHILD_P[1])
-        with with_child(f"##Item_{self.item.index}", (0, 0), child_flags=flags):
+        with with_child(f"##Item_{item.index}", (0, 0), child_flags=flags):
             imgui.push_style_color(imgui.Col.FRAME_BG, col_widget)
 
             # 标题栏
@@ -282,13 +293,13 @@ class StudioHistoryItemViewer:
                 imgui.table_setup_column("##Ele4", imgui.TableColumnFlags.WIDTH_FIXED, 0, 3)
                 imgui.table_setup_column("##Ele5", imgui.TableColumnFlags.WIDTH_FIXED, 0, 4)
 
-                app.font_manager.push_h1_font(24)
+                self.app.font_manager.push_h1_font(24)
                 imgui.table_next_column()
                 imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
                 imgui.align_text_to_frame_padding()
-                imgui.text(f"#{self.item.index:03d}")
+                imgui.text(f"#{item.index:03d}")
                 imgui.pop_style_color()
-                app.font_manager.pop_font()
+                self.app.font_manager.pop_font()
 
                 imgui.table_next_column()
                 imgui.dummy((0, 0))
@@ -301,27 +312,27 @@ class StudioHistoryItemViewer:
 
                 # 复制按钮
                 imgui.table_next_column()
-                prompt = self.item.metadata.get("prompt", "")
+                prompt = item.metadata.get("prompt", "")
                 if CustomWidgets.icon_label_button("prompt_copy", "", "CENTER", (bw, bh), isize=isize):
                     if prompt:
                         bpy.context.window_manager.clipboard = prompt
-                        app.push_info_message(_T("Prompt Copied!"))
+                        self.app.push_info_message(_T("Prompt Copied!"))
                     else:
-                        app.push_info_message(_T("No Prompt Found!"))
+                        self.app.push_info_message(_T("No Prompt Found!"))
 
                 # 详情按钮
                 imgui.table_next_column()
-                old_show_detail = self.item.show_detail
+                old_show_detail = item.show_detail
                 imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_SELECTED)
                 if old_show_detail:
                     imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON_SELECTED)
                 if CustomWidgets.icon_label_button("image_detail", "", "CENTER", (bw, bh), isize=isize):
-                    self.item.show_detail = not self.item.show_detail
+                    item.show_detail = not item.show_detail
                 if imgui.is_item_hovered():
                     title = _T("Details")
                     tip = _T("View generated image details like prompt, generation time, etc.")
                     imgui.set_next_window_size((550, 0))
-                    AppHelperDraw.draw_tips_with_title(app, [tip], title)
+                    AppHelperDraw.draw_tips_with_title(self.app, [tip], title)
                 if old_show_detail:
                     imgui.pop_style_color(1)
                 imgui.pop_style_color(1)
@@ -329,7 +340,7 @@ class StudioHistoryItemViewer:
                 # 删除按钮
                 imgui.table_next_column()
                 if CustomWidgets.icon_label_button("delete", "", "CENTER", (bw, bh), isize=isize):
-                    print("删除")
+                    self.remove_item(item)
 
                 imgui.pop_style_var(1)
 
@@ -340,9 +351,8 @@ class StudioHistoryItemViewer:
 
             # 图片
             if imgui.begin_table("##Content", 2):
-                aw = imgui.get_content_region_avail()[0]
-                w1 = 207 / 354 * aw
-                h1 = 126 / 207 * w1
+                h1 = imgui.get_text_line_height() * 4
+                w1 = h1 * 207 / 126
                 imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_FIXED, w1, 0)
                 imgui.table_setup_column("##Ele2", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 1)
 
@@ -355,7 +365,7 @@ class StudioHistoryItemViewer:
                     imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
                     imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
                     bw, bh = imgui.get_content_region_avail()
-                    icon = TexturePool.get_tex_id(self.item.output_file)
+                    icon = TexturePool.get_tex_id(item.output_file)
                     tex = TexturePool.get_tex(icon)
                     tex_aspect_ratio = tex.width / tex.height
                     btn_aspect_ratio = bw / bh
@@ -370,8 +380,8 @@ class StudioHistoryItemViewer:
                         uvmin = (0, clip_uv_y)
                         uvmax = (1, 1 - clip_uv_y)
                     if imgui.button("##FakeButton", (bw, bh)):
-                        self.copy_image()
-                        app.push_info_message(_T("Image Copied!"))
+                        self.copy_image(item.output_file)
+                        self.app.push_info_message(_T("Image Copied!"))
                     pmin = imgui.get_item_rect_min()
                     pmax = imgui.get_item_rect_max()
                     dl = imgui.get_window_draw_list()
@@ -381,13 +391,13 @@ class StudioHistoryItemViewer:
                         imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, (12, 12))
                         imgui.begin_tooltip()
                         tex = TexturePool.get_tex(icon)
-                        file_name = Path(self.item.output_file).stem
+                        file_name = Path(item.output_file).stem
                         imgui.text(f"{file_name} [{tex.width}x{tex.height}]")
                         imgui.dummy((0, 0))
-                        canvas_tex_width = app.screen_scale * tex.width
-                        canvas_tex_height = app.screen_scale * tex.height
-                        canvas_width = app.screen_width * 0.7
-                        canvas_height = app.screen_height * 0.7
+                        canvas_tex_width = self.app.screen_scale * tex.width
+                        canvas_tex_height = self.app.screen_scale * tex.height
+                        canvas_width = self.app.screen_width * 0.7
+                        canvas_height = self.app.screen_height * 0.7
                         if canvas_tex_width > canvas_width:
                             canvas_tex_scale = canvas_width / canvas_tex_width
                             canvas_tex_height *= canvas_tex_scale
@@ -427,17 +437,17 @@ class StudioHistoryItemViewer:
                             style = imgui.get_style()
                             bh = h1 / 2 - style.cell_padding[1] * 2 - style.frame_padding[1]
                             imgui.table_next_column()
-                            if CustomWidgets.icon_label_button("image_edit", _T("Edit"), "BETWEEN", (0, bh)):
+                            if CustomWidgets.icon_label_button("image_edit", _T("Edit"), "CENTER", (0, bh)):
                                 print("编辑图片")
-                                image = self.item.output_file
-                                meta = self.item.stringify()
+                                image = item.output_file
+                                meta = item.stringify()
                                 context = bpy.context.copy()
                                 Timer.put((edit_image_with_meta_and_context, image, meta, context))
                             if imgui.is_item_hovered():
                                 title = _T("Edit Image")
                                 tip = _T("Open image editor and edit current image.")
                                 imgui.set_next_window_size((720, 0))
-                                AppHelperDraw.draw_tips_with_title(app, [tip], title)
+                                AppHelperDraw.draw_tips_with_title(self.app, [tip], title)
 
                         # 导出
                         if True:
@@ -445,7 +455,7 @@ class StudioHistoryItemViewer:
                             bh = h1 / 2 - style.cell_padding[1] * 2 - style.frame_padding[1]
                             imgui.table_next_column()
                             if CustomWidgets.icon_label_button("image_export", _T("Export"), "CENTER", (0, bh)):
-                                self.export_image()
+                                self.export_image(item.output_file)
                         imgui.end_table()
                     imgui.pop_style_var(1)
                     imgui.pop_style_color(1)
@@ -453,22 +463,28 @@ class StudioHistoryItemViewer:
                 imgui.pop_style_color(1)
 
                 imgui.end_table()
-            if self.item.show_detail:
+            if item.show_detail:
                 imgui.text(_T("Prompt"))
-                prompt = self.item.metadata.get("prompt", "No prompt found")
+                prompt = item.metadata.get("prompt", "No prompt found")
                 h = imgui.get_text_line_height()
 
                 # 提示词
                 mlt_flags = imgui.InputTextFlags.WORD_WRAP
-                h = 133 / 354 * imgui.get_content_region_avail()[0]
-                _, _ = imgui.input_text_multiline("##prompt", prompt, (-1, h), mlt_flags)
-                h = imgui.get_text_line_height()
-                icon = TexturePool.get_tex_id(self.item.output_file)
+                text_box_height = h * 5 + imgui.get_style().frame_padding[1] * 2
+                _, _ = imgui.input_text_multiline("##prompt", prompt, (-1, text_box_height), mlt_flags)
+                icon = TexturePool.get_tex_id(item.output_file)
                 tex = TexturePool.get_tex(icon)
                 tex_width = tex.width
                 tex_height = tex.height
 
                 # 图片信息
+                stem = Path(item.output_file).stem
+                icon = TexturePool.get_tex_id("roster")
+                imgui.dummy((0, 0))
+                imgui.image(icon, (h, h))
+                imgui.same_line()
+                imgui.text(stem)
+
                 icon = TexturePool.get_tex_id("image_info_resolution")
                 imgui.dummy((0, 0))
                 imgui.image(icon, (h, h))
@@ -479,21 +495,22 @@ class StudioHistoryItemViewer:
                 imgui.dummy((0, 0))
                 imgui.image(icon, (h, h))
                 imgui.same_line()
-                imgui.text(_T("Generated by %s") % self.item.vendor)
+                imgui.text(_T("Generated by %s") % item.vendor)
 
                 icon = TexturePool.get_tex_id("image_info_timestamp")
                 imgui.dummy((0, 0))
                 imgui.image(icon, (h, h))
                 imgui.same_line()
-                imgui.text(datetime.fromtimestamp(self.item.timestamp).strftime("%Y-%m-%d %H:%M:%S"))
+                imgui.text(datetime.fromtimestamp(item.timestamp).strftime("%Y-%m-%d %H:%M:%S"))
 
             imgui.pop_style_color(1)
         imgui.pop_style_var(2)
         imgui.pop_style_color(1)
 
-    def copy_image(self):
-        image_path = self.item.output_file
+    def remove_item(self, item: StudioHistoryItem):
+        self.history.remove(item)
 
+    def copy_image(self, image_path):
         def copy_image_callback(image_path: str):
             image = bpy.data.images.get(image_path)
             should_remove = False
@@ -510,9 +527,11 @@ class StudioHistoryItemViewer:
 
         Timer.put((copy_image_callback, image_path))
 
-    def export_image(self):
+    def export_image(self, image_path):
+        in_file = image_path
+
         def export_image_callback(file_path: str):
-            copyfile(self.item.output_file, file_path)
+            copyfile(in_file, file_path)
             print("导出图片到：", file_path)
 
         from .ops import FileCallbackRegistry
@@ -1724,10 +1743,8 @@ class AIStudio(AppHud):
                     self.draw_wrapper_widget_spec(wrapper, widget)
                     widget.display_end(widget, self)
                 client = wrapper.studio_client
-                if client.history.items:
-                    item = client.history.items[0]
-                    viewer = StudioHistoryItemViewer(item)
-                    viewer.draw(self)
+                editor = StudioHistoryViewer(self, client.history)
+                editor.draw_first()
             imgui.pop_style_color()
 
             # 底部按钮
@@ -1937,9 +1954,8 @@ class AIStudio(AppHud):
             imgui.push_style_color(imgui.Col.FRAME_BG, (48 / 255, 48 / 255, 48 / 255, 1))
             with with_child("Outer", (0, -1), flags):
                 history = StudioHistory.get_instance()
-                for item in history.items:
-                    viewer = StudioHistoryItemViewer(item)
-                    viewer.draw(self)
+                editor = StudioHistoryViewer(self, history)
+                editor.draw_all()
             imgui.pop_style_color(1)
 
             imgui.pop_style_var(6)
