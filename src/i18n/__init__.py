@@ -1,4 +1,5 @@
 import bpy
+
 from .loader import load_translations
 from .translations.zh_HANS import PANEL_TCTX, PROP_TCTX, OPS_TCTX, STUDIO_TCTX
 
@@ -12,7 +13,10 @@ __all__ = [
 
 def register():
     translations = load_translations()
-    bpy.app.translations.register(__name__, translations)
+    try:
+        bpy.app.translations.register(__name__, translations)
+    except RuntimeError:
+        print("i18n register error", __name__)
 
 
 def unregister():
