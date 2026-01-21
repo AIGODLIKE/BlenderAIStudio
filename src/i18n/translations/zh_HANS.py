@@ -134,6 +134,7 @@ studio_panel_translations = (
     ("Waiting for login", "等待登录", None),
     ("(%s/use)", "(%s/次)", None),
     ("AI Edit", "AI编辑", None),
+    ("Image Copied!", "图片已复制到剪贴板！", None),
 )
 
 task_translations = (
