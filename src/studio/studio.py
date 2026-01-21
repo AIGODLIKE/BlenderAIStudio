@@ -649,16 +649,28 @@ class StorePanel:
 
             # --- 表格 1: 邮箱 + 登出
             bw = aw - bh - imgui.get_style().item_spacing[0]
-            CustomWidgets.icon_label_button("account_email", self.app.state.nickname, "BETWEEN", (bw, bh), isize,
-                                            fpx * 2)
+            CustomWidgets.icon_label_button(
+                "account_email",
+                self.app.state.nickname,
+                "BETWEEN",
+                (bw, bh),
+                isize,
+                fpx * 2,
+            )
             imgui.same_line()
             if CustomWidgets.icon_label_button("account_logout", "", "CENTER", (bh, bh), isize):
                 self.app.state.logout()
 
             # --- 表格 2: Token + 刷新
             bw = aw - bh - imgui.get_style().item_spacing[0]
-            CustomWidgets.icon_label_button("account_token", str(self.app.state.credits), "BETWEEN", (bw, bh), isize,
-                                            fpx * 2)
+            CustomWidgets.icon_label_button(
+                "account_token",
+                str(self.app.state.credits),
+                "BETWEEN",
+                (bw, bh),
+                isize,
+                fpx * 2,
+            )
             imgui.same_line()
             if CustomWidgets.icon_label_button("account_refresh", "", "CENTER", (bh, bh), isize):
                 self.app.state.fetch_credits()
@@ -957,8 +969,12 @@ class RedeemPanel:
                 icon = TexturePool.get_tex_id("redeem_header")
                 tex = TexturePool.get_tex(icon)
                 scale = imgui.get_text_line_height() / tex.height
-                imgui.image_button("Redeem", icon, (tex.width * scale, tex.height * scale),
-                                   tint_col=Const.BUTTON_SELECTED)
+                imgui.image_button(
+                    "Redeem",
+                    icon,
+                    (tex.width * scale, tex.height * scale),
+                    tint_col=Const.BUTTON_SELECTED,
+                )
                 imgui.pop_style_color(3)
                 imgui.same_line()
 
@@ -1198,15 +1214,17 @@ class RedeemPanel:
         return bool(re.match(pat, self.redeem_code))
 
 
-class ErrorLogBubble:
+class Bubble:
     def __init__(
-            self,
-            anim_system: AnimationSystem,
-            text: str,
-            pos: tuple[float, float] = (0, 0),
-            duration: float = 15,
+        self,
+        anim_system: AnimationSystem,
+        text: str,
+        pos: tuple[float, float] = (0, 0),
+        duration: float = 15,
+        icon: str = "account_warning",
     ) -> None:
         self.text = text
+        self.icon = icon
         self.x = pos[0]
         self.y = pos[1]
         self.duration = duration
@@ -1284,7 +1302,7 @@ class ErrorLogBubble:
         # 绘制背景和边框
         dl.add_rect_filled(p_min, p_max, bg_col, rounding=rounding)
 
-        icon = TexturePool.get_tex_id("account_warning")
+        icon = TexturePool.get_tex_id(self.icon)
         p_min = x, y + (content_size[1] - icon_size) / 2
         p_max = p_min[0] + icon_size, p_min[1] + icon_size
         dl.add_image(icon, p_min, p_max, col=icon_col)
@@ -1292,26 +1310,39 @@ class ErrorLogBubble:
         dl.add_text((x + spacing + icon_size, y), text_col, self.text)
 
 
-class ErrorLog:
+class BubbleMessage:
+    def __init__(self, text: str, icon: str = "warning") -> None:
+        self.text = text
+        self.icon = icon
+
+    def make_bubble(self, app: "AIStudio") -> Bubble:
+        return Bubble(app.animation_system, self.text, icon=self.icon)
+
+
+class BubbleLogger:
     def __init__(self, app: "AIStudio") -> None:
         self.app = app
         self.animation_system = app.animation_system
-        self.error_bubbles: dict[str, ErrorLogBubble] = {}
-        self.error_messages: list[str] = []
+        self.bubbles: dict[str, Bubble] = {}
+        self.messages: list[BubbleMessage] = []
 
     def push_error_message(self, message: str):
-        self.error_messages.append(message)
+        bubble = BubbleMessage(message, icon="warning")
+        self.messages.append(bubble)
+
+    def push_info_message(self, message: str):
+        bubble = BubbleMessage(message, icon="info")
+        self.messages.append(bubble)
 
     def draw_and_update(self):
-        while self.error_messages:
-            msg = self.error_messages.pop()
-            bubble = ErrorLogBubble(self.animation_system, msg)
-            self.error_bubbles[msg] = bubble
-        for message, bubble in list(self.error_bubbles.items()):
+        while self.messages:
+            msg = self.messages.pop()
+            self.bubbles[msg] = msg.make_bubble(self.app)
+        for message, bubble in list(self.bubbles.items()):
             if bubble.is_alive:
                 bubble.draw(self.app)
             else:
-                self.error_bubbles.pop(message)
+                self.bubbles.pop(message)
 
 
 class AIStudio(AppHud):
@@ -1324,7 +1355,7 @@ class AIStudio(AppHud):
         self.store_panel = StorePanel(self)
         self.active_client = next(iter(self.clients)) if self.clients else ""
         self.clients_wrappers: dict[str, StudioWrapper] = {}
-        self.error_log = ErrorLog(self)
+        self.bubble_logger = BubbleLogger(self)
         self.urls = {
             "Disclaimers": "https://shimo.im/docs/1d3aMnalmBf5ep3g/",
             "Feedback": "https://shimo.im/docs/vVqRM5DejgiPwd3y/",
@@ -1451,7 +1482,11 @@ class AIStudio(AppHud):
 
     def push_error_message(self, message: str):
         translated_msg = bpy.app.translations.pgettext(message)
-        self.error_log.push_error_message(translated_msg)
+        self.bubble_logger.push_error_message(translated_msg)
+
+    def push_info_message(self, message: str):
+        translated_msg = bpy.app.translations.pgettext(message)
+        self.bubble_logger.push_info_message(translated_msg)
 
     def handler_draw(self, _area: bpy.types.Area):
         self.draw_studio_panel()
@@ -1597,7 +1632,7 @@ class AIStudio(AppHud):
             self.push_error_message(str(error))
         for error in self.state.take_errors():
             self.push_error_message(str(error))
-        self.error_log.draw_and_update()
+        self.bubble_logger.draw_and_update()
 
     def draw_generation_panel(self):
         if self.active_panel != AIStudioPanelType.GENERATION:
@@ -1816,8 +1851,7 @@ class AIStudio(AppHud):
                 imgui.end_combo()
             if imgui.is_item_hovered():
                 title = _T("Please Select Generation Engine")
-                tip = _T(
-                    "Select Engine and Fill API, You can use AI in Blender seamlessly. Note: This tool only has the function of connecting to the service. The generated content & fees are subject to the provider.")
+                tip = _T("Select Engine and Fill API, You can use AI in Blender seamlessly. Note: This tool only has the function of connecting to the service. The generated content & fees are subject to the provider.")
                 imgui.set_next_window_size((759, 0))
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             imgui.pop_style_color(2)
@@ -2225,8 +2259,7 @@ class AIStudio(AppHud):
             if imgui.is_item_hovered():
                 imgui.set_next_window_size((580, 0))
                 title = _T("Prompt Optimization")
-                tip = _T(
-                    "Enable Prompt Optimization to improve the quality of the generated image and the safety of the content.")
+                tip = _T("Enable Prompt Optimization to improve the quality of the generated image and the safety of the content.")
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             imgui.end_child()
             imgui.set_cursor_pos(pos)
@@ -2242,8 +2275,7 @@ class AIStudio(AppHud):
             if imgui.is_item_hovered():
                 imgui.set_next_window_size((710, 0))
                 title = _T("Image Resolution")
-                tip = _T(
-                    "Set the image resolution via both image size and aspect ratio, and the larger the resolution, the longer the generation time/resource required.")
+                tip = _T("Set the image resolution via both image size and aspect ratio, and the larger the resolution, the longer the generation time/resource required.")
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             return
 
