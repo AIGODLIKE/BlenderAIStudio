@@ -3,14 +3,13 @@
 """
 import json
 import os
-import subprocess
 import tempfile
-from threading import Thread
 
 import bpy
 from bpy.app.translations import pgettext_iface as iface
 
 from . import logger
+from .logger import close_logger
 from .utils import get_addon_version_str, get_pref, get_addon_version, str_version_to_int, calculate_md5, start_blender
 from .utils.async_request import GetRequestThread, DownloadZipRequestThread
 
@@ -169,7 +168,7 @@ class UpdateService:
 
 class UpdateAddonUpdateVersionInfo(bpy.types.Operator):
     """更新插件信息"""
-    bl_idname = "bas.update_addon_update_version_info"
+    bl_idname = "bas.update_addon_version_info"
     bl_label = "Update Addon Info"
 
     timer = None
@@ -312,28 +311,118 @@ class OnlineUpdateAddon(bpy.types.Operator, UpdateService):
         "${this.blenderPath}" --background --python-expr ""
         """
         try:
+            close_logger()
             bpy.ops.preferences.addon_install("EXEC_DEFAULT", filepath=zip_file_path, overwrite=True)
 
-            # print("zip_file_path", zip_file_path)
-            # python_command = self.get_python_command(zip_file_path)
-            # print("get_python_command", python_command)
+            # # 检查文件是否被占用
+            # if self.check_files_occupied():
+            #     # 触发手动安装
+            #     bpy.ops.bas.manual_install_addon('INVOKE_DEFAULT', zip_path=zip_file_path)
+            #     return
             #
-            # bpy.context.window_manager.progress_update(4)
-            # self.report({"INFO"}, "Update completed!")
-            # self.is_update_finished = True
-            # self.reload_addon()
+            # # 解压并替换文件
+            # self.extract_and_replace(zip_file_path)
 
-            # out = subprocess.Popen(
-            #     [python_command, ],
-            # ).stdout.strip()
-            # print(out)
-            # def install_addon():
-            # Thread(target=install_addon).start()
-
+            # 安装完成
+            bpy.context.window_manager.progress_update(4)
+            self.report({"INFO"}, "Update completed!")
+            self.is_update_finished = True
         except Exception as e:
             logger.error(f"安装更新失败: {e}")
             print(e.args)
             self.error_message = str(e)
+
+    def check_files_occupied(self) -> bool:
+        """检查插件文件是否被占用"""
+        import os
+
+        # 获取插件根目录
+        addon_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+        # 要检查的文件和目录
+        check_paths = [
+            os.path.join(addon_dir, "src"),
+            os.path.join(addon_dir, "__init__.py"),
+        ]
+
+        for path in check_paths:
+            if not os.path.exists(path):
+                continue
+
+            if os.path.isfile(path):
+                if self._is_file_occupied(path):
+                    return True
+            elif os.path.isdir(path):
+                for root, dirs, files in os.walk(path):
+                    for file in files:
+                        if file.endswith(('.py', '.pyc', '.pyd', '.dll')):
+                            file_path = os.path.join(root, file)
+                            if self._is_file_occupied(file_path):
+                                return True
+        return False
+
+    def _is_file_occupied(self, file_path) -> bool:
+        """检查单个文件是否被占用"""
+        try:
+            with open(file_path, 'a'):
+                pass
+            return False
+        except Exception:
+            return True
+
+    def extract_and_replace(self, zip_file_path):
+        """解压压缩包并替换文件"""
+        import os
+        import zipfile
+        import tempfile
+
+        # 获取插件根目录
+        addon_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+        # 创建临时目录
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # 解压文件
+            with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+                zip_ref.extractall(temp_dir)
+
+            # 找到解压后的插件目录
+            extracted_dir = temp_dir
+            for item in os.listdir(temp_dir):
+                item_path = os.path.join(temp_dir, item)
+                if os.path.isdir(item_path) and os.path.exists(os.path.join(item_path, "__init__.py")):
+                    extracted_dir = item_path
+                    break
+            print("extracted_dir", extracted_dir)
+            # 复制文件到插件目录
+            self._copy_files(extracted_dir, addon_dir)
+
+    def _copy_files(self, src_dir, dst_dir):
+        """复制文件和目录"""
+        import os
+        import shutil
+
+        print("src_dir, dst_dir", src_dir, dst_dir)
+
+        for root, dirs, files in os.walk(src_dir):
+            # 计算相对路径
+            rel_path = os.path.relpath(root, src_dir)
+            dst_path = os.path.join(dst_dir, rel_path)
+
+            # 创建目标目录
+            if not os.path.exists(dst_path):
+                os.makedirs(dst_path)
+
+            # 复制文件
+            for file in files:
+                src_file = os.path.join(root, file)
+                dst_file = os.path.join(dst_path, file)
+
+                # 如果文件存在，先删除
+                if os.path.exists(dst_file):
+                    os.remove(dst_file)
+
+                # 复制文件
+                shutil.copy2(src_file, dst_file)
 
     def exit(self, context):
         context.window_manager.event_timer_remove(self.timer)

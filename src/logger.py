@@ -1,6 +1,7 @@
 import logging
 from logging import handlers
 from pathlib import Path
+
 DEBUG = True
 LOGFILE = Path(__file__).parent.parent / "log.log"
 NAME = "BlenderAIStudio"
@@ -88,7 +89,8 @@ class Logger(logging.Logger):
                 ...
 
 
-def getLogger(name="CLOG", level=logging.INFO, fmt='[%(name)s-%(levelname)s]: %(message)s', fmt_date="%H:%M:%S") -> Logger:
+def getLogger(name="CLOG", level=logging.INFO, fmt='[%(name)s-%(levelname)s]: %(message)s',
+              fmt_date="%H:%M:%S") -> Logger:
     fmter = logging.Formatter('[%(levelname)s]:%(filename)s>%(lineno)s: %(message)s')
     # 按 D/H/M 天时分 保存日志, backupcount 为保留数量
     dfh = handlers.TimedRotatingFileHandler(filename=LOGFILE, when='D', backupCount=2)
@@ -113,3 +115,9 @@ def getLogger(name="CLOG", level=logging.INFO, fmt='[%(name)s-%(levelname)s]: %(
 
 
 logger = getLogger(NAME, L)
+
+
+def close_logger():
+    """tips: 关闭日志,在更新插件时日志会占用插件的文件夹"""
+    print("close_logger")
+    logger.close()
