@@ -21,6 +21,7 @@ __all__ = [
     "calc_appropriate_aspect_ratio",
     "refresh_image_preview",
     "get_temp_folder",
+    "debug_time",
 ]
 
 
@@ -222,6 +223,7 @@ def get_temp_folder(suffix=None, prefix=None):
     file_name = os.path.basename(bpy.data.filepath)[:-6] if bpy.data.is_saved else ''  # 'Untitled.blend' -> 'Untitled'
     time_str = time.strftime("%Y%m%d_%H_%M_%S", time.localtime())
     return tempfile.mkdtemp(prefix=f"{file_name}_{time_str}_{prefix}_", suffix=suffix, dir=get_pref().output_cache_dir)
+
 
 def calculate_md5(file_path, chunk_size=8192):
     """
