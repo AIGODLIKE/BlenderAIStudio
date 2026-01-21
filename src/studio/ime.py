@@ -26,5 +26,4 @@ def unregister():
     if on_save_pre in bpy.app.handlers.save_pre:
         bpy.app.handlers.save_pre.remove(on_save_pre)
 
-    if input_manager.dll:
-        input_manager.dll.CleanupInputMethod()
+    input_manager.cleanup()

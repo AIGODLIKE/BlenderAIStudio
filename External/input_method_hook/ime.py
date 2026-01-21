@@ -45,3 +45,7 @@ class IMEManager(ABC):
     def set_composition_position(self, x: int, y: int):
         """设置候选窗口位置"""
         pass
+
+    def cleanup(self):
+        """清空输入法状态"""
+        pass
