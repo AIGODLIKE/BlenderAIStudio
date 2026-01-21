@@ -264,6 +264,7 @@ translations = (
     ("Fetching...", "获取中...", "Operator"),
     ("Setting", "设置", PROP_TCTX),
     ("Update Addon", "更新插件", PROP_TCTX),
+    ("Cancel update", "取消更新", ""),
     ("No history - use 'Render' first", "无历史 - 请先进行'渲染'", ""),
     ("Re-rendering with previous settings...", "使用上一次的设置重新渲染...", ""),
     ("Can't save image", "无法保存图片", ""),

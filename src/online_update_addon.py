@@ -3,7 +3,9 @@
 """
 import json
 import os
+import subprocess
 import tempfile
+from threading import Thread
 
 import bpy
 from bpy.app.translations import pgettext_iface as iface
@@ -250,6 +252,7 @@ class OnlineUpdateAddon(bpy.types.Operator, UpdateService):
     def modal(self, context, event):
         try:
             if event.type == "ESC":
+                self.report({"INFO"}, "Cancel update")
                 self.exit(context)
                 return {"CANCELLED"}
             elif self.is_update_finished:
@@ -285,7 +288,7 @@ class OnlineUpdateAddon(bpy.types.Operator, UpdateService):
 
             url = self.download_info["data"]
 
-            download_folder = os.path.abspath(tempfile.mkdtemp(prefix="bas_online_addon"))
+            download_folder = os.path.abspath(tempfile.mkdtemp(prefix="bas_online_update_addon_"))
             download_file_path = os.path.join(download_folder, "BlenderAIStudio.zip")
 
             DownloadZipRequestThread(url, download_file_path, on_downloaded).start()
@@ -301,16 +304,34 @@ class OnlineUpdateAddon(bpy.types.Operator, UpdateService):
             self.error_message = "MD5 verification of the downloaded file failed"
         else:
             self.report({"INFO"}, "Start installing updates")
-            self.install_update(zip_file_path)
+            self.background_install_update(zip_file_path)
 
-    def install_update(self, zip_file_path):
+    def background_install_update(self, zip_file_path):
+        """
+        后台新开一个Blender安装更新包
+        "${this.blenderPath}" --background --python-expr ""
+        """
         try:
-            bpy.ops.preferences.addon_install("EXEC_DEFAULT", filepath=zip_file_path, overwrite=True,
-                                              enable_on_install=True)
-            bpy.context.window_manager.progress_update(4)
-            self.report({"INFO"}, "Update completed!")
-            self.is_update_finished = True
+            bpy.ops.preferences.addon_install("EXEC_DEFAULT", filepath=zip_file_path, overwrite=True)
+
+            # print("zip_file_path", zip_file_path)
+            # python_command = self.get_python_command(zip_file_path)
+            # print("get_python_command", python_command)
+            #
+            # bpy.context.window_manager.progress_update(4)
+            # self.report({"INFO"}, "Update completed!")
+            # self.is_update_finished = True
+            # self.reload_addon()
+
+            # out = subprocess.Popen(
+            #     [python_command, ],
+            # ).stdout.strip()
+            # print(out)
+            # def install_addon():
+            # Thread(target=install_addon).start()
+
         except Exception as e:
+            logger.error(f"安装更新失败: {e}")
             print(e.args)
             self.error_message = str(e)
 
@@ -322,10 +343,24 @@ class OnlineUpdateAddon(bpy.types.Operator, UpdateService):
         start_blender()
         return {"FINISHED"}
 
+    @staticmethod
+    def reload_addon():
+        import addon_utils
+        addon_utils.modules(refresh=True)
+        bpy.utils.refresh_script_paths()
+
+    @staticmethod
+    def get_python_command(zip_file_path):
+        blender_path = bpy.app.binary_path
+        im = "import bpy;import os,sys"
+        install = f"bpy.ops.preferences.addon_install('EXEC_DEFAULT', filepath=r'{zip_file_path}', overwrite=True, enable_on_install=True)"
+        python_command = f"{im};{install};print('Online Update Addon Run Finished', file=sys.stderr);quit(0);"
+        return f"\"{blender_path}\" --background --factory-startup --python-expr \"{python_command}\""
+
 
 class Restart(bpy.types.Operator):
     bl_idname = "bas.restart"
-    bl_label = "Restart"
+    bl_label = "Restart Blender"
 
     def invoke(self, context, event):
         return context.window_manager.invoke_confirm(self, event, title="Update completed",
