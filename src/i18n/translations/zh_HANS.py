@@ -135,6 +135,8 @@ studio_panel_translations = (
     ("(%s/use)", "(%s/次)", None),
     ("AI Edit", "AI编辑", None),
     ("Image Copied!", "图片已复制到剪贴板！", None),
+    ("Prompt Copied!", "提示词已复制到剪贴板！", None),
+    ("No Prompt Found!", "未找到提示词！", None),
 )
 
 task_translations = (
@@ -151,6 +153,7 @@ translations = (
     ("Input Image", "输入图", PROP_TCTX),
     ("Reference Images", "参考图(可选)", PROP_TCTX),
     ("Prompt", "提示词", PROP_TCTX),
+    ("Prompt", "提示词", STUDIO_TCTX),
     ("CameraRender", "相机渲染", PROP_TCTX),
     ("CameraDepth", "相机深度", PROP_TCTX),
     ("NoInput", "无输入", PROP_TCTX),
