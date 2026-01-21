@@ -364,6 +364,15 @@ class WindowsIMEManager(IMEManager):
         kernel32 = windll.kernel32
         thread_id = kernel32.GetCurrentThreadId()
 
+        old_argtypes = self.user32.SetWindowsHookExW.argtypes
+        argtypes = [
+            c_int,
+            HOOKPROC,
+            wintypes.HINSTANCE,
+            wintypes.DWORD,
+        ]
+        self.user32.SetWindowsHookExW.argtypes = argtypes
+
         # 安装 GetMessage 钩子
         self._hook_handle = self.user32.SetWindowsHookExW(
             WH_GETMESSAGE,
@@ -380,6 +389,8 @@ class WindowsIMEManager(IMEManager):
             None,
             thread_id,
         )
+
+        self.user32.SetWindowsHookExW.argtypes = old_argtypes
 
         return self._hook_handle is not None
 
