@@ -64,7 +64,7 @@ class UpdateService:
             if cls.version_info:
                 versions = cls.version_info['data']['versions']
                 versions.sort(key=lambda x: tuple(int(i) for i in x['version'].split(".")), reverse=True)
-                logger.info(f"获取到 {len(versions)} 个版本数据")
+                # logger.info(f"获取到 {len(versions)} 个版本数据")
                 return versions[0]
         except Exception as e:
             logger.error(f"获取插件版本信息失败: {e}")
