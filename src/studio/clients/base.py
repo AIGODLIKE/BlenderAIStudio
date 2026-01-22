@@ -101,7 +101,11 @@ class StudioHistory:
         try:
             items = [item.data for item in self.items]
             stringify = json.dumps(items, ensure_ascii=True, indent=2)
-            bpy.context.scene.blender_ai_studio_property.generate_history = stringify
+
+            def save_task():
+                bpy.context.scene.blender_ai_studio_property.generate_history = stringify
+
+            bpy.app.timers.register(save_task, first_interval=0.1)
             logger.debug(f"save history {len(items)}")
             self.update_max_index()
         except Exception as e:

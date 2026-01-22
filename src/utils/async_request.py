@@ -1,5 +1,8 @@
 import os
+import random
 import threading
+
+import bpy
 
 
 # 定义一个简单的线程类来封装请求任务
@@ -19,12 +22,14 @@ class RequestThread(threading.Thread):
     def run(self):
         """线程运行的核心方法（在子线程中执行）"""
         try:
-            self.request()
+            def r():
+                self.request()
+
+            bpy.app.timers.register(r, first_interval=round(random.uniform(1.0, 10.0), 2))
         except Exception as e:
             self.error = e
         finally:
             # 请求完成后，安排回调函数到主线程
-            import bpy
             bpy.app.timers.register(lambda: self.callback(self.result, self.error, *self.args, **self.kwargs))
 
     def request(self):
@@ -48,9 +53,11 @@ class GetRequestThread(RequestThread):
 
     def __init__(self, url, callback_func, *args, **kwargs):
         super().__init__(url, callback_func, *args, **kwargs)
+        self.daemon = True
 
     def request(self):
         import requests
+        # requests = import_requests()
         response = requests.get(self.url, timeout=15)
         response.raise_for_status()  # 检查HTTP错误
         self.response = response

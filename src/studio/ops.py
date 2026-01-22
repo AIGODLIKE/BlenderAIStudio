@@ -19,7 +19,9 @@ class AIStudioEntry(bpy.types.Operator):
 
         self.area = bpy.context.area
         if self.area.as_pointer() in self.entry_pool:
-            self.report({"ERROR"}, "AI Studio is already opened")
+            # self.report({"ERROR"}, "AI Studio is already opened")
+            app = self.entry_pool[self.area.as_pointer()]
+            app.shutdown()
             return {"FINISHED"}
         self.app = AIStudio()
         self.app.draw_call_add(self.app.handler_draw)

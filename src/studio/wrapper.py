@@ -1,11 +1,14 @@
 from __future__ import annotations
+
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict
+
+from bpy.app.translations import pgettext_iface as iface
 from slimgui import imgui
-from bpy.app.translations import pgettext
-from .gui.app.style import Const
+
 from .gui.app.app import App
+from .gui.app.style import Const
 from .gui.texture import TexturePool
 from .gui.widgets import with_child
 
@@ -64,7 +67,7 @@ class WidgetDescriptor:
     @property
     def display_name(self):
         name = self.widget_def.get("display_name", self.widget_name)
-        return pgettext(name, self.adapter.get_ctxt())
+        return iface(name, self.adapter.get_ctxt())
 
     @property
     def value(self):
@@ -116,8 +119,8 @@ class IntDescriptor(WidgetDescriptor):
             if not self.hide_title:
                 imgui.text(self.display_name)
             imgui.push_item_width(-1)
-            vmin = max(-(2**30), int(cfg.get("min", -65535)))
-            vmax = min(2**30 - 1, int(cfg.get("max", +65535)))
+            vmin = max(-(2 ** 30), int(cfg.get("min", -65535)))
+            vmax = min(2 ** 30 - 1, int(cfg.get("max", +65535)))
             imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.RP_FRAME_INNER_R)
             imgui.push_style_color(imgui.Col.FRAME_BG, self.col_widget)
             _, val = imgui.slider_int(f"##{self.widget_name}", int(self.value), vmin, vmax, f"{self.display_name} [%d]")
@@ -189,11 +192,11 @@ class EnumDescriptor(WidgetDescriptor):
             imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, Const.RP_CHILD_IS)
             imgui.push_style_color(imgui.Col.FRAME_BG, self.col_widget)
             imgui.push_style_color(imgui.Col.BUTTON, (0, 0, 0, 0))
-            preview = pgettext(self.value, self.adapter.get_ctxt())
+            preview = iface(self.value, self.adapter.get_ctxt())
             if imgui.begin_combo(f"##{self.widget_name}", preview):
                 for item in self.widget_def.get("options", []):
                     is_selected = self.value == item
-                    translated_item = pgettext(item, self.adapter.get_ctxt())
+                    translated_item = iface(item, self.adapter.get_ctxt())
                     if is_selected:
                         imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
                     if imgui.button(translated_item, (-imgui.FLT_MIN, 0)):

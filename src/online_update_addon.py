@@ -3,6 +3,7 @@
 """
 import json
 import os
+import pathlib
 import tempfile
 import time
 
@@ -266,7 +267,7 @@ class OnlineUpdateAddon(bpy.types.Operator, UpdateService):
                 logger.error(self.error_message)
             else:
                 try:
-                    logger.info(result)
+                    # logger.info(result)
                     self.download_info = json.loads(result)
                     self.push_info("Successfully obtained download address")
                     context.window_manager.progress_update(1)
@@ -275,7 +276,7 @@ class OnlineUpdateAddon(bpy.types.Operator, UpdateService):
                     logger.error(self.error_message)
 
         logger.info(f"Start online update to {self.version}")
-        logger.info(f"download_url:{download_url}")
+        # logger.info(f"download_url:{download_url}")
         GetRequestThread(download_url, on_request_finished).start()
         self.timer = context.window_manager.event_timer_add(1 / 30, window=context.window)
         context.window_manager.modal_handler_add(self)
@@ -344,7 +345,11 @@ class OnlineUpdateAddon(bpy.types.Operator, UpdateService):
             self.error_message = "MD5 verification of the downloaded file failed"
         else:
             self.push_info("Verifying completed!!!")
-            self.background_install_update(zip_file_path)
+
+            def on_install():
+                self.background_install_update(zip_file_path)
+
+            bpy.app.timers.register(on_install, first_interval=0.1)
 
     def background_install_update(self, zip_file_path):
         """
@@ -354,7 +359,9 @@ class OnlineUpdateAddon(bpy.types.Operator, UpdateService):
         try:
             self.push_info("Start installing updates")
             close_logger()  # 安装更新前要取消日志文件占用
-            bpy.ops.preferences.addon_install("EXEC_DEFAULT", filepath=zip_file_path, overwrite=True)
+            target = self.get_install_target(bpy.context)
+            logger.info(f"{target} {zip_file_path}")
+            bpy.ops.preferences.addon_install("EXEC_DEFAULT", filepath=zip_file_path, overwrite=True, target=target)
 
             # 安装完成
             bpy.context.window_manager.progress_update(4)
@@ -402,6 +409,23 @@ class OnlineUpdateAddon(bpy.types.Operator, UpdateService):
         else:
             logger.info(iface(text))
         cls.update_info.append({"text": text, "level": level})
+
+    @staticmethod
+    def get_install_target(context):
+        # scripts\startup\bl_operators\userpref.py L:672
+        # bpy.types.PREFERENCES_OT_addon_install._target_path_items
+        default_target = 'DEFAULT'
+        from .. import __file__ as addon_path
+        paths = context.preferences.filepaths
+        absolute_addon = pathlib.Path(addon_path).parent.parent.parent.absolute()
+        print("addon_path", addon_path)
+        print("absolute_addon", absolute_addon)
+        for index, item in enumerate(paths.script_directories):
+            print("item.directory", item.directory, pathlib.Path(item.directory).absolute())
+            if pathlib.Path(item.directory).absolute() == absolute_addon:
+                print("absolute_addon", absolute_addon)
+                return item.name
+        return default_target
 
 
 class Restart(bpy.types.Operator):

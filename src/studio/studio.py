@@ -12,7 +12,7 @@ from shutil import copyfile
 from traceback import print_exc
 
 import bpy
-from bpy.app.translations import pgettext
+from bpy.app.translations import pgettext, pgettext_iface as iface
 
 from .account import Account
 from ..preferences import AuthMode
@@ -32,9 +32,9 @@ from ..utils import get_addon_version, get_pref
 
 
 def _T(msg, ctxt=STUDIO_TCTX):
-    t = pgettext(msg, ctxt)
+    t = iface(msg, ctxt)
     if t == msg:
-        return pgettext(msg)
+        return iface(msg)
     return t
 
 
@@ -1251,12 +1251,12 @@ class RedeemPanel:
 
 class Bubble:
     def __init__(
-        self,
-        anim_system: AnimationSystem,
-        text: str,
-        pos: tuple[float, float] = (0, 0),
-        duration: float = 15,
-        icon: str = "account_warning",
+            self,
+            anim_system: AnimationSystem,
+            text: str,
+            pos: tuple[float, float] = (0, 0),
+            duration: float = 15,
+            icon: str = "account_warning",
     ) -> None:
         self.text = text
         self.icon = icon
@@ -1516,11 +1516,11 @@ class AIStudio(AppHud):
         return client.calc_price(price_table)
 
     def push_error_message(self, message: str):
-        translated_msg = bpy.app.translations.pgettext(message)
+        translated_msg = pgettext(message)
         self.bubble_logger.push_error_message(translated_msg)
 
     def push_info_message(self, message: str):
-        translated_msg = bpy.app.translations.pgettext(message)
+        translated_msg = pgettext(message)
         self.bubble_logger.push_info_message(translated_msg)
 
     def handler_draw(self, _area: bpy.types.Area):
@@ -1884,7 +1884,8 @@ class AIStudio(AppHud):
                 imgui.end_combo()
             if imgui.is_item_hovered():
                 title = _T("Please Select Generation Engine")
-                tip = _T("Select Engine and Fill API, You can use AI in Blender seamlessly. Note: This tool only has the function of connecting to the service. The generated content & fees are subject to the provider.")
+                tip = _T(
+                    "Select Engine and Fill API, You can use AI in Blender seamlessly. Note: This tool only has the function of connecting to the service. The generated content & fees are subject to the provider.")
                 imgui.set_next_window_size((759, 0))
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             imgui.pop_style_color(2)
@@ -2291,7 +2292,8 @@ class AIStudio(AppHud):
             if imgui.is_item_hovered():
                 imgui.set_next_window_size((580, 0))
                 title = _T("Prompt Optimization")
-                tip = _T("Enable Prompt Optimization to improve the quality of the generated image and the safety of the content.")
+                tip = _T(
+                    "Enable Prompt Optimization to improve the quality of the generated image and the safety of the content.")
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             imgui.end_child()
             imgui.set_cursor_pos(pos)
@@ -2307,7 +2309,8 @@ class AIStudio(AppHud):
             if imgui.is_item_hovered():
                 imgui.set_next_window_size((710, 0))
                 title = _T("Image Resolution")
-                tip = _T("Set the image resolution via both image size and aspect ratio, and the larger the resolution, the longer the generation time/resource required.")
+                tip = _T(
+                    "Set the image resolution via both image size and aspect ratio, and the larger the resolution, the longer the generation time/resource required.")
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             return
 
