@@ -84,6 +84,13 @@ class StudioHistory:
         self.items.insert(0, item)
         self.save_history()
 
+    def remove(self, item: "StudioHistoryItem"):
+        try:
+            self.items.remove(item)
+            self.save_history()
+        except ValueError:
+            pass
+
     def save_history(self):
         """在添加的时候就保存到场景一下"""
         try:
@@ -91,6 +98,7 @@ class StudioHistory:
             stringify = json.dumps(items, ensure_ascii=True, indent=2)
             bpy.context.scene.blender_ai_studio_property.generate_history = stringify
             logger.debug(f"save history {len(items)}")
+            self.update_max_index()
         except Exception as e:
             import traceback
             logger.debug("保存历史记录失败", e.args)
@@ -105,10 +113,14 @@ class StudioHistory:
             items = [StudioHistoryItem.load(item) for item in data]
             logger.debug(f"load history {len(items)}")
             self.items = items
+            self.update_max_index()
         except Exception as e:
             import traceback
             traceback.print_exc()
             logger.debug("恢复历史记录失败", e.args)
+
+    def update_max_index(self):
+        self.current_index = max([item.index for item in self.items] or [-1]) + 1
 
     @classmethod
     def thread_restore_history(cls):
@@ -168,6 +180,9 @@ class StudioClient(BaseAdapter):
 
     def add_history(self, item: "StudioHistoryItem"):
         self.history.add(item)
+
+    def remove_history(self, item: "StudioHistoryItem"):
+        self.history.remove(item)
 
     def calc_price(self, price_table: dict) -> int | None:
         return 999999
