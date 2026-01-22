@@ -269,7 +269,7 @@ translations = (
     ("Check for updates", "检查更新", "Operator"),
     ("Under inspection...", "检查中...", "Operator"),
     ("Error in obtaining updated data", "获取更新数据错误", ""),
-    ("Retrieve again", "重新获取", ""),
+    ("Retrieve again", "重新获取", "Operator"),
     ("Fetching...", "获取中...", "Operator"),
     ("Setting", "设置", PROP_TCTX),
     ("Update Addon", "更新插件", PROP_TCTX),
