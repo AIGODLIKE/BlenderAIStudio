@@ -4,6 +4,7 @@
 import json
 import os
 import tempfile
+import time
 
 import bpy
 from bpy.app.translations import pgettext_iface as iface
@@ -118,6 +119,8 @@ class UpdateService:
             col.label(text=f"{iface('Current version')}: {get_addon_version_str()}")
             col.label(text=f"{iface('Latest version')}: {last_version}")
             is_update_available = cls.is_update_available()
+            if OnlineUpdateAddon.draw_update_info_state(col):
+                return
             if is_update_available:
                 text = iface("Update to %s") % last_version
                 cc = col.column()
@@ -151,19 +154,24 @@ class UpdateService:
         for text in logs:
             c.label(text=text)
 
-    @staticmethod
-    def open_update_page():
-        """ TODO"""
-
     @classmethod
     def draw_update_info_panel(cls, layout: bpy.types.UILayout):
         if cls.is_update_available():
+            if OnlineUpdateAddon.draw_update_info_state(layout):
+                return
             box = layout.box()
             col = box.column()
             col.alert = True
             col.label(text=iface("Update available"))
             cls.draw_update_log(box)
-            box.operator(OnlineUpdateAddon.bl_idname, text=iface("Update to %s") % cls.get_last_version())
+
+            if last_version_data := cls.get_last_version_data():
+                last_version = last_version_data.get("version", "unknown")
+                md5 = last_version_data.get("md5", "unknown")
+
+                ops = box.operator(OnlineUpdateAddon.bl_idname, text=iface("Update to %s") % last_version)
+                ops.version = last_version
+                ops.md5 = md5
 
 
 class UpdateAddonUpdateVersionInfo(bpy.types.Operator):
@@ -224,25 +232,50 @@ class OnlineUpdateAddon(bpy.types.Operator, UpdateService):
     error_message = ""
     download_info = None  # {"responseId":"xx","code":1000,"data":"https://ocdn-blender-launcher.aigodlike.com/addons/2009558539403526144?Expires=xx&OSSAccessKeyId=xx&Signature=xx"}
     timer = None
+    start_time = 0
     is_downloading = False
     is_update_finished = False  # 更新完成
+    update_info = []  # [{text:str,level:str}]
+
+    @classmethod
+    def draw_update_info_state(cls, layout: bpy.types.UILayout):
+        if cls.update_info:
+            column = layout.box().column(align=True)
+            for i in cls.update_info:
+                text = i.get("text", "emm")
+                alert = i.get("level", "E") == "ERROR"
+
+                column.alert = False
+                column.label(text=text)
+                column.alert = alert
+            return True
+        return False
 
     def invoke(self, context, event):
+        if self.__class__.update_info:  # 避免多次点击
+            return {"CANCELLED"}
         context.window_manager.progress_begin(0, 4)
         context.window_manager.progress_update(0)
+        self.start_time = time.time()
 
         download_url = DOWNLOAD_URL + self.version
 
         def on_request_finished(result, error):
             if error:
                 self.error_message = str(error)
+                logger.error(self.error_message)
             else:
                 try:
+                    logger.info(result)
                     self.download_info = json.loads(result)
+                    self.push_info("Successfully obtained download address")
                     context.window_manager.progress_update(1)
                 except Exception as e:
                     self.error_message = str(e)
+                    logger.error(self.error_message)
 
+        logger.info(f"Start online update to {self.version}")
+        logger.info(f"download_url:{download_url}")
         GetRequestThread(download_url, on_request_finished).start()
         self.timer = context.window_manager.event_timer_add(1 / 30, window=context.window)
         context.window_manager.modal_handler_add(self)
@@ -250,35 +283,39 @@ class OnlineUpdateAddon(bpy.types.Operator, UpdateService):
 
     def modal(self, context, event):
         try:
-            if event.type == "ESC":
-                self.report({"INFO"}, "Cancel update")
+            if context.area:
+                context.area.tag_redraw()
+
+            if event.type == "ESC":  # 按了退出按钮
+                self.push_info("Cancel update")
                 self.exit(context)
                 return {"CANCELLED"}
-            elif self.is_update_finished:
+            elif self.is_update_finished:  # 更新完成
                 self.exit(context)
-                bpy.ops.bas.restart("INVOKE_DEFAULT")
+                bpy.ops.bas.restart("INVOKE_DEFAULT")  # 让用户重启BLender
                 return {"FINISHED"}
-            elif self.error_message:
+            elif self.error_message:  # 出现错误
                 self.exit(context)
                 self.report({"ERROR"}, self.error_message)
                 return {"FINISHED"}
             elif self.download_info and isinstance(self.download_info, dict) and not self.is_downloading:
                 self.start_download(context)
         except Exception as e:
-            print(e.args)
+            es = str(e)
             self.exit(context)
-            self.report({"ERROR"}, str(e))
+            self.push_info(es, "ERROR")
+            self.report({"ERROR"}, es)
             return {"FINISHED"}
         return {"PASS_THROUGH"}
 
     def start_download(self, context):
         try:
-            self.report({"INFO"}, "Start downloading updates")
+            self.push_info("Start downloading updates")
             self.is_downloading = True
             context.window_manager.progress_update(1)
 
             def on_downloaded(file_path, error):
-                self.report({"INFO"}, "Download finished")
+                self.push_info("Download finished")
                 context.window_manager.progress_update(2)
                 if error:
                     self.error_message = str(error)
@@ -286,6 +323,10 @@ class OnlineUpdateAddon(bpy.types.Operator, UpdateService):
                     self.check_zip(file_path)
 
             url = self.download_info["data"]
+            code = self.download_info["code"]
+            if code != 1000:
+                self.error_message = "Download failed"
+                return
 
             download_folder = os.path.abspath(tempfile.mkdtemp(prefix="bas_online_update_addon_"))
             download_file_path = os.path.join(download_folder, "BlenderAIStudio.zip")
@@ -295,14 +336,14 @@ class OnlineUpdateAddon(bpy.types.Operator, UpdateService):
             print(e.args)
 
     def check_zip(self, zip_file_path):
-        self.report({"INFO"}, "Verifying the file")
+        self.push_info("Verifying the file")
         bpy.context.window_manager.progress_update(3)
         md5 = self.md5
         file_md5 = calculate_md5(zip_file_path)
         if md5 != file_md5:
             self.error_message = "MD5 verification of the downloaded file failed"
         else:
-            self.report({"INFO"}, "Start installing updates")
+            self.push_info("Verifying completed!!!")
             self.background_install_update(zip_file_path)
 
     def background_install_update(self, zip_file_path):
@@ -311,122 +352,30 @@ class OnlineUpdateAddon(bpy.types.Operator, UpdateService):
         "${this.blenderPath}" --background --python-expr ""
         """
         try:
-            close_logger()
+            self.push_info("Start installing updates")
+            close_logger()  # 安装更新前要取消日志文件占用
             bpy.ops.preferences.addon_install("EXEC_DEFAULT", filepath=zip_file_path, overwrite=True)
-
-            # # 检查文件是否被占用
-            # if self.check_files_occupied():
-            #     # 触发手动安装
-            #     bpy.ops.bas.manual_install_addon('INVOKE_DEFAULT', zip_path=zip_file_path)
-            #     return
-            #
-            # # 解压并替换文件
-            # self.extract_and_replace(zip_file_path)
 
             # 安装完成
             bpy.context.window_manager.progress_update(4)
-            self.report({"INFO"}, "Update completed!")
+            text = "Update completed!"
+            self.push_info(text)
+            self.push_info(f"用时:{time.time() - self.start_time:.2f}s")
+            self.report({"INFO"}, text)
             self.is_update_finished = True
         except Exception as e:
-            logger.error(f"安装更新失败: {e}")
+            self.push_info(f"安装更新失败: {e}", "ERROR")
             print(e.args)
             self.error_message = str(e)
-
-    def check_files_occupied(self) -> bool:
-        """检查插件文件是否被占用"""
-        import os
-
-        # 获取插件根目录
-        addon_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-
-        # 要检查的文件和目录
-        check_paths = [
-            os.path.join(addon_dir, "src"),
-            os.path.join(addon_dir, "__init__.py"),
-        ]
-
-        for path in check_paths:
-            if not os.path.exists(path):
-                continue
-
-            if os.path.isfile(path):
-                if self._is_file_occupied(path):
-                    return True
-            elif os.path.isdir(path):
-                for root, dirs, files in os.walk(path):
-                    for file in files:
-                        if file.endswith(('.py', '.pyc', '.pyd', '.dll')):
-                            file_path = os.path.join(root, file)
-                            if self._is_file_occupied(file_path):
-                                return True
-        return False
-
-    def _is_file_occupied(self, file_path) -> bool:
-        """检查单个文件是否被占用"""
-        try:
-            with open(file_path, 'a'):
-                pass
-            return False
-        except Exception:
-            return True
-
-    def extract_and_replace(self, zip_file_path):
-        """解压压缩包并替换文件"""
-        import os
-        import zipfile
-        import tempfile
-
-        # 获取插件根目录
-        addon_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-
-        # 创建临时目录
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # 解压文件
-            with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
-                zip_ref.extractall(temp_dir)
-
-            # 找到解压后的插件目录
-            extracted_dir = temp_dir
-            for item in os.listdir(temp_dir):
-                item_path = os.path.join(temp_dir, item)
-                if os.path.isdir(item_path) and os.path.exists(os.path.join(item_path, "__init__.py")):
-                    extracted_dir = item_path
-                    break
-            print("extracted_dir", extracted_dir)
-            # 复制文件到插件目录
-            self._copy_files(extracted_dir, addon_dir)
-
-    def _copy_files(self, src_dir, dst_dir):
-        """复制文件和目录"""
-        import os
-        import shutil
-
-        print("src_dir, dst_dir", src_dir, dst_dir)
-
-        for root, dirs, files in os.walk(src_dir):
-            # 计算相对路径
-            rel_path = os.path.relpath(root, src_dir)
-            dst_path = os.path.join(dst_dir, rel_path)
-
-            # 创建目标目录
-            if not os.path.exists(dst_path):
-                os.makedirs(dst_path)
-
-            # 复制文件
-            for file in files:
-                src_file = os.path.join(root, file)
-                dst_file = os.path.join(dst_path, file)
-
-                # 如果文件存在，先删除
-                if os.path.exists(dst_file):
-                    os.remove(dst_file)
-
-                # 复制文件
-                shutil.copy2(src_file, dst_file)
 
     def exit(self, context):
         context.window_manager.event_timer_remove(self.timer)
         context.window_manager.progress_end()
+
+        def clear_info():
+            OnlineUpdateAddon.update_info.clear()
+
+        bpy.app.timers.register(clear_info, first_interval=5)
 
     def execute(self, context):
         start_blender()
@@ -445,6 +394,14 @@ class OnlineUpdateAddon(bpy.types.Operator, UpdateService):
         install = f"bpy.ops.preferences.addon_install('EXEC_DEFAULT', filepath=r'{zip_file_path}', overwrite=True, enable_on_install=True)"
         python_command = f"{im};{install};print('Online Update Addon Run Finished', file=sys.stderr);quit(0);"
         return f"\"{blender_path}\" --background --factory-startup --python-expr \"{python_command}\""
+
+    @classmethod
+    def push_info(cls, text, level="INFO"):
+        if level == "ERROR":
+            logger.error(iface(text))
+        else:
+            logger.info(iface(text))
+        cls.update_info.append({"text": text, "level": level})
 
 
 class Restart(bpy.types.Operator):
