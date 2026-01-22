@@ -49,6 +49,7 @@ class NanoBanana(StudioClient):
                 "options": [
                     "CameraRender",
                     "CameraDepth",
+                    "FastRender",
                     "NoInput",
                 ],
             },
@@ -232,6 +233,9 @@ class NanoBanana(StudioClient):
                     self.push_error(_T("Render Canceled"))
                     self.render_cancel = False
                     return
+        elif self.input_image_type == "FastRender":
+            print("FastRender")
+            raise NotImplementedError
         elif self.input_image_type == "NoInput":
             _temp_image_path = ""
         resolution = (1024, 1024)
