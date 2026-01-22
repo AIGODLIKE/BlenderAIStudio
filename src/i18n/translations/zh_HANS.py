@@ -240,6 +240,7 @@ translations = (
     ("Account Auth Mode", "账户认证模式", ""),
     ("Account", "账户", ""),
     ("Logged in", "已登录", ""),
+    ("Credits : %s", "冰糕 : %s", ""),
     ("Logout", "登出", "Operator"),
     ("Login", "登录", "Operator"),
     ("Service", "服务", ""),

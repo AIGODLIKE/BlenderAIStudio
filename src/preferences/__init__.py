@@ -7,7 +7,7 @@ from ..i18n import PROP_TCTX
 from ..online_update_addon import UpdateService
 from ... import __package__ as base_name
 from .online_update import OnlineUpdate
-
+from bpy.app.translations import pgettext_iface as iface
 translation_context = {}
 
 if bpy.app.version >= (4, 0, 0):
@@ -96,7 +96,8 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate):
         if self.is_backup_mode:
             account = Account.get_instance()
             if account.is_logged_in():
-                layout.label(text=bpy.app.translations.pgettext_iface("Logged in") + account.nickname)
+                layout.label(text=iface("Logged in") + account.nickname)
+                layout.label(text=iface("Credits : %s") % account.credits)
                 layout.operator("bas.logout_account_auth")
             elif account.is_waiting_for_login():
                 layout.label(text="Waiting for login...")
