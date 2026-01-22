@@ -1,4 +1,5 @@
 import json
+import platform
 import time
 from pathlib import Path
 from typing import Self
@@ -64,9 +65,13 @@ class StudioHistory:
         self.current_index = 0
 
     def add_fake_item(self):
+        desktop = Path.home().joinpath("Desktop")
+        output_file = desktop.joinpath("OutputImage/AIStudio/Output.png")
+        if platform.system() == "Windows":
+            output_file = desktop.joinpath("generated_images/generated_image.png")
         history_item = StudioHistoryItem()
         history_item.result = {}
-        history_item.output_file = Path.home().joinpath("Desktop/OutputImage/AIStudio/Output.png").as_posix()
+        history_item.output_file = output_file.as_posix()
         history_item.metadata = {"prompt": "这是一个测试"}
         history_item.vendor = "NanoBananaPro"
         history_item.timestamp = time.time()
