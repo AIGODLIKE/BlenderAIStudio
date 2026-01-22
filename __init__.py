@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Blender AI Studio",
     "author": "幻之境开发小组",
-    "version": (0, 0, 9),
+    "version": (0, 0, 10),
     "blender": (4, 0, 0),
     "location": "3DView->Panel",
     "category": "AI",
