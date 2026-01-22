@@ -1,6 +1,6 @@
 import os
 import threading
-
+import bpy
 
 # 定义一个简单的线程类来封装请求任务
 class RequestThread(threading.Thread):
@@ -24,7 +24,6 @@ class RequestThread(threading.Thread):
             self.error = e
         finally:
             # 请求完成后，安排回调函数到主线程
-            import bpy
             bpy.app.timers.register(lambda: self.callback(self.result, self.error, *self.args, **self.kwargs))
 
     def request(self):

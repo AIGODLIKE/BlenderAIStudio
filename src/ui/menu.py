@@ -11,7 +11,7 @@ class SelectMaskMenu(bpy.types.Menu):
         return space_data and space_data.image is not None
 
     def draw(self, context):
-        from ..studio.ops import SelectMask
+        from ..ops import SelectMask
         SelectMask.draw_select_mask(context, self.layout)
 
 

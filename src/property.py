@@ -103,11 +103,10 @@ class History:
                  emboss=False,
                  )
         column.label(text=self.prompt)
-        if not self.expand_history:
-            row.context_pointer_set("history", self)
-            row.operator("bas.remove_history", icon="PANEL_CLOSE", text="", emboss=False).index = index
-            return
+        row.operator("bas.remove_history", icon="PANEL_CLOSE", text="", emboss=False).index = index
         row.operator("bas.restore_history", icon="FILE_PARENT", text="", emboss=False)
+        if not self.expand_history:
+            return
 
         column = box.column()
         gi = self.generated_image
