@@ -22,10 +22,10 @@ class RequestThread(threading.Thread):
     def run(self):
         """线程运行的核心方法（在子线程中执行）"""
         try:
-            def r():
-                self.request()
-
-            bpy.app.timers.register(r, first_interval=round(random.uniform(1.0, 10.0), 2))  # 需要随机延迟，不然会导致多开的时候闪退
+            self.request()
+            # TODO 多开bug
+            # def r(): # 修了这个bug会有另一个bug出现
+            # bpy.app.timers.register(r, first_interval=round(random.uniform(1.0, 10.0), 2))  # 需要随机延迟，不然会导致多开的时候闪退
         except Exception as e:
             self.error = e
         finally:
