@@ -1,6 +1,6 @@
 import bpy
 
-from .logger import logger
+from .logger import logger, close_logger
 
 modules = [
     # 模块列表
@@ -27,3 +27,4 @@ def register():
 def unregister():
     unreg()
     logger.debug(f"{__package__} unregistered")
+    close_logger()

@@ -119,5 +119,4 @@ logger = getLogger(NAME, L)
 
 def close_logger():
     """tips: 关闭日志,在更新插件时日志会占用插件的文件夹"""
-    print("close_logger")
     logger.close()
