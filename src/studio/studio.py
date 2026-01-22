@@ -319,7 +319,11 @@ class StudioHistoryViewer:
                         self.app.push_info_message(_T("Prompt Copied!"))
                     else:
                         self.app.push_info_message(_T("No Prompt Found!"))
-
+                if imgui.is_item_hovered():
+                    title = _T("Copy Prompt")
+                    tip = _T("Click to copy the prompt to clipboard.")
+                    imgui.set_next_window_size((550, 0))
+                    AppHelperDraw.draw_tips_with_title(self.app, [tip], title)
                 # 详情按钮
                 imgui.table_next_column()
                 old_show_detail = item.show_detail
@@ -341,7 +345,11 @@ class StudioHistoryViewer:
                 imgui.table_next_column()
                 if CustomWidgets.icon_label_button("delete", "", "CENTER", (bw, bh), isize=isize):
                     self.remove_item(item)
-
+                if imgui.is_item_hovered():
+                    title = _T("Delete History")
+                    tip = _T("Click to delete the history in the queue, but leave the generated image.")
+                    imgui.set_next_window_size((550, 0))
+                    AppHelperDraw.draw_tips_with_title(self.app, [tip], title)
                 imgui.pop_style_var(1)
 
                 imgui.end_table()
@@ -456,6 +464,11 @@ class StudioHistoryViewer:
                             imgui.table_next_column()
                             if CustomWidgets.icon_label_button("image_export", _T("Export"), "CENTER", (0, bh)):
                                 self.export_image(item.output_file)
+                            if imgui.is_item_hovered():
+                                title = _T("Export Image")
+                                tip = _T("Click to export the image to disk.")
+                                imgui.set_next_window_size((720, 0))
+                                AppHelperDraw.draw_tips_with_title(self.app, [tip], title)
                         imgui.end_table()
                     imgui.pop_style_var(1)
                     imgui.pop_style_color(1)
