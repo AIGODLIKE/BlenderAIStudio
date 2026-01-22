@@ -123,85 +123,93 @@ class ApplyAiEditImage(bpy.types.Operator):
 
         # 2. 注册回调
         def on_state_changed(event_data):
-            _task: Task = event_data["task"]
-            old_state: TaskState = event_data["old_state"]
-            new_state: TaskState = event_data["new_state"]
-            text = f"状态改变: {old_state.value} -> {new_state.value}"
-            ai_oii = bpy.context.scene.blender_ai_studio_property
-            ai_oii.running_state = new_state.value
-            logger.info(text)
+            def f():
+                _task: Task = event_data["task"]
+                old_state: TaskState = event_data["old_state"]
+                new_state: TaskState = event_data["new_state"]
+                text = f"状态改变: {old_state.value} -> {new_state.value}"
+                ai_oii = bpy.context.scene.blender_ai_studio_property
+                ai_oii.running_state = new_state.value
+                logger.info(text)
+            bpy.app.timers.register(f, first_interval=0.1)
 
         def on_progress(event_data):
-            # {
-            #     "current_step": 2,
-            #     "total_steps": 4,
-            #     "percentage": 0.5,
-            #     "message": "正在调用 API...",
-            #     "details": {},
-            # }
-            _task: Task = event_data["task"]
-            progress: dict = event_data["progress"]
-            percent = progress["percentage"]
-            message = progress["message"]
-            p = bpy.app.translations.pgettext("Progress")
-            text = f"{p}: {percent * 100}% - {message}"
+            def f():
+                # {
+                #     "current_step": 2,
+                #     "total_steps": 4,
+                #     "percentage": 0.5,
+                #     "message": "正在调用 API...",
+                #     "details": {},
+                # }
+                _task: Task = event_data["task"]
+                progress: dict = event_data["progress"]
+                percent = progress["percentage"]
+                message = progress["message"]
+                p = bpy.app.translations.pgettext("Progress")
+                text = f"{p}: {percent * 100}% - {message}"
 
-            ai_oii = bpy.context.scene.blender_ai_studio_property
-            ai_oii.running_message = text
-            logger.info(text)
+                ai_oii = bpy.context.scene.blender_ai_studio_property
+                ai_oii.running_message = text
+                logger.info(text)
+            bpy.app.timers.register(f, first_interval=0.1)
 
         def on_completed(event_data):
-            # result_data = {
-            #     "image_data": b"",
-            #     "mime_type": "image/png",
-            #     "width": 1024,
-            #     "height": 1024,
-            # }
+            def f():
+                # result_data = {
+                #     "image_data": b"",
+                #     "mime_type": "image/png",
+                #     "width": 1024,
+                #     "height": 1024,
+                # }
 
-            ai_oii = bpy.context.scene.blender_ai_studio_property
-            ai_oii.origin_image = image
-            _task: Task = event_data["task"]
-            result: TaskResult = event_data["result"]
-            result_data: dict = result.data
-            # 存储结果
-            save_file = Path(temp_folder).joinpath(f"{generate_image_name}_Output.png")
-            save_file.write_bytes(result_data["image_data"])
-            text = f"任务完成: {_task.task_id} {save_file}"
-            ai_oii.running_message = "Running completed"
+                ai_oii = bpy.context.scene.blender_ai_studio_property
+                ai_oii.origin_image = image
+                _task: Task = event_data["task"]
+                result: TaskResult = event_data["result"]
+                result_data: dict = result.data
+                # 存储结果
+                save_file = Path(temp_folder).joinpath(f"{generate_image_name}_Output.png")
+                save_file.write_bytes(result_data["image_data"])
+                text = f"任务完成: {_task.task_id} {save_file}"
+                ai_oii.running_message = "Running completed"
 
-            if gi := bpy.data.images.load(str(save_file), check_existing=False):
-                oii.generated_image = gi
-                gi.preview_ensure()
-                gi.name = generate_image_name
-                try:
-                    space_data.image = gi
-                except Exception as e:
-                    print("error", e)
-                    import traceback
+                if gi := bpy.data.images.load(str(save_file), check_existing=False):
+                    oii.generated_image = gi
+                    gi.preview_ensure()
+                    gi.name = generate_image_name
+                    try:
+                        space_data.image = gi
+                    except Exception as e:
+                        print("error", e)
+                        import traceback
 
-                    traceback.print_exc()
-                    traceback.print_stack()
-            else:
-                ut = bpy.app.translations.pgettext("Unable to load generated image!")
-                ai_oii.running_message = ut + " " + str(save_file)
-            ai_oii.stop_running()
-            ai_oii.save_to_history()
-            logger.info(text)
+                        traceback.print_exc()
+                        traceback.print_stack()
+                else:
+                    ut = bpy.app.translations.pgettext("Unable to load generated image!")
+                    ai_oii.running_message = ut + " " + str(save_file)
+                ai_oii.stop_running()
+                ai_oii.save_to_history()
+                logger.info(text)
+            bpy.app.timers.register(f, first_interval=0.1)
 
         def on_failed(event_data):
-            text = f"on_failed {event_data}"
-            logger.info(text)
+            def f():
+                text = f"on_failed {event_data}"
+                logger.info(text)
 
-            ai_oii = bpy.context.scene.blender_ai_studio_property
+                ai_oii = bpy.context.scene.blender_ai_studio_property
 
-            _task: Task = event_data["task"]
-            result: TaskResult = event_data["result"]
-            if not result.success:
-                ai_oii.running_message = str(result.error)
-                logger.info(ai_oii.running_message)
-            else:
-                ai_oii.running_message = "Unknown error" + " " + str(result.data)
-            ai_oii.stop_running()
+                _task: Task = event_data["task"]
+                result: TaskResult = event_data["result"]
+                if not result.success:
+                    ai_oii.running_message = str(result.error)
+                    logger.info(ai_oii.running_message)
+                else:
+                    ai_oii.running_message = "Unknown error" + " " + str(result.data)
+                ai_oii.stop_running()
+            bpy.app.timers.register(f, first_interval=0.1)
 
         task.register_callback("state_changed", on_state_changed)
         task.register_callback("progress_updated", on_progress)
