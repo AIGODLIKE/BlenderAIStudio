@@ -37,7 +37,7 @@ class UpdateService:
 
         def on_request_finished(result, error):
             if error:
-                print(f"获取插件版本信息失败 {type(error).__name__}: {error}")
+                logger.error(f"获取插件版本信息失败 {type(error).__name__}: {error}")
                 cls.is_refreshing = False
             else:
                 # 存储版本信息
@@ -47,7 +47,7 @@ class UpdateService:
                     vs = res['data']['versions']
                     logger.info(f"请求版本信息成功, 获取到 {len(vs)} 个版本数据")
                 except Exception as e:
-                    print(f"解析版本信息失败: {e}")
+                    logger.error(f"解析版本信息失败: {e}")
                 finally:
                     cls.is_refreshing = False
 
@@ -63,10 +63,11 @@ class UpdateService:
         try:
             if cls.version_info:
                 versions = cls.version_info['data']['versions']
-                versions.sort(key=lambda x: x['version'], reverse=True)
+                versions.sort(key=lambda x: tuple(int(i) for i in x['version'].split(".")), reverse=True)
+                # logger.info(f"获取到 {len(versions)} 个版本数据")
                 return versions[0]
         except Exception as e:
-            print(f"获取插件版本信息失败: {e}")
+            logger.error(f"获取插件版本信息失败: {e}")
         return None
 
     @staticmethod
@@ -78,7 +79,7 @@ class UpdateService:
                 last_version = last_version_data.get("version", "unknown")
                 return last_version
         except Exception as e:
-            print(f"获取最新版本失败: {e}")
+            logger.error(f"获取最新版本失败: {e}")
         return "unknown"
 
     @staticmethod
@@ -89,7 +90,7 @@ class UpdateService:
             update_log = cls.version_info['data']['updateLog']
             return update_log
         except Exception as e:
-            print(f"更新日志失败: {e}")
+            logger.error(f"更新日志失败: {e}")
             return "unknown"
 
     @staticmethod
@@ -104,7 +105,7 @@ class UpdateService:
             if last := cls.get_last_version_data():
                 return str_version_to_int(last['version']) > install_version
         except Exception as e:
-            print(f"检查更新失败: {e}")
+            logger.error(f"检查更新失败: {e}")
             return False
 
     @staticmethod
