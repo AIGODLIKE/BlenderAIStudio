@@ -1,10 +1,11 @@
+import bpy
 import json
 import platform
 import time
+import traceback
 from pathlib import Path
+from threading import Thread
 from typing import Self
-
-import bpy
 
 from ..tasks import TaskManager
 from ..wrapper import BaseAdapter
@@ -41,11 +42,11 @@ class StudioHistoryItem:
     def load(data: dict):
         history = StudioHistoryItem()
         for k in (
-                "output_file",
-                "metadata",
-                "vendor",
-                "index",
-                "timestamp",
+            "output_file",
+            "metadata",
+            "vendor",
+            "index",
+            "timestamp",
         ):
             if k in data:
                 setattr(history, k, data[k])
@@ -109,7 +110,6 @@ class StudioHistory:
             logger.debug(f"save history {len(items)}")
             self.update_max_index()
         except Exception as e:
-            import traceback
             logger.debug("保存历史记录失败", e.args)
             traceback.print_exc()
 
@@ -124,7 +124,6 @@ class StudioHistory:
             self.items = items
             self.update_max_index()
         except Exception as e:
-            import traceback
             traceback.print_exc()
             logger.debug("恢复历史记录失败", e.args)
 
@@ -134,7 +133,7 @@ class StudioHistory:
     @classmethod
     def thread_restore_history(cls):
         """子线程恢复历史"""
-        from threading import Thread
+
         def load():
             cls.get_instance().restore_history()
 
@@ -143,6 +142,7 @@ class StudioHistory:
 
 class StudioClient(BaseAdapter):
     from ..account import Account
+
     VENDOR = ""
     _INSTANCE = None
 
