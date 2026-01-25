@@ -203,8 +203,11 @@ class Account:
 
     def save_account_info(self, data: dict):
         if not self._AUTH_PATH.parent.exists():
-            self.push_error(_T("Can't create auth directory"))
-            return
+            try:
+                self._AUTH_PATH.parent.mkdir(parents=True)
+            except Exception:
+                traceback.print_exc()
+                self.push_error(_T("Can't create auth directory"))
         try:
             self._AUTH_PATH.write_text(json.dumps(data, ensure_ascii=True, indent=2))
         except Exception:
