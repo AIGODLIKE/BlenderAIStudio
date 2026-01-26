@@ -10,7 +10,7 @@ class ApiKey:
         name="Dream API Key",
         subtype="PASSWORD",
     )
-    seedream_api = bpy.props.StringProperty(
+    seedream_api: bpy.props.StringProperty(
         name="Seedream API Key",
         subtype="PASSWORD",
     )

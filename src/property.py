@@ -202,13 +202,18 @@ class ModelSelect:
     _model_registry = ModelRegistry.get_instance()
 
     def get_models_items(self, context):
-        print("_model_registry", self._model_registry.get_all_models())
-        return [("None", "None", "None"), ]
+        try:
+            print("_model_registry", self._model_registry.get_all_models())
+            models = self._model_registry.get_all_models()
+            return [(model.model_id, model.model_name, model.provider) for model in models]
+        except Exception as e:
+            print(e)
+            return [("None", "None", "None"), ]
 
     model: bpy.props.EnumProperty(items=get_models_items, name="Model")
 
 
-class SceneProperty(bpy.types.PropertyGroup, History, State):
+class SceneProperty(bpy.types.PropertyGroup, History, State, ModelSelect):
     """
     生成的属性
     """
