@@ -1,10 +1,13 @@
+import bpy
+import time
+import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 from traceback import print_exc
 from uuid import uuid4
-
-import bpy
 from bpy.app.translations import pgettext as _T
+from ..timer import Timer
+from ..utils import get_temp_folder
 
 from .. import logger
 
@@ -69,7 +72,7 @@ def render_scene_to_png(scene: bpy.types.Scene, image_path: str):
 
     def restore():
         logger.info("restore render setting")
-        ren = bpy.context.scene.render
+        ren = scene.render
         setattr(ren, "filepath", old)
         if bpy.app.version >= (5, 0):
             setattr(ren.image_settings, "media_type", old_media_type)
@@ -117,13 +120,12 @@ def render_scene_depth_to_png(scene: bpy.types.Scene, image_path: str):
 
     def restore():
         logger.info("restore render setting")
-        sce = bpy.context.scene
-        ren = sce.render
+        ren = scene.render
         setattr(ren, "filepath", old_filepath)
         setattr(ren.image_settings, "file_format", old_fmt)
         if bpy.app.version >= (5, 0):
             setattr(ren.image_settings, "media_type", old_media_type)
-            setattr(sce, "compositing_node_group", old_tree)
+            setattr(scene, "compositing_node_group", old_tree)
             bpy.data.node_groups.remove(tree)
 
     def on_finish(_sce):
@@ -162,7 +164,7 @@ def check_image_valid(image_path: str) -> bool:
             return False
         bpy.data.images.remove(image)
         return True
-    except  Exception as e:
+    except Exception as e:
         print(e.args)
         return False
 
@@ -241,25 +243,154 @@ class RenderAgent:
         self.detach()
 
 
+class BlenderRenderHelper:
+    """
+    渲染辅助工具
+    负责根据 itype 渲染 Blender 场景，返回渲染结果路径。
+    """
+
+    def __init__(self):
+        self.is_rendering = False
+        self.render_cancel = False
+        self.rendering_time_start = 0
+
+    def cancel(self):
+        self.render_cancel = True
+
+    def render(self, itype: str, context: dict) -> str:
+        """根据类型渲染场景
+
+        Args:
+            itype: 输入图像类型
+                - CameraRender: 从相机渲染
+                - CameraDepth: 从相机深度渲染
+                - FastRender: 快速渲染
+                - NoInput: 不渲染，返回空字符串
+
+        Returns:
+            渲染结果的文件路径，如果不需要渲染则返回空字符串
+
+        Raises:
+            ValueError: 场景没有相机
+            RuntimeError: 渲染失败
+            NotImplementedError: FastRender 未实现
+        """
+        if itype == "NoInput":
+            return ""
+
+        # 创建临时文件
+        temp_folder = get_temp_folder(prefix="generate")
+        temp_image_path = tempfile.NamedTemporaryFile(suffix=".png", prefix="Render", delete=False, dir=temp_folder)
+        image_path = temp_image_path.name
+
+        if itype == "CameraRender":
+            self._wait_for_rendering()
+            self._render_camera(image_path, context)
+        elif itype == "CameraDepth":
+            self._wait_for_rendering()
+            self._render_depth(image_path, context)
+        elif itype == "FastRender":
+            raise NotImplementedError("FastRender not implemented yet")
+        else:
+            raise ValueError(f"Unknown input image type: {itype}")
+
+        return image_path
+
+    def _is_other_rendering(self):
+        return bpy.app.is_job_running("RENDER")
+
+    def _wait_for_rendering(self):
+        """等待渲染完成"""
+        if self._is_other_rendering():
+            logger.info("Other rendering is running, waiting for completion")
+        while self._is_other_rendering():
+            time.sleep(0.1)
+
+    def _render_camera(self, output_path: str, context: dict):
+        """渲染相机视图"""
+        scene: bpy.types.Scene = context["scene"]
+
+        if not scene.camera:
+            raise ValueError("Scene Camera Not Found")
+
+        render_agent = RenderAgent()
+        self.is_rendering = True
+        self.rendering_time_start = time.time()
+
+        def on_write(_sce):
+            if not check_image_valid(output_path):
+                self.render_cancel = True
+
+            self.is_rendering = False
+            render_agent.detach()
+            logger.info("Render completed")
+
+        render_agent.on_write(on_write)
+        render_agent.attach()
+        Timer.put((render_scene_to_png, scene, output_path))
+
+        # 等待渲染完成
+        while self.is_rendering:
+            time.sleep(0.1)
+
+        # 检查是否取消
+        if self.render_cancel:
+            self.render_cancel = False
+            raise RuntimeError("Render Canceled")
+
+    def _render_depth(self, output_path: str, context: dict):
+        """渲染深度图"""
+        scene: bpy.types.Scene = context["scene"]
+
+        if not scene.camera:
+            raise ValueError("Scene Camera Not Found")
+
+        render_agent = RenderAgent()
+        self.is_rendering = True
+        self.rendering_time_start = time.time()
+
+        def on_write(_sce):
+            if not check_image_valid(output_path):
+                self.render_cancel = True
+
+            self.is_rendering = False
+            render_agent.detach()
+            logger.info("Depth render completed")
+
+        render_agent.on_write(on_write)
+        render_agent.attach()
+        Timer.put((render_scene_depth_to_png, scene, output_path))
+
+        # 等待渲染完成
+        while self.is_rendering:
+            time.sleep(0.1)
+
+        # 检查是否取消
+        if self.render_cancel:
+            self.render_cancel = False
+            raise RuntimeError("Render Canceled")
+
+    def get_rendering_time(self) -> float:
+        """获取渲染耗时"""
+        if self.rendering_time_start == 0:
+            return 0
+        return time.time() - self.rendering_time_start
+
+
 if __name__ == "__main__":
     render_agent = RenderAgent()
-
 
     def on_complete(sce):
         print("on_complete", sce)
 
-
     def on_post(sce):
         print("on_post", sce)
-
 
     def on_write(sce):
         print("Render Finished")
 
-
     def on_cancel(sce):
         print("Render Cancel")
-
 
     bpy.app.handlers.render_cancel.append(on_cancel)
     bpy.app.handlers.render_complete.append(on_complete)
