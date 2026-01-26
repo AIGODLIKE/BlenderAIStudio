@@ -99,7 +99,7 @@ class StudioHistory:
         history_item.result = {}
         history_item.outputs = [("image/png", output_file.as_posix())]
         history_item.metadata = {"prompt": "这是一个测试"}
-        history_item.model = "google/gemini-3-pro-image-preview"
+        history_item.model = "gemini-3-pro-image-preview"
         history_item.timestamp = time.time()
         history_item.task_id = ""
         self.add(history_item)
