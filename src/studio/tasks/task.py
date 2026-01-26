@@ -413,7 +413,10 @@ class Task(ABC):
         try:
             # 检查是否已取消
             if self.is_cancelled():
-                return TaskResult.failure_result(Exception("Task cancelled before execution"), "任务在执行前被取消")
+                self.set_state(TaskState.CANCELLED)
+                result = TaskResult.failure_result(Exception("Task cancelled before execution"), "任务在执行前被取消")
+                self._trigger_callback("cancelled", {"task": self, "result": result})
+                return result
 
             # 准备阶段
             self.set_state(TaskState.PREPARING)
@@ -425,7 +428,10 @@ class Task(ABC):
 
             # 检查是否被取消
             if self.is_cancelled():
-                return TaskResult.failure_result(Exception("Task cancelled during preparation"), "任务在准备阶段被取消")
+                self.set_state(TaskState.CANCELLED)
+                result = TaskResult.failure_result(Exception("Task cancelled during preparation"), "任务在准备阶段被取消")
+                self._trigger_callback("cancelled", {"task": self, "result": result})
+                return result
 
             # 执行阶段
             self.set_state(TaskState.RUNNING)
