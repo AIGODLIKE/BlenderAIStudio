@@ -16,8 +16,28 @@ if bpy.app.version >= (4, 0, 0):
 
 
 class AuthMode(Enum):
-    ACCOUNT = "Backup Mode"
-    API = "API Key Mode"
+    """认证模式枚举
+
+    value: 配置文件中使用的值（小写）
+    display_name: UI 显示名称（支持翻译）
+    """
+
+    API = "api"
+    ACCOUNT = "account"
+
+    @property
+    def display_name(self) -> str:
+        """获取可翻译的显示名称"""
+        if self == AuthMode.API:
+            return "API Key Mode"
+        elif self == AuthMode.ACCOUNT:
+            return "Backup Mode"
+        return self.value
+
+    @classmethod
+    def values(cls) -> list[str]:
+        """获取所有值的元组"""
+        return [item.value for item in list(cls)]
 
 
 class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate):
@@ -46,7 +66,7 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate):
     )
     account_auth_mode: bpy.props.EnumProperty(
         name="Account Auth Mode",
-        items=[(item.value, item.value, "") for item in AuthMode],
+        items=[(item.value, item.display_name, "") for item in AuthMode],
         **translation_context,
     )
     nano_banana_api: bpy.props.StringProperty(
@@ -64,7 +84,7 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate):
 
     @property
     def is_backup_mode(self):  # 是稳定模式
-        return self.account_auth_mode == "Backup Mode"
+        return self.account_auth_mode == AuthMode.ACCOUNT.value
 
     def set_ui_offset(self, value):
         self.ui_offset = value
@@ -92,8 +112,9 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate):
 
     def draw_api(self, layout):
         from ..studio.account import Account
+
         layout.label(text="Service")
-        layout.prop(self, "account_auth_mode", text="Operating Mode", )
+        layout.prop(self, "account_auth_mode", text="Operating Mode")
         if self.is_backup_mode:
             account = Account.get_instance()
             if account.is_logged_in():
