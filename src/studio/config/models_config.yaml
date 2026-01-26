@@ -1,0 +1,186 @@
+models:
+  - modelId: gemini-3-pro-image-preview
+    modelName: google/NanoBananaPro
+    provider: gemini
+    category: IMAGE_GENERATION
+    base_model: null
+    auth_modes: [api, account]
+
+    endpoints:
+      api:
+        help_url: https://ai.google.dev/gemini-api/docs/image-generation
+        base_url: https://generativelanguage.googleapis.com/v1beta
+        entry: "models/{model}:generateContent"
+        method: POST
+        headers:
+          x-goog-api-key: "{api_key}"
+          Content-Type: application/json
+        response_parser: GeminiImageParser
+
+      account:
+        help_url: https://shimo.im/docs/47kgMZ7nj4Sm963V
+        base_url: https://api-addon.acggit.com/v1
+        entry: service/cpick
+        method: POST
+        headers:
+          X-Auth-T: "{token}"
+          X-Model-ID: "{modelId}"
+          X-Image-Size: "{size}"
+          Content-Type: application/json
+
+        response_parser: GeminiImageParserAccount
+
+    input_processors:
+      - processor: RenderProcessor
+        group: main_image
+        input_mapping:
+          input_type: input_image_type
+        output_mapping:
+          image_path: main_image
+
+    parameters:
+      - name: input_image_type
+        display_name: Input Image
+        category: Input
+        type: ENUM
+        hide_title: false
+        options: [CameraRender, CameraDepth, FastRender, NoInput]
+        default: CameraRender
+
+      - name: prompt
+        display_name: Prompt
+        category: Input
+        type: STRING
+        hide_title: false
+        multiline: true
+        default: ""
+
+      - name: reference_images
+        display_name: Reference Images
+        category: Input
+        type: IMAGE_LIST
+        hide_title: false
+        limit: 12
+
+      - name: size_config
+        display_name: Size Config
+        category: Input
+        type: ENUM
+        hide_title: false
+        options:
+          - "Auto"
+          - "1:1"
+          - "9:16"
+          - "16:9"
+          - "3:4"
+          - "4:3"
+          - "3:2"
+          - "2:3"
+          - "5:4"
+          - "4:5"
+          - "21:9"
+
+      - name: resolution
+        display_name: Resolution
+        category: Input
+        type: ENUM
+        hide_title: false
+        options: [1K, 2K, 4K]
+
+      - name: api_key
+        display_name: API Key
+        category: Settings
+        type: STRING
+        hide_title: true
+        multiline: false
+        default: ""
+
+    request_builder: GeminiImageGenerateBuilder
+    response_parser: GeminiImageParser
+
+    actions:
+      generate:
+        display_name: Generate Image
+        description: Generate image from depth/render
+
+      edit:
+        display_name: Edit Image
+        description: Edit existing image with prompt/mask
+
+      transfer:
+        display_name: Style Transfer
+        description: Transfer style from reference image
+
+    default_action: generate
+    price: { 1K: 36, 2K: 36, 4K: 63 }
+
+  - modelId: gemini-3-pro-image-preview-SO
+    modelName: google/NanoBananaPro-特价
+    provider: gemini
+    category: IMAGE_GENERATION
+    base_model: gemini-3-pro-image-preview
+    auth_modes: [account]
+
+    endpoints:
+      account:
+        help_url: https://shimo.im/docs/47kgMZ7nj4Sm963V
+        base_url: http://dc2.mc-cx.com:10000/v1
+        entry: service/cpick
+        method: POST
+        headers:
+          X-Auth-T: "{token}"
+          X-Model-ID: "{modelId}"
+          X-Image-Size: "{size}"
+          Content-Type: application/json
+
+        response_parser: GeminiImageParserAccount
+
+    price: { 1K: 18, 2K: 18, 4K: 32 }
+
+  - modelId: "NO"
+    modelName: Dream
+    provider: Dream
+    category: IMAGE_GENERATION
+    base_model: null
+    auth_modes: [account]
+
+    endpoints:
+      account:
+        help_url: https://shimo.im/docs/47kgMZ7nj4Sm963V
+        base_url: https://api-addon.acggit.com/v1
+        entry: service/cpick
+        method: POST
+        headers:
+          X-Auth-T: "{token}"
+          X-Model-ID: "{modelId}"
+          X-Image-Size: "{size}"
+          Content-Type: application/json
+
+        response_parser: GeminiImageParserAccount
+
+    parameters:
+      - name: prompt
+        display_name: Prompt
+        category: Input
+        type: STRING
+        hide_title: false
+        multiline: true
+        default: ""
+
+      - name: resolution
+        display_name: Resolution
+        category: Input
+        type: ENUM
+        hide_title: false
+        options: [1K, 2K, 4K]
+
+    request_builder: GeminiImageGenerateBuilder
+    response_parser: GeminiImageParser
+
+    actions:
+      generate:
+        display_name: Generate Image
+        description: Generate image from depth/render
+
+    default_action: generate
+    price: { 1K: 36, 2K: 36, 4K: 63 }
