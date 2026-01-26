@@ -419,7 +419,9 @@ class Task(ABC):
             self.set_state(TaskState.PREPARING)
             if not self.prepare():
                 self.set_state(TaskState.FAILED)
-                return TaskResult.failure_result(Exception("Task preparation failed"), "任务准备失败")
+                result = TaskResult.failure_result(Exception("Task preparation failed"), "任务准备失败")
+                self._trigger_callback("failed", {"task": self, "result": result})
+                return result
 
             # 检查是否被取消
             if self.is_cancelled():
@@ -436,8 +438,9 @@ class Task(ABC):
             # 设置最终状态
             if self.is_cancelled():
                 self.set_state(TaskState.CANCELLED)
-                self._trigger_callback("cancelled", {"task": self, "result": None})
-                return TaskResult.failure_result(Exception("Task cancelled during execution"), "任务在执行过程中被取消")
+                result = TaskResult.failure_result(Exception("Task cancelled during execution"), "任务在执行过程中被取消")
+                self._trigger_callback("cancelled", {"task": self, "result": result})
+                return result
             elif result.is_success():
                 self.set_state(TaskState.COMPLETED)
                 self._trigger_callback("completed", {"task": self, "result": result})
