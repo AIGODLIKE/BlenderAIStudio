@@ -143,7 +143,7 @@
       "endpoints": {
         "account": {
           "help_url": "https://shimo.im/docs/47kgMZ7nj4Sm963V",
-          "base_url": "http://dc2.mc-cx.com:10000/v1",
+          "base_url": "https://api-addon.acggit.com/v1",
           "entry": "service/cpick",
           "method": "POST",
           "headers": {
