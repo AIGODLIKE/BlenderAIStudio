@@ -1,6 +1,6 @@
 models:
   - modelId: gemini-3-pro-image-preview
-    modelName: google/NanoBananaPro
+    modelName: NanoBananaPro
     provider: gemini
     category: IMAGE_GENERATION
     base_model: null
