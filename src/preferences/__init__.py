@@ -41,6 +41,25 @@ class AuthMode(Enum):
         return [item.value for item in list(cls)]
 
 
+class PricingStrategy(Enum):
+    BEST_SPEED = "bestSpeed"
+    BEST_BALANCE = "bestBalance"
+
+    @property
+    def display_name(self) -> str:
+        """获取可翻译的显示名称"""
+        if self == PricingStrategy.BEST_SPEED:
+            return "Best Speed"
+        elif self == PricingStrategy.BEST_BALANCE:
+            return "Best Balance"
+        return self.value
+
+    @classmethod
+    def values(cls) -> list[str]:
+        """获取所有值的元组"""
+        return [item.value for item in list(cls)]
+
+
 class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey):
     bl_idname = base_name
     ui_pre_scale: bpy.props.FloatProperty(
@@ -91,6 +110,16 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey):
         self.account_auth_mode = value
         bpy.context.preferences.use_preferences_save = True
 
+    account_pricing_strategy: bpy.props.EnumProperty(
+        name="Account Pricing Strategy",
+        items=[(item.value, item.display_name, "") for item in PricingStrategy],
+        **translation_context,
+    )
+    
+    def set_account_pricing_strategy(self, value):
+        self.account_pricing_strategy = value
+        bpy.context.preferences.use_preferences_save = True
+
     def draw(self, context):
         layout = self.layout
         column = layout.column()
@@ -111,6 +140,7 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey):
         from ..studio.account import Account
 
         layout.label(text="Service")
+        layout.prop(self, "account_pricing_strategy", text="Pricing Strategy")
         layout.prop(self, "account_auth_mode", text="Operating Mode")
         if self.is_backup_mode:
             account = Account.get_instance()
