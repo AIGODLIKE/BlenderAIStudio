@@ -112,34 +112,10 @@ models:
         description: Transfer style from reference image
 
     default_action: generate
-    price: { 1K: 36, 2K: 36, 4K: 63 }
 
-  - modelId: gemini-3-pro-image-preview-SO
-    modelName: google/NanoBananaPro-特价
-    provider: gemini
-    category: IMAGE_GENERATION
-    base_model: gemini-3-pro-image-preview
-    auth_modes: [account]
-
-    endpoints:
-      account:
-        help_url: https://shimo.im/docs/47kgMZ7nj4Sm963V
-        base_url: https://api-addon.acggit.com/v1
-        entry: service/cpick
-        method: POST
-        headers:
-          X-Auth-T: "{token}"
-          X-Model-ID: "{modelId}"
-          X-Image-Size: "{size}"
-          Content-Type: application/json
-
-        response_parser: GeminiImageParserAccount
-
-    price: { 1K: 18, 2K: 18, 4K: 32 }
-
-  - modelId: "NO"
-    modelName: Dream
-    provider: Dream
+  - modelId: "SeeDream"
+    modelName: SeeDream
+    provider: SeeDream
     category: IMAGE_GENERATION
     base_model: null
     auth_modes: [account]
@@ -183,4 +159,3 @@ models:
         description: Generate image from depth/render
 
     default_action: generate
-    price: { 1K: 36, 2K: 36, 4K: 63 }
