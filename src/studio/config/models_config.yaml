@@ -3,7 +3,6 @@ models:
     modelName: NanoBananaPro
     provider: gemini
     category: IMAGE_GENERATION
-    base_model: null
     auth_modes: [api, account]
 
     endpoints:
@@ -117,7 +116,6 @@ models:
     modelName: SeeDream
     provider: SeeDream
     category: IMAGE_GENERATION
-    base_model: null
     auth_modes: [account]
 
     endpoints:
