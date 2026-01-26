@@ -2,15 +2,7 @@
 
 使用示例：
     # 1. 创建任务
-    from .tasks import GeminiImageGenerationTask
-
-    task = GeminiImageGenerationTask(
-        api_key="your-api-key",
-        image_path="/path/to/depth.png",
-        user_prompt="1girl",
-        width=1024,
-        height=1024
-    )
+    task = Task()
 
     # 2. 注册回调
     def on_progress(event_data):

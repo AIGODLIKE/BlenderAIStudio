@@ -10,9 +10,9 @@ SequenceTask - 顺序任务组合器
 
 使用示例：
     # 创建子任务
-    task1 = GeminiImageGenerationTask(...)
-    task2 = GeminiImageEditTask(...)
-    task3 = GeminiStyleTransferTask(...)
+    task1 = Task(...)
+    task2 = Task(...)
+    task3 = Task(...)
 
     # 创建顺序任务
     seq_task = SequenceTask(

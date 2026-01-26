@@ -1,11 +1,8 @@
-from .base import StudioHistoryItem, StudioHistory, StudioClient
-from .gemini import NanoBanana
-from .dream import Dream
+from .base import StudioHistoryItem, StudioHistory
+from .universal_client import UniversalClient
 
 __all__ = [
     "StudioHistoryItem",
     "StudioHistory",
-    "StudioClient",
-    "NanoBanana",
-    "Dream",
+    "UniversalClient",
 ]
