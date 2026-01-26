@@ -344,7 +344,6 @@ class ModelConfig:
     """模型配置类
 
     从配置文件加载并管理单个模型的所有配置信息。
-    支持从基础模型继承配置（base_model）。
     """
 
     def __init__(self, config_dict: dict):
@@ -352,7 +351,6 @@ class ModelConfig:
         self.model_name: str = config_dict["modelName"]
         self.provider: str = config_dict["provider"]
         self.category: str = config_dict["category"]
-        self.base_model: Optional[str] = config_dict.get("base_model")
         self.auth_modes: List[str] = config_dict["auth_modes"]
         self.endpoints: Dict[str, Dict[str, Any]] = config_dict["endpoints"]
         self.parameters: Optional[List[Dict[str, Any]]] = config_dict.get("parameters")
@@ -519,7 +517,8 @@ class ModelRegistry:
 
     def __init__(self):
         self.models: Dict[str, ModelConfig] = {}
-        self._load_models()
+        self._pricing_table: Dict[str, Dict[str, int]] = {}
+        self._load_model_config()
 
     @classmethod
     def get_instance(cls):
@@ -568,7 +567,7 @@ class ModelRegistry:
 
         return {}
 
-    def _load_models(self):
+    def _load_model_config(self):
         """从配置文件加载模型
 
         加载策略：
@@ -591,45 +590,21 @@ class ModelRegistry:
         if "models" not in data:
             raise KeyError("Missing 'models' key in config file")
 
-        # 第一遍：收集所有基础模型到临时字典（用于继承查找）
-        base_models = {}
         for model_data in data["models"]:
             try:
                 config = ModelConfig(model_data)
-                if config.base_model is None:
-                    base_models[config.model_id] = config
+                self.models[config.model_name] = config
             except KeyError as e:
                 logger.warning(f"Failed to parse base model: missing field {e}")
                 continue
 
-        # 第二遍：按 YAML 原始顺序加载所有模型
-        for model_data in data["models"]:
-            try:
-                config = ModelConfig(model_data)
-                if config.base_model is None:
-                    # 基础模型直接添加
-                    self.models[config.model_id] = config
-                    logger.info(f"Loaded base model: {config.model_id}")
-                else:
-                    # 继承模型：先继承配置，再添加
-                    base = base_models.get(config.base_model)
-                    if base:
-                        config.inherit_from_base(base)
-                        logger.info(f"Loaded inherited model: {config.model_id} (base: {config.base_model})")
-                    else:
-                        logger.warning(f"Base model '{config.base_model}' not found for '{config.model_id}'")
-                    self.models[config.model_id] = config
-            except KeyError as e:
-                logger.warning(f"Failed to load model: missing field {e}")
-                continue
-
         logger.info(f"Total models loaded: {len(self.models)}")
 
-    def get_model(self, model_id: str) -> ModelConfig:
-        """根据模型 ID 获取模型配置
+    def get_model(self, model_name: str) -> ModelConfig:
+        """根据模型 Name 获取模型配置
 
         Args:
-            model_id: 模型 ID
+            model_name: 模型 Name
 
         Returns:
             ModelConfig 对象
@@ -637,14 +612,14 @@ class ModelRegistry:
         Raises:
             ValueError: 模型不存在
         """
-        if model_id not in self.models:
+        if model_name not in self.models:
             available = ", ".join(self.models.keys())
-            raise ValueError(f"Model '{model_id}' not found. Available models: {available}")
-        return self.models[model_id]
+            raise ValueError(f"Model '{model_name}' not found. Available models: {available}")
+        return self.models[model_name]
 
-    def has_model(self, model_id: str) -> bool:
+    def has_model(self, model_name: str) -> bool:
         """检查模型是否存在"""
-        return model_id in self.models
+        return model_name in self.models
 
     def get_all_models(self) -> List[ModelConfig]:
         """获取所有模型配置"""
