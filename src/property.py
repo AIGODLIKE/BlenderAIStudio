@@ -7,6 +7,7 @@ import bpy
 
 from .i18n import PROP_TCTX
 from .studio.account import Account
+from .studio.config.model_registry import ModelRegistry
 from .utils import get_custom_icon, time_diff_to_str, calc_appropriate_aspect_ratio, refresh_image_preview, get_pref
 
 
@@ -92,7 +93,7 @@ class History:
             nmi.name = mi.name
             nmi.image = mi.image
 
-    def draw_history(self, layout: bpy.types.UILayout,index):
+    def draw_history(self, layout: bpy.types.UILayout, index):
         box = layout.box()
 
         column = box.column()
@@ -195,6 +196,16 @@ class State:
                 if oi.preview:
                     box.template_icon(oi.preview.icon_id, scale=6)
                 box.operator("bas.view_image", text="View Origin Image")
+
+
+class ModelSelect:
+    _model_registry = ModelRegistry.get_instance()
+
+    def get_models_items(self, context):
+        print("_model_registry", self._model_registry.get_all_models())
+        return [("None", "None", "None"), ]
+
+    model: bpy.props.EnumProperty(items=get_models_items, name="Model")
 
 
 class SceneProperty(bpy.types.PropertyGroup, History, State):

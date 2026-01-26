@@ -4,6 +4,7 @@ from enum import Enum
 import bpy
 from bpy.app.translations import pgettext_iface as iface
 
+from .api_key import ApiKey
 from .online_update import OnlineUpdate
 from ..i18n import PROP_TCTX
 from ..online_update_addon import UpdateService
@@ -40,7 +41,7 @@ class AuthMode(Enum):
         return [item.value for item in list(cls)]
 
 
-class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate):
+class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey):
     bl_idname = base_name
     ui_pre_scale: bpy.props.FloatProperty(
         name="UI Pre Scale Factor",
@@ -68,10 +69,6 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate):
         name="Account Auth Mode",
         items=[(item.value, item.display_name, "") for item in AuthMode],
         **translation_context,
-    )
-    nano_banana_api: bpy.props.StringProperty(
-        name="Nano Banana API Key",
-        subtype="PASSWORD",
     )
     page_type: bpy.props.EnumProperty(
         name="Page Type",
@@ -105,12 +102,12 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate):
         layout.prop(self, "ui_pre_scale")
         layout.prop(self, "ui_offset")
         layout.prop(self, "output_cache_dir")
-        self.draw_api(layout.box())
+        self.draw_service(layout.box())
 
     def draw_online_update(self, layout):
         UpdateService.draw_update_info(layout)
 
-    def draw_api(self, layout):
+    def draw_service(self, layout):
         from ..studio.account import Account
 
         layout.label(text="Service")
@@ -127,9 +124,7 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate):
                 layout.label(text="Not logged in")
                 layout.operator("bas.login_account_auth")
         else:
-            layout.prop(self, "nano_banana_api")
-            if self.nano_banana_api == "":
-                layout.label(text="Please input your API Key")
+            self.draw_api(layout)
 
 
 def register():

@@ -255,6 +255,7 @@ translations = (
     ("Service", "服务", ""),
     ("Operating Mode", "运行模式", ""),
     ("Nano Banana API Key", "Nano Banana API密钥", ""),
+    ("Dream API Key", "Dream API密钥", ""),
     ("Start downloading updates", "开始下载更新", ""),
     ("Download updates", "下载更新", ""),
     ("Download finished", "下载完成", ""),
