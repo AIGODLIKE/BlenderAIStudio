@@ -3,6 +3,7 @@ import bpy
 from ..i18n import PANEL_TCTX
 from ..online_update_addon import UpdateService
 from ..utils import get_custom_icon, get_addon_version_str, get_pref
+from ..studio.account import AuthMode
 
 
 def check_is_draw_mask(context):
@@ -156,7 +157,7 @@ class AIStudioImagePanel(bpy.types.Panel):
 
         column = layout.box().column(align=True)
         
-        if pref.account_auth_mode == "Backup Mode":
+        if pref.account_auth_mode == AuthMode.ACCOUNT.value:
             points_consumption = bpy.app.translations.pgettext("(%s/use)") % ai.get_points_consumption(context)
             column.label(text=bpy.app.translations.pgettext("AI Edit") + points_consumption)
 
