@@ -259,13 +259,14 @@ class GeminiImageGenerateBuilder(RequestBuilder):
         """构建图像编辑 payload"""
         image_path = params.get("main_image", "")
         user_prompt = params.get("user_prompt", "")
-        ref_images_path = params.get("reference_images", [])
+        ref_images_path = params.get("reference_images", [""])
+        mask_image_path = ref_images_path[0] if ref_images_path else ""
         image_size = params.get("resolution", "1K")
         aspect_ratio = params.get("aspect_ratio", "1:1")
 
         prompt = self._build_edit_prompt(
             user_prompt,
-            has_mask=bool(ref_images_path),
+            has_mask=bool(mask_image_path),
             has_reference=bool(ref_images_path[1:]),
         )
         parts = [{"text": prompt}]
@@ -280,6 +281,9 @@ class GeminiImageGenerateBuilder(RequestBuilder):
         add_part(image_path)  # 添加主图
         # 遮罩默认在第一张参考图片位置
         for ref_path in ref_images_path:
+            # mask为空时过滤掉
+            if not ref_path:
+                continue
             add_part(ref_path)
 
         payload = {

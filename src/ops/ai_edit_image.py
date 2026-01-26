@@ -70,7 +70,7 @@ class ApplyAiEditImage(bpy.types.Operator):
 
         origin_image_file_path = save_image_to_temp_folder(image, temp_folder)
         reference_images_path = []
-        mask_image_path = None
+        mask_image_path = ""
 
         if not origin_image_file_path:
             self.report({"ERROR"}, "Can't save image")
@@ -109,16 +109,16 @@ class ApplyAiEditImage(bpy.types.Operator):
             credentials = {
                 "token": account.token,
                 "modelId": model_id,
-                "size": aspect_ratio,
+                "size": resolution,
             }
-        reference_images = [mask_image_path, *reference_images_path] if mask_image_path else reference_images_path
+        reference_images = [mask_image_path, *reference_images_path] # 优先传递mask图片(即使为空)
         params = {
             "main_image": origin_image_file_path,
             "prompt": oii.prompt,
             "reference_images": reference_images,
             "resolution": resolution,
             "aspect_ratio": aspect_ratio,
-            "__use_internal_prompt": True,
+            "__use_internal_prompt": False,
             "__action": "edit",
         }
         task = UniversalModelTask(
