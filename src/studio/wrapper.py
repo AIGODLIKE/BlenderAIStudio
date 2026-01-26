@@ -89,6 +89,52 @@ class WidgetDescriptor:
     def category(self):
         return self.widget_def.get("category", "")
 
+    @property
+    def visible_when(self):
+        """获取可见性条件配置
+        
+        Returns:
+            dict | None: 条件字典，如 {"input_source": "BlenderRender"}
+        """
+        return self.widget_def.get("visible_when", None)
+
+    def is_visible(self) -> bool:
+        """判断当前是否应该显示
+        
+        支持的条件格式：
+        1. 单个值：{"input_source": "BlenderRender"}
+        2. 多个值（OR）：{"input_source": ["BlenderRender", "LocalFile"]}
+        3. 多个条件（AND）：{"input_source": "BlenderRender", "enable_advanced": True}
+        
+        Returns:
+            bool: True 表示应该显示，False 表示应该隐藏
+        """
+        visible_when = self.visible_when
+        
+        # 没有条件，默认显示
+        if not visible_when:
+            return True
+        
+        # 检查所有条件是否满足（AND 逻辑）
+        for key, expected_value in visible_when.items():
+            try:
+                current_value = self.adapter.get_value(key)
+            except (KeyError, AttributeError):
+                # 依赖的参数不存在，默认隐藏
+                return False
+            
+            # 支持多个值（OR 逻辑）
+            if isinstance(expected_value, list):
+                if current_value not in expected_value:
+                    return False
+            else:
+                # 单个值（精确匹配）
+                if current_value != expected_value:
+                    return False
+        
+        # 所有条件都满足
+        return True
+
     def display_begin(self, wrapper, app: App):
         imgui.push_id(f"{self.title}_{self.widget_name}")
 
