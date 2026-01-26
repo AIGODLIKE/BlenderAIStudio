@@ -486,6 +486,10 @@ class ModelConfig:
         if not self.response_parser:
             self.response_parser = base_config.response_parser
 
+        # 继承输入处理器
+        if not self.input_processors:
+            self.input_processors = base_config.input_processors
+
         # 继承参数定义
         # 注意：只有当参数未定义（None）时才继承，空列表 [] 表示明确不需要参数
         if self.parameters is None:
