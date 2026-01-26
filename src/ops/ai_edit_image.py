@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import bpy
+import mimetypes
 
 from .. import logger
 from ..i18n.translations.zh_HANS import OPS_TCTX
@@ -96,28 +97,36 @@ class ApplyAiEditImage(bpy.types.Operator):
         print("mask_image_path", mask_image_path)
         print("aspect_ratio", aspect_ratio)
         print("resolution", resolution)
+        from ..studio.tasks import UniversalModelTask, TaskManager, TaskResult, TaskState, Task
         from ..studio.account import Account
-        from ..studio.tasks import GeminiImageEditTask, AccountGeminiImageEditTask, Task, TaskState, TaskResult, \
-            TaskManager
+
         from ..preferences import AuthMode
-
-        task_type_map = {
-            AuthMode.ACCOUNT.value: AccountGeminiImageEditTask,
-            AuthMode.API.value: GeminiImageEditTask,
-        }
+        model_id = "gemini-3-pro-image-preview"
         account = Account.get_instance()
-        TaskType = task_type_map[account.auth_mode]
-        api_key = pref.nano_banana_api if account.auth_mode == AuthMode.API.value else account.token
-
-        task = TaskType(
-            api_key=api_key,
-            image_path=origin_image_file_path,
-            edit_prompt=oii.prompt,
-            mask_path=mask_image_path,
-            reference_images_path=reference_images_path,
-            aspect_ratio=aspect_ratio,
-            resolution=resolution,
-            max_retries=1,
+        if account.auth_mode == AuthMode.API.value:
+            credentials = {"api_key": pref.nano_banana_api}
+        else:
+            credentials = {
+                "token": account.token,
+                "modelId": model_id,
+                "size": aspect_ratio,
+            }
+        reference_images = [mask_image_path, *reference_images_path] if mask_image_path else reference_images_path
+        params = {
+            "main_image": origin_image_file_path,
+            "prompt": oii.prompt,
+            "reference_images": reference_images,
+            "resolution": resolution,
+            "aspect_ratio": aspect_ratio,
+            "__use_internal_prompt": True,
+            "__action": "edit",
+        }
+        task = UniversalModelTask(
+            model_id=model_id,
+            auth_mode=account.auth_mode,
+            credentials=credentials,
+            params=params,
+            context=bpy.context.copy(),
         )
         oii.running_message = "Start..."
 
@@ -167,10 +176,15 @@ class ApplyAiEditImage(bpy.types.Operator):
                 ai_oii.origin_image = image
                 _task: Task = event_data["task"]
                 result: TaskResult = event_data["result"]
-                result_data: dict = result.data
+                results: list[tuple[str, str | bytes]] = result.data
+                if not results:
+                    logger.warning("No results")
+                    return
                 # 存储结果
-                save_file = Path(temp_folder).joinpath(f"{generate_image_name}_Output.png")
-                save_file.write_bytes(result_data["image_data"])
+                result_data = results[0]
+                ext = mimetypes.guess_extension(result_data[0])
+                save_file = Path(temp_folder).joinpath(f"{generate_image_name}_Output{ext}")
+                save_file.write_bytes(result_data[1])
                 text = f"任务完成: {_task.task_id} {save_file}"
                 ai_oii.running_message = "Running completed"
 

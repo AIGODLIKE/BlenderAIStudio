@@ -1,3 +1,4 @@
+import bpy
 import json
 import math
 import platform
@@ -5,18 +6,17 @@ import re
 import subprocess
 import time
 import webbrowser
+from bpy.app.translations import pgettext, pgettext_iface as iface
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from shutil import copyfile
 from traceback import print_exc
 
-import bpy
-from bpy.app.translations import pgettext, pgettext_iface as iface
-
 from .account import Account
-from ..preferences import AuthMode
-from .clients import StudioHistoryItem, StudioHistory, StudioClient
+from .clients import StudioHistoryItem, StudioHistory
+from .clients.universal_client import UniversalClient
+from .config.model_registry import ModelRegistry
 from .gui.app.animation import AnimationSystem, Easing, Tween, Sequence
 from .gui.app.app import AppHud
 from .gui.app.renderer import imgui
@@ -26,6 +26,7 @@ from .gui.widgets import CustomWidgets, with_child
 from .tasks import TaskState
 from .wrapper import BaseAdapter, WidgetDescriptor, DescriptorFactory
 from ..i18n import STUDIO_TCTX
+from ..preferences import AuthMode
 from ..logger import logger
 from ..timer import Timer
 from ..utils import get_addon_version, get_pref
@@ -99,7 +100,7 @@ class AppHelperDraw:
 
 
 class StudioImagesDescriptor(WidgetDescriptor):
-    ptype = "STUDIO_IMAGES"
+    ptype = "IMAGE_LIST"
 
     def display(self, wrapper, app):
         imgui.push_style_color(imgui.Col.FRAME_BG, self.col_bg)
@@ -312,7 +313,7 @@ class StudioHistoryViewer:
 
                 # 复制按钮
                 imgui.table_next_column()
-                prompt = item.metadata.get("prompt", "")
+                prompt = item.get_prompt()
                 if CustomWidgets.icon_label_button("prompt_copy", "", "CENTER", (bw, bh), isize=isize):
                     if prompt:
                         bpy.context.window_manager.clipboard = prompt
@@ -373,7 +374,7 @@ class StudioHistoryViewer:
                     imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
                     imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
                     bw, bh = imgui.get_content_region_avail()
-                    icon = TexturePool.get_tex_id(item.output_file)
+                    icon = TexturePool.get_tex_id(item.get_output_file_image())
                     tex = TexturePool.get_tex(icon)
                     tex_aspect_ratio = tex.width / tex.height
                     btn_aspect_ratio = bw / bh
@@ -388,7 +389,7 @@ class StudioHistoryViewer:
                         uvmin = (0, clip_uv_y)
                         uvmax = (1, 1 - clip_uv_y)
                     if imgui.button("##FakeButton", (bw, bh)):
-                        self.copy_image(item.output_file)
+                        self.copy_image(item.get_output_file_image())
                         self.app.push_info_message(_T("Image Copied!"))
                     pmin = imgui.get_item_rect_min()
                     pmax = imgui.get_item_rect_max()
@@ -399,7 +400,7 @@ class StudioHistoryViewer:
                         imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, (12, 12))
                         imgui.begin_tooltip()
                         tex = TexturePool.get_tex(icon)
-                        file_name = Path(item.output_file).stem
+                        file_name = Path(item.get_output_file_image()).stem
                         imgui.text(f"{file_name} [{tex.width}x{tex.height}]")
                         imgui.dummy((0, 0))
                         canvas_tex_width = self.app.screen_scale * tex.width
@@ -445,9 +446,9 @@ class StudioHistoryViewer:
                             style = imgui.get_style()
                             bh = h1 / 2 - style.cell_padding[1] * 2 - style.frame_padding[1]
                             imgui.table_next_column()
-                            if CustomWidgets.icon_label_button("image_edit", _T("Edit"), "CENTER", (0, bh)):
+                            if CustomWidgets.icon_label_button("image_edit", _T("Edit"), "LEFT", (0, bh)):
                                 print("编辑图片")
-                                image = item.output_file
+                                image = item.get_output_file_image()
                                 meta = item.stringify()
                                 context = bpy.context.copy()
                                 Timer.put((edit_image_with_meta_and_context, image, meta, context))
@@ -462,8 +463,8 @@ class StudioHistoryViewer:
                             style = imgui.get_style()
                             bh = h1 / 2 - style.cell_padding[1] * 2 - style.frame_padding[1]
                             imgui.table_next_column()
-                            if CustomWidgets.icon_label_button("image_export", _T("Export"), "CENTER", (0, bh)):
-                                self.export_image(item.output_file)
+                            if CustomWidgets.icon_label_button("image_export", _T("Save"), "LEFT", (0, bh)):
+                                self.export_image(item.get_output_file_image())
                             if imgui.is_item_hovered():
                                 title = _T("Export Image")
                                 tip = _T("Click to export the image to disk.")
@@ -478,20 +479,20 @@ class StudioHistoryViewer:
                 imgui.end_table()
             if item.show_detail:
                 imgui.text(_T("Prompt"))
-                prompt = item.metadata.get("prompt", "No prompt found")
+                prompt = item.get_prompt() or "No prompt found"
                 h = imgui.get_text_line_height()
 
                 # 提示词
                 mlt_flags = imgui.InputTextFlags.WORD_WRAP
                 text_box_height = h * 5 + imgui.get_style().frame_padding[1] * 2
                 _, _ = imgui.input_text_multiline("##prompt", prompt, (-1, text_box_height), mlt_flags)
-                icon = TexturePool.get_tex_id(item.output_file)
+                icon = TexturePool.get_tex_id(item.get_output_file_image())
                 tex = TexturePool.get_tex(icon)
                 tex_width = tex.width
                 tex_height = tex.height
 
                 # 图片信息
-                stem = Path(item.output_file).stem
+                stem = Path(item.get_output_file_image()).stem
                 icon = TexturePool.get_tex_id("roster")
                 imgui.dummy((0, 0))
                 imgui.image(icon, (h, h))
@@ -508,7 +509,7 @@ class StudioHistoryViewer:
                 imgui.dummy((0, 0))
                 imgui.image(icon, (h, h))
                 imgui.same_line()
-                imgui.text(_T("Generated by %s") % item.vendor)
+                imgui.text(_T("Generated by %s") % item.model)
 
                 icon = TexturePool.get_tex_id("image_info_timestamp")
                 imgui.dummy((0, 0))
@@ -559,19 +560,19 @@ class StudioWrapper:
     """
 
     def __init__(self):
-        self.studio_client: StudioClient = None
+        self.studio_client: UniversalClient = None
         self.display_name: str = ""
         self.widgets: dict[str, list[WidgetDescriptor]] = {}
         self.adapter: BaseAdapter = None
 
     @property
     def title(self):
-        return self.studio_client.VENDOR if self.studio_client else ""
+        return self.studio_client.model_name if self.studio_client else ""
 
-    def load(self, client: StudioClient):
+    def load(self, client: UniversalClient):
         self.studio_client = client
         self.adapter = client
-        self.display_name = client.VENDOR
+        self.display_name = client.model_name
         self.widgets.clear()
 
         for prop_name in client.get_properties():
@@ -1385,135 +1386,48 @@ class AIStudio(AppHud):
         super().__init__(*args, **kwargs)
         self.active_panel = AIStudioPanelType.GENERATION
         self.state = Account.get_instance()
-        self.clients = {c.VENDOR: c.get_instance() for c in StudioClient.__subclasses__()}
-        # self.fill_fake_clients()
+        self.client = UniversalClient()
         self.store_panel = StorePanel(self)
-        self.active_client = next(iter(self.clients)) if self.clients else ""
-        self.clients_wrappers: dict[str, StudioWrapper] = {}
+        self.client_wrapper = StudioWrapper()
         self.bubble_logger = BubbleLogger(self)
         self.urls = {
             "Disclaimers": "https://shimo.im/docs/1d3aMnalmBf5ep3g/",
             "Feedback": "https://shimo.im/docs/vVqRM5DejgiPwd3y/",
             "Community": "https://shimo.im/docs/8Nk6ed5w6xsEzRqL/",
         }
-        self.init_clients_wrapper()
+        # 加载模型注册表
+        self.model_registry = ModelRegistry.get_instance()
 
-    def fill_fake_clients(self):
-        fake_clients = [
-            "Nano Banana Pro (Gemini 3 Pro Image)",
-            "FLUX.2 [pro]",
-            "Seedream 4.0",
-            "FLUX.2 [flex]",
-            "Imagen 4 Ultra Preview 0606",
-            "Nano Banana (Gemini 2.5 Flash Image)",
-            "Imagen 4 Preview 0606",
-            "ImagineArt 1.5 Preview",
-            "FLUX.2 [dev]",
-            "GPT-5",
-            "Seedream 3.0",
-            "Wan 2.5 Preview",
-            "Vivago 2.1",
-            "Qwen Image Edit 2509",
-            "Kolors 2.1",
-            "Lucid Origin Ultra",
-            "FLUX.1 Kontext [max]",
-            "Vidu Q2",
-            "Lucid Origin Fast",
-            "Recraft V3",
-            "HunyuanImage 3.0 (Fal)",
-            "Vivago 2.0",
-            "Reve V1",
-            "GPT Image 1 (high)",
-            "FLUX.1.1 [pro] Ultra",
-            "Imagen 3 (v002)",
-            "Ideogram 3.0",
-            "Reve Image (Halfmoon)",
-            "Dreamina 3.1",
-            "FLUX.1 Kontext [pro]",
-            "FLUX.1.1 [pro]",
-            "Imagen 4 Fast Preview 0606",
-            "SRPO",
-            "SeedEdit 3.0",
-            "HiDream-I1-Dev",
-            "HunyuanImage 2.1",
-            "FLUX.1 [pro]",
-            "GPT Image 1 Mini (medium)",
-            "Qwen-Image",
-            "Image-01",
-            "HiDream-I1-Fast",
-            "FIBO",
-            "Midjourney v7 Alpha",
-            "Midjourney v6.1",
-            "Ideogram v2",
-            "FLUX.1 [dev]",
-            "Midjourney v6",
-            "Luma Photon",
-            "Ideogram v2 Turbo",
-            "Stable Diffusion 3.5 Large Turbo",
-            "Stable Diffusion 3.5 Large",
-            "Phoenix 1.0 Ultra",
-            "Firefly Image 5 Preview",
-            "Ideogram v1",
-            "Infinity 8B",
-            "Krea 1",
-            "Stable Diffusion 3 Large",
-            "FLUX.1 Krea [dev]",
-            "MAI Image 1",
-            "Ideogram v2a",
-            "FLUX.1 Kontext [dev]",
-            "Ideogram v2a Turbo",
-            "Firefly Image 4",
-            "FLUX.1 [schnell]",
-            "Playground v3 (beta)",
-            "HiDream-E1.1",
-            "Phoenix 0.9 Ultra",
-            "Runway Gen-4 Image",
-            "Phoenix 1.0 Fast",
-            "Gemini 2.0 Flash Preview",
-            "Recraft 20B",
-            "Luma Photon Flash",
-            "Gemini 2.0 Flash Experimental",
-            "Playground v2.5",
-            "Lumina Image v2",
-            "DALLE 3 HD",
-            "Firefly Image 3",
-            "step1x-edit-v1p2-preview",
-            "Grok 2",
-            "Stable Diffusion 3.5 Medium",
-            "DALLE 3",
-            "Bagel",
-            "Stable Diffusion 3 Medium",
-            "Bria 3.2",
-            "Amazon Titan G1 v2 (Standard)",
-            "Sana Sprint 1.6B",
-            "OmniGen V2",
-            "Stable Diffusion 3 Large Turbo",
-            "Stable Diffusion 1.6",
-            "Amazon Titan G1 (Standard)",
-            "SDXL Lightning",
-            "Step1X-Edit",
-            "Stable Diffusion XL 1.0",
-            "HiDream-E1-Full",
-            "DALLE 2",
-            "Stable Diffusion 2.1",
-            "Janus Pro",
-            "Stable Diffusion 1.5",
-        ]
-        for fc in fake_clients:
-            self.clients[fc] = StudioClient()
+        # 初始化 active_client 为默认模型 ID
+        # 获取第一个可用的模型
+        available_models = self.get_available_models()
+        if available_models:
+            self.active_client = available_models[0][0]  # 使用 model_id
+            # 同步 Client 的 current_model_id
+            self.client.current_model_id = self.active_client
+        else:
+            self.active_client = ""
 
-    def init_clients_wrapper(self):
-        for cname, client in self.clients.items():
-            wrapper = StudioWrapper()
-            wrapper.load(client)
-            self.clients_wrappers[cname] = wrapper
+    def get_available_models(self) -> list[tuple[str, str]]:
+        """获取当前认证模式下可用的模型列表
 
-    def get_active_client(self) -> StudioClient:
-        return self.clients.get(self.active_client, StudioClient())
+        Returns:
+            元组列表，每个元组为 (model_id, display_name)
+            例如: [("gemini-3-pro-image-preview", "google/NanoBananaPro"), ...]
+        """
+        current_auth_mode = self.state.auth_mode
+
+        # 从注册表获取支持当前认证模式的模型
+        models = self.model_registry.list_models(
+            auth_mode=current_auth_mode,
+            category="IMAGE_GENERATION",  # 目前只显示图像生成模型
+        )
+
+        result = [(model.model_id, model.model_name) for model in models]
+        return result
 
     def calc_active_client_price(self, price_table: dict) -> int | None:
-        client = self.get_active_client()
-        return client.calc_price(price_table)
+        return self.client.calc_price(price_table)
 
     def push_error_message(self, message: str):
         translated_msg = pgettext(message)
@@ -1662,8 +1576,7 @@ class AIStudio(AppHud):
             get_pref().set_ui_offset(offset)
 
     def draw_and_update_error_log(self):
-        active_client = self.get_active_client()
-        for error in active_client.take_errors():
+        for error in self.client.take_errors():
             self.push_error_message(str(error))
         for error in self.state.take_errors():
             self.push_error_message(str(error))
@@ -1747,17 +1660,23 @@ class AIStudio(AppHud):
             gen_btn_height = 79
             imgui.push_style_color(imgui.Col.FRAME_BG, (48 / 255, 48 / 255, 48 / 255, 1))
             with with_child("Outer", (0, -(gen_btn_height + item_spacing[1])), flags):
-                wrapper = self.clients_wrappers.get(self.active_client, StudioWrapper())
+                wrapper = self.client_wrapper
+                wrapper.load(self.client)  # TODO: 性能改进
+
                 for widget in wrapper.get_widgets_by_category("Input"):
+                    if not widget.is_visible():
+                        continue
                     widget.col_bg = Const.WINDOW_BG
                     widget.col_widget = Const.FRAME_BG
                     widget.display_begin(widget, self)
                     widget.display(widget, self)
                     self.draw_wrapper_widget_spec(wrapper, widget)
                     widget.display_end(widget, self)
-                client = wrapper.studio_client
-                editor = StudioHistoryViewer(self, client.history)
-                editor.draw_first()
+
+                # 从 wrapper 获取 client，如果 wrapper 是默认的，则使用 self.client
+                if wrapper.studio_client is not None:
+                    editor = StudioHistoryViewer(self, wrapper.studio_client.history)
+                    editor.draw_first()
             imgui.pop_style_color()
 
             # 底部按钮
@@ -1766,8 +1685,7 @@ class AIStudio(AppHud):
                 imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, 15)
                 full_width = imgui.get_content_region_avail()[0]
                 self.font_manager.push_h1_font()
-                client = self.get_active_client()
-                status = client.query_status()
+                status = self.client.query_status()
                 # 按钮状态:
                 #   1. 无状态
                 #   2. 正在提交
@@ -1779,26 +1697,30 @@ class AIStudio(AppHud):
                 show_stop_btn = False
                 label = "  " + _T("Start")
                 if self.state.auth_mode == AuthMode.ACCOUNT.value:
-                    client = self.get_active_client()
-                    price_table = self.state.get_model_price_table(client.VENDOR)
+                    price_table = self.state.get_model_price_table(self.client.model_id)
                     price = self.calc_active_client_price(price_table)
                     if price is not None:
                         label += _T("(%s/use)") % price
-                if client.is_task_submitting:
+                if self.client.is_task_submitting:
                     label = "  " + _T("Task Submitting...")
                 if task_state == "running":
                     is_rendering = True
-                    elapsed_time = client.query_task_elapsed_time()
+                    elapsed_time = self.client.query_task_elapsed_time()
                     label = f"  {_T('Generating')}({elapsed_time:.1f})s"
                     rmin = imgui.get_cursor_screen_pos()
                     rmax = (rmin[0] + full_width, rmin[1] + gen_btn_height)
                     if imgui.is_mouse_hovering_rect(rmin, rmax):
                         label = "  " + _T("Stop AI Rendering")
                         show_stop_btn = True
-                if task_state == "rendering":
+                if task_state in {"preparing", "rendering"}:
                     is_rendering = True
                     elapsed_time = status.get("elapsed_time", 0)
                     label = f"  {_T('Rendering')}({elapsed_time:.1f})s"
+                    rmin = imgui.get_cursor_screen_pos()
+                    rmax = (rmin[0] + full_width, rmin[1] + gen_btn_height)
+                    if imgui.is_mouse_hovering_rect(rmin, rmax):
+                        label = "  " + _T("Stop AI Rendering")
+                        show_stop_btn = True
                 col_btn = Const.SLIDER_NORMAL
                 col_btn_hover = (77 / 255, 161 / 255, 255 / 255, 1)
                 col_btn_active = (26 / 255, 112 / 255, 208 / 255, 1)
@@ -1818,9 +1740,9 @@ class AIStudio(AppHud):
                 label_size = imgui.calc_text_size(label)
                 if imgui.button("##开始AI渲染", (full_width, gen_btn_height)):
                     if not is_rendering:
-                        client.new_generate_task(self.state)
+                        self.client.add_task(self.state)
                     elif show_stop_btn:
-                        client.cancel_generate_task()
+                        self.client.cancel_generate_task()
 
                 pmin = imgui.get_item_rect_min()
                 pmax = imgui.get_item_rect_max()
@@ -1864,20 +1786,40 @@ class AIStudio(AppHud):
             imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0)
             imgui.push_style_color(imgui.Col.FRAME_BG, Const.FRAME_BG)
             imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
-            items = list(self.clients)
+
+            # 获取当前认证模式下可用的模型列表
+            available_models = self.get_available_models()
+            current_display_name = ""
+            if available_models:
+                # 尝试找到当前 active_client 对应的 display_name
+                model_items = {model_id: display_name for model_id, display_name in available_models}
+                current_display_name = model_items.get(self.active_client)
+                # 如果没找到，选择第一个
+                if not current_display_name:
+                    self.active_client = available_models[0][0]
+                    current_display_name = available_models[0][1]
+                    self.client.current_model_id = self.active_client  # 通知 Client 切换模型
+            else:
+                # 没有可用模型
+                current_display_name = "No models available"
+
+            # 计算最大宽度
             max_item_width = 0
-            for item in items:
-                max_item_width = max(max_item_width, imgui.calc_text_size(item)[0])
+            for (_, display_name) in available_models:
+                max_item_width = max(max_item_width, imgui.calc_text_size(display_name)[0])
             max_item_width += 2 * imgui.get_style().frame_padding[0]
             aw = imgui.get_content_region_avail()[0]
             max_item_width = max(aw, max_item_width)
-            if imgui.begin_combo("##Item", self.active_client):
-                for item in items:
-                    is_selected = self.active_client == item
+
+            # 绘制下拉框
+            if imgui.begin_combo("##Item", current_display_name):
+                for model_id, display_name in available_models:
+                    is_selected = self.active_client == model_id
                     if is_selected:
                         imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
-                    if imgui.button(item, (max_item_width, 0)):
-                        self.active_client = item
+                    if imgui.button(display_name, (max_item_width, 0)):
+                        self.active_client = model_id
+                        self.client.current_model_id = model_id  # 通知 Client 切换模型
                         imgui.close_current_popup()
                     if is_selected:
                         imgui.pop_style_color()
@@ -2131,7 +2073,7 @@ class AIStudio(AppHud):
         imgui.pop_style_var(2)
 
     def draw_output_queue_button(self):
-        help_url = self.get_active_client().help_url
+        help_url = self.client.help_url
         if not help_url:
             return
         imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0.75)
@@ -2170,12 +2112,12 @@ class AIStudio(AppHud):
             imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
             items = AuthMode
             aw = imgui.get_content_region_avail()[0]
-            if imgui.begin_combo("##Item", _T(self.state.auth_mode)):
+            if imgui.begin_combo("##Item", _T(AuthMode(self.state.auth_mode).display_name)):
                 for item in items:
                     is_selected = self.state.auth_mode == item.value
                     if is_selected:
                         imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
-                    if imgui.button(_T(item.value), (aw, 0)):
+                    if imgui.button(_T(item.display_name), (aw, 0)):
                         self.state.auth_mode = item.value
                         imgui.close_current_popup()
                     if is_selected:
@@ -2200,7 +2142,9 @@ class AIStudio(AppHud):
         imgui.pop_style_color(3)
         flags = imgui.ChildFlags.FRAME_STYLE | imgui.ChildFlags.AUTO_RESIZE_Y
         with with_child("Outer", (0, 0), flags):
-            for wrapper in self.clients_wrappers.values():
+            wrapper = self.client_wrapper
+            wrapper.load(self.client)  # TODO: 性能改进
+            for wrapper in [wrapper]:
                 widgets = wrapper.get_widgets_by_category("Settings")
                 if not widgets:
                     continue
@@ -2230,6 +2174,10 @@ class AIStudio(AppHud):
 
                     imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, imgui.get_style().frame_rounding * 0.5)
                     for widget in widgets:
+                        # ✅ 添加可见性判断
+                        if not widget.is_visible():
+                            continue
+
                         widget.col_bg = Const.WINDOW_BG
                         widget.col_widget = Const.WINDOW_BG
                         widget.display_begin(widget, self)
