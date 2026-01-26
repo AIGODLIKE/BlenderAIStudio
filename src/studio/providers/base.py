@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Tuple
+from typing import Dict, Any
 
 
 class BaseProvider(ABC):
@@ -7,5 +7,5 @@ class BaseProvider(ABC):
         pass
 
     @abstractmethod
-    def generate_image(self, prompt, **kwargs) -> Tuple[bytes, str]:
+    def execute(self, params: Dict[str, Any]) -> Any:
         raise NotImplementedError
