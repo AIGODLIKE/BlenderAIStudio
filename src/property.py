@@ -27,7 +27,7 @@ class History:
     generated_image: bpy.props.PointerProperty(type=bpy.types.Image, name="生成的图片")
 
     generation_time: bpy.props.StringProperty()
-    generation_vendor: bpy.props.StringProperty()
+    generation_model: bpy.props.StringProperty()
     history: bpy.props.CollectionProperty(type=SceneProperty)
 
     start_time: bpy.props.IntProperty(name="开始时间")
@@ -50,7 +50,7 @@ class History:
 
         nh = self.history.add()
         nh.generation_time = nh.name = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        nh.generation_vendor = "NanoBanana生成"
+        nh.generation_model = "NanoBanana生成"
         nh.origin_image = oi
         nh.generated_image = gi
         nh.prompt = self.prompt
@@ -114,7 +114,7 @@ class History:
             row = column.row()
             w, h = gi.size
             row.label(text=f"{w}*{h} px(72dpi)", icon_value=get_custom_icon("image_info_resolution"))
-        column.label(text=self.generation_vendor, icon_value=get_custom_icon("image_info_vendor"))
+        column.label(text=self.generation_model, icon_value=get_custom_icon("image_info_vendor"))
         column.label(text=self.generation_time, icon_value=get_custom_icon("image_info_timestamp"))
         text = bpy.app.translations.pgettext("%s reference images") % len(self.mask_images)
         column.label(text=text)
@@ -139,7 +139,7 @@ class History:
         r = bpy.app.translations.pgettext("%s reference images") % len(self.mask_images)
         m = bpy.app.translations.pgettext("%s mask images") % len(self.reference_images)
         prompt = bpy.app.translations.pgettext("Prompt", msgctxt=PROP_TCTX)
-        return (f"{self.generation_vendor}\n" +
+        return (f"{self.generation_model}\n" +
                 f"{self.generation_time}\n" +
                 f"{r}\n" +
                 f"{m}\n" +
