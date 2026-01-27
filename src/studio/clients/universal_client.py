@@ -418,7 +418,7 @@ class UniversalClient(StudioClient):
 
 
 def upload_image(client: StudioClient, prop: str):
-    def upload_image_callback(files_path: [str]):
+    def upload_image_callback(files_path: list[str]):
         # TODO 参考图片数量有限制,需要处理
         l = client.get_value(prop)
         for file_path in files_path:
@@ -433,7 +433,7 @@ def upload_image(client: StudioClient, prop: str):
 
 
 def replace_image(client: StudioClient, prop: str, index: int = -1):
-    def replace_image_callback(files_path: [str]):
+    def replace_image_callback(files_path: list[str]):
         if len(files_path) >= 1:
             file_path = files_path[0]
             try:
