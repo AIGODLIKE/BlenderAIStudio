@@ -2,8 +2,8 @@ import bpy
 
 from ..i18n import PANEL_TCTX
 from ..online_update_addon import UpdateService
-from ..utils import get_custom_icon, get_addon_version_str, get_pref
 from ..studio.account import AuthMode
+from ..utils import get_custom_icon, get_addon_version_str, get_pref
 
 
 def check_is_draw_mask(context):
@@ -43,7 +43,6 @@ class AIStudioImagePanel(bpy.types.Panel):
 
         self.draw_image_info(context, layout)
         is_not_run = ai.running_state != "running"
-        w, h = ai.get_out_resolution_px_by_aspect_ratio_and_resolution(context)
         column = layout.column(align=True)
         column.enabled = is_not_run  # 在运行中时不允许修改
         bb = column.box()
@@ -53,11 +52,9 @@ class AIStudioImagePanel(bpy.types.Panel):
         row = bb.row(align=True)
         row.label(text="", icon_value=get_custom_icon("aspect_ratio"))
         row.prop(ai, "aspect_ratio", text="")
-        # bb.label(text="Out Resolution:")
         row = bb.row(align=True)
         row.label(text="", icon_value=get_custom_icon("resolution"))
         row.prop(ai, "resolution", text="")
-        bb.label(text=bpy.app.translations.pgettext_iface("Out Resolution(px):") + f"{w} x {h}")
         bb = column.box()
         bb.label(text="AI Edit Prompt", icon="TEXT")
         row = bb.row(align=True)
@@ -159,7 +156,7 @@ class AIStudioImagePanel(bpy.types.Panel):
         pref = get_pref()
 
         column = layout.box().column(align=True)
-        
+
         if pref.account_auth_mode == AuthMode.ACCOUNT.value:
             points_consumption = bpy.app.translations.pgettext("(%s/use)") % ai.get_points_consumption(context)
             column.label(text=bpy.app.translations.pgettext("AI Edit") + points_consumption)

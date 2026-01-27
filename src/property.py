@@ -198,12 +198,11 @@ class State:
                 box.operator("bas.view_image", text="View Origin Image")
 
 
-class ModelSelect:
+class DynamicEnumeration:
     _model_registry = ModelRegistry.get_instance()
 
     def get_models_items(self, context):
         try:
-            print("_model_registry", self._model_registry.get_all_models())
             models = self._model_registry.get_all_models()
             return [(model.model_id, model.model_name, model.provider) for model in models]
         except Exception as e:
@@ -212,8 +211,61 @@ class ModelSelect:
 
     model: bpy.props.EnumProperty(items=get_models_items, name="Model")
 
+    def get_size_config_items(self, context) -> list[(str, str, str),]:
+        """
+        [
+            ("AUTO", "Auto", "Auto"),
+            ("1:1", "1:1", "1:1"),
+            ("2:3", "2:3", "2:3"),
+            ("3:2", "3:2", "3:2"),
+            ("3:4", "3:4", "3:4"),
+            ("4:3", "4:3", "4:3"),
+            ("4:5", "4:5", "4:5"),
+            ("5:4", "5:4", "5:4"),
+            ("9:16", "9:16", "9:16"),
+            ("16:9", "16:9", "16:9"),
+            ("21:9", "21:9", "21:9"),
+        ]
+        """
+        try:
+            model = self._model_registry.get_model(self.model)
+            if size_config := model.get_parameter("size_config"):
+                if options := size_config.get("options", None):
+                    return [(i, i, i) for i in options]
+        except Exception as e:
+            print(e)
+        return [("None", "None", "None"), ]
 
-class SceneProperty(bpy.types.PropertyGroup, History, State, ModelSelect):
+    def get_resolution_items(self, context) -> list[(str, str, str),]:
+        """
+        [
+            ("AUTO", "Auto", "Keep original resolution"),
+            ("1K", "1k", "1k resolution"),
+            ("2K", "2k", "2k resolution"),
+            ("4K", "4k", "4k resolution"),
+        ]
+        """
+        try:
+            model = self._model_registry.get_model(self.model)
+            if res := model.get_parameter("resolution"):
+                if options := res.get("options", None):
+                    return [(i, i, i) for i in options]
+        except Exception as e:
+            print(e)
+        return [("None", "None", "None"), ]
+
+    resolution: bpy.props.EnumProperty(
+        name="Out Resolution",
+        items=get_size_config_items
+    )
+
+    aspect_ratio: bpy.props.EnumProperty(
+        name="Aspect Ratio",
+        items=get_resolution_items
+    )
+
+
+class SceneProperty(bpy.types.PropertyGroup, History, State, DynamicEnumeration):
     """
     生成的属性
     """
@@ -228,34 +280,6 @@ class SceneProperty(bpy.types.PropertyGroup, History, State, ModelSelect):
     prompt: bpy.props.StringProperty(
         name="Prompt",
         maxlen=1000,
-    )
-
-    resolution: bpy.props.EnumProperty(
-        name="Out Resolution",
-        items=[
-            ("AUTO", "Auto", "Keep original resolution"),
-            ("1K", "1k", "1k resolution"),
-            ("2K", "2k", "2k resolution"),
-            ("4K", "4k", "4k resolution"),
-        ],
-        default="AUTO",
-    )
-
-    aspect_ratio: bpy.props.EnumProperty(
-        name="Aspect Ratio",
-        items=[
-            ("AUTO", "Auto", "Auto"),
-            ("1:1", "1:1", "1:1"),
-            ("2:3", "2:3", "2:3"),
-            ("3:2", "3:2", "3:2"),
-            ("3:4", "3:4", "3:4"),
-            ("4:3", "4:3", "4:3"),
-            ("4:5", "4:5", "4:5"),
-            ("5:4", "5:4", "5:4"),
-            ("9:16", "9:16", "9:16"),
-            ("16:9", "16:9", "16:9"),
-            ("21:9", "21:9", "21:9"),
-        ]
     )
 
     def get_out_aspect_ratio(self, context):
@@ -275,6 +299,11 @@ class SceneProperty(bpy.types.PropertyGroup, History, State, ModelSelect):
     def get_out_resolution_px_by_aspect_ratio_and_resolution(self, context) -> tuple[int, int]:
         """
         获取输出分辨率(px) 从 图像比例 及分辨率(1k,2k,4k)
+        仅包含gemini的内容
+        多个模型时此选项已不可用
+
+        # w, h = ai.get_out_resolution_px_by_aspect_ratio_and_resolution(context)
+        # bb.label(text=bpy.app.translations.pgettext_iface("Out Resolution(px):") + f"{w} x {h}")
         1:1	1024x1024	1210	2048x2048	1210	4096x4096	2000
         2:3	848x1264	1210	1696x2528	1210	3392x5056	2000
         3:2	1264x848	1210	2528x1696	1210	5056x3392	2000
@@ -381,17 +410,6 @@ class SceneProperty(bpy.types.PropertyGroup, History, State, ModelSelect):
         if not self.expand_ui:
             return
 
-        """
-        # row.template_ID(item, "icons", open="icons.open")
-        # row.template_ID_preview(item, "icons", hide_buttons=True)
-        # row.template_preview(item.icons)
-        # row.template_icon_view(item, "icons")
-        # row.template_image(item, "icons")
-        # column.label(text=f"{context.region.width}")
-        ly.template_search_preview(self, "reference_image", bpy.data, "images")
-        for i in bpy.context.scene.blender_ai_studio_property.mask_images:print(i)
-        """
-
         column = box.column()
         is_small_width = context.region.width < 200
         if alert:
@@ -399,7 +417,6 @@ class SceneProperty(bpy.types.PropertyGroup, History, State, ModelSelect):
             col.alert = True
             col.label(text="Too many reference images, please remove some")
             col.label(text="Up to 12 images can be selected")
-        # column.prop(self, "scale")
         for i, item in enumerate(self.reference_images):
             if item.image:
                 if is_small_width:
@@ -410,20 +427,14 @@ class SceneProperty(bpy.types.PropertyGroup, History, State, ModelSelect):
 
                 if is_small_width:
                     lay = ly.row(align=True)
-                    # lay.scale_x = self.scale
                 else:
                     lay = ly.column(align=True)
-                    # lay.scale_y = self.scale
                 lay.operator("bas.remove_reference_image", text="", icon="X",
-                             # emboss=False
                              ).index = i
                 lay.operator("bas.replace_reference_image", text="", icon="FILE_REFRESH",
-                             # emboss=False
                              ).index = i
         if rl == 0:
             box.label(text="Click top right ops to reference")
-
-    scale: bpy.props.FloatProperty(default=2.75)
 
     def get_points_consumption(self, context):
         """
