@@ -672,7 +672,7 @@ class ModelRegistry:
         self._pricing_table = pricing_table
         logger.info(f"Pricing data updated: {len(self._pricing_table)} models")
 
-    def calc_price(self, model_name: dict, pricing_strategy: str, resolution) -> int | None:
+    def calc_price(self, model_name: str, pricing_strategy: str, resolution) -> int | None:
         price_entry: dict = self._pricing_table.get(model_name, {})
         price_info: dict = price_entry.get(pricing_strategy, {})
         all_prices: dict = price_info.get("price", {})
