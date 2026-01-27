@@ -119,6 +119,8 @@ class GeminiImageParser(ResponseParser):
         elif code != 200:
             try:
                 error_info: dict = resp.json().get("error", {})
+                if isinstance(error_info, str):
+                    raise GeminiAPIError(error_info)
                 _code = error_info.get("code")
                 if "message" in error_info:
                     error_message = error_info.get("message", "Unknown error")
