@@ -10,6 +10,7 @@ from typing import Self
 import bpy
 from bpy.app.translations import pgettext as _T
 
+from .config.model_registry import ModelRegistry
 from .exception import (
     APIRequestException,
     AuthFailedException,
@@ -82,6 +83,14 @@ class Account:
     @auth_mode.setter
     def auth_mode(self, mode: str):
         get_pref().set_account_auth_mode(mode)
+
+    @property
+    def pricing_strategy(self) -> str:
+        return get_pref().account_pricing_strategy
+
+    @pricing_strategy.setter
+    def pricing_strategy(self, strategy: str):
+        get_pref().set_account_pricing_strategy(strategy)
 
     def take_errors(self) -> list:
         errors = self.error_messages[:]
@@ -309,25 +318,28 @@ class Account:
                     return
                 data: dict = resp_json.get("data", {})
                 self.price_table = data
+                data = {
+                    "NanoBananaPro": {
+                        "bestSpeed": {
+                            "modelId": "gemini-3-pro-image-preview",
+                            "price": {"1K": 36, "2K": 36, "4K": 63},
+                        },
+                        "bestBalance": {
+                            "modelId": "gemini-3-pro-image-preview-SO",
+                            "price": {"1K": 18, "2K": 18, "4K": 32},
+                        },
+                    }
+                }
+                ModelRegistry.get_instance().update_pricing_from_backend(data)
+                data = {
+                    "gemini-3-pro-image-preview": "NanoBananaPro",
+                    "gemini-3-pro-image-preview-SO": "NanoBananaPro",
+                }
+                ModelRegistry.get_instance().update_id_to_name(AuthMode.ACCOUNT.value, data)
             else:
                 self.push_error(_T("Price fetch failed") + ": " + resp.text)
 
         Thread(target=_fetch_credits_price, daemon=True).start()
-
-    def get_model_price_table(self, provider: str = "") -> dict:
-        if not self.price_table:
-            return {}
-        # TODO 实现价格表获取
-        return self.price_table[0]
-
-    def calc_model_price(self, model: str = "") -> dict:
-        if not self.price_table:
-            return {}
-
-        for item in self.price_table:
-            if item.get("modelId") == model:
-                return item
-        return {}
 
     def fetch_credits(self):
         def _fetch_credits():

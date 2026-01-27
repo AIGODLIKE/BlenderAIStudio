@@ -33,7 +33,7 @@ class UniversalProvider(BaseProvider):
             ValueError: 如果认证模式不支持或 Builder/Parser 未注册
         """
         if not model_config.supports_auth_mode(auth_mode):
-            raise ValueError(f"Model '{model_config.model_id}' not support auth mode '{auth_mode}'. ")
+            raise ValueError(f"Model '{model_config.model_name}' not support auth mode '{auth_mode}'. ")
 
         self.model_config = model_config
         self.auth_mode = auth_mode

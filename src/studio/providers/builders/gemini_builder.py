@@ -65,8 +65,8 @@ class GeminiImageGenerateBuilder(RequestBuilder):
 
         # 验证功能支持
         if not model_config.supports_action(action):
-            error_msg: str = _T("Action '{action}' not supported for model '{model_id}'.")
-            error_msg = error_msg.format(action=action, model_id=model_config.model_id)
+            error_msg: str = _T("Action '{action}' not supported for model '{model_name}'.")
+            error_msg = error_msg.format(action=action, model_name=model_config.model_name)
             raise ValueError(error_msg)
 
         # 2. 构建 URL
@@ -190,8 +190,7 @@ class GeminiImageGenerateBuilder(RequestBuilder):
                 for cred_key, cred_value in credentials.items():
                     value = value.replace(f"{{{cred_key}}}", cred_value)
 
-                value = value.replace("{modelId}", model_config.model_id)
-
+                # 特殊占位符替换
                 if "{size}" in value:
                     value = value.replace("{size}", params.get("resolution", "1K"))
 

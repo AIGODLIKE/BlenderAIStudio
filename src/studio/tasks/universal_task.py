@@ -36,7 +36,8 @@ class UniversalModelTask(Task):
             ValueError: 如果模型不存在或参数无效
         """
         # 获取模型配置
-        self.model_config = ModelRegistry.get_instance().get_model(model_id)
+        self.model_config = ModelRegistry.get_instance().get_model_by_id(auth_mode, model_id)
+        self.model_id = model_id
 
         # 设置任务名称
         task_name = task_name or f"{self.model_config.model_name}"
@@ -267,7 +268,7 @@ class UniversalModelTask(Task):
 
             # 创建元数据
             metadata = {
-                "model_id": self.model_config.model_id,
+                "model_id": self.model_id,
                 "model_name": self.model_config.model_name,
                 "category": self.model_config.category,
                 "auth_mode": self.auth_mode,

@@ -36,6 +36,7 @@ class UniversalClient(StudioClient):
 
     # 默认使用的模型 ID
     DEFAULT_MODEL_ID = "gemini-3-pro-image-preview"
+    DEFAULT_MODEL_NAME = "NanoBananaPro"
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -47,7 +48,7 @@ class UniversalClient(StudioClient):
         self._model_config: ModelConfig = None
 
         # 当前选择的模型 ID
-        self._current_model_id = self.DEFAULT_MODEL_ID
+        self._current_model_name = self.DEFAULT_MODEL_NAME
 
         # 动态加载模型配置
         self._model_registry = ModelRegistry.get_instance()
@@ -84,18 +85,22 @@ class UniversalClient(StudioClient):
 
     @property
     def model_id(self) -> str:
-        return self._model_config.model_id if self._model_config else self._current_model_id
+        account = Account.get_instance()
+        if account.auth_mode == AuthMode.API.value:
+            return self._model_config.model_id
+        strategy = account.pricing_strategy
+        return self._model_registry.resolve_submit_id(self.model_name, strategy)
 
     @property
-    def current_model_id(self) -> str:
+    def current_model_name(self) -> str:
         """当前选择的模型 ID"""
-        return self._current_model_id
+        return self._current_model_name
 
-    @current_model_id.setter
-    def current_model_id(self, model_id: str):
+    @current_model_name.setter
+    def current_model_name(self, model_name: str):
         """切换模型"""
-        if model_id != self._current_model_id:
-            self._current_model_id = model_id
+        if model_name != self._current_model_name:
+            self._current_model_name = model_name
             self._update_model_config()
 
     def get_value(self, prop: str):
@@ -111,11 +116,11 @@ class UniversalClient(StudioClient):
         self._get_model_params()[prop] = value
 
     def _get_model_params(self) -> Dict[str, Any]:
-        self._ensure_default_params(self._current_model_id)
-        return self._model_params[self._current_model_id]
+        self._ensure_default_params(self._current_model_name)
+        return self._model_params[self._current_model_name]
 
-    def _ensure_default_params(self, model_id: str):
-        self._model_params.setdefault(model_id, self._default_params())
+    def _ensure_default_params(self, model_name: str):
+        self._model_params.setdefault(model_name, self._default_params())
 
     def _default_params(self):
         params = {}
@@ -146,7 +151,7 @@ class UniversalClient(StudioClient):
     def _update_model_config(self):
         """更新当前模型配置"""
         try:
-            self._model_config = self._model_registry.get_model(self._current_model_id)
+            self._model_config = self._model_registry.get_model(self._current_model_name)
 
             pref = get_pref()
             account = Account.get_instance()
@@ -170,7 +175,7 @@ class UniversalClient(StudioClient):
         if not self._model_config:
             logger.warning("模型配置未加载")
         elif not self._model_config.parameters:
-            logger.warning(f"模型 {self._current_model_id} 没有参数定义")
+            logger.warning(f"模型 {self._current_model_name} 没有参数定义")
         else:
             params = self._model_config.parameters
 
@@ -235,13 +240,12 @@ class UniversalClient(StudioClient):
         elif action == "delete_image":
             delete_image(self, prop, index)
 
-    def calc_price(self, price_table: dict) -> int | None:
-        """计算价格，优先使用 ModelConfig 中的价格"""
-        if not self._model_config:
-            return None
-        # 从模型配置获取价格
+    def calc_price(self) -> int | None:
+        """计算价格，Account 模式使用动态价格，API 模式使用静态配置"""
         resolution = self.get_value("resolution") or "1K"
-        return self._model_config.get_price(resolution)
+        strategy = Account.get_instance().pricing_strategy
+        price = self._model_registry.calc_price(self.model_name, strategy, resolution)
+        return price
 
     def add_task(self, account: "Account"):
         # 预校验
@@ -252,18 +256,19 @@ class UniversalClient(StudioClient):
         params = self._build_raw_params()
 
         # 获取凭证
+        model_id = self.model_id
         if account.auth_mode == AuthMode.API.value:
             credentials = {"api_key": self.api_key}
         else:
             resolution = self.get_value("resolution") or "1K"
             credentials = {
                 "token": account.token,
-                "modelId": self._current_model_id,
+                "modelId": model_id,
                 "size": resolution,
             }
 
         task = UniversalModelTask(
-            model_id=self._current_model_id,
+            model_id=model_id,
             auth_mode=account.auth_mode,
             credentials=credentials,
             params=params,
@@ -393,7 +398,7 @@ class UniversalClient(StudioClient):
 
         # 检查认证模式支持
         if not self._model_config.supports_auth_mode(account.auth_mode):
-            self.push_error(_T(f"Model {self._current_model_id} does not support {account.auth_mode} mode"))
+            self.push_error(_T(f"Model {self._current_model_name} does not support {account.auth_mode} mode"))
             return False
 
         # 根据认证模式检查凭证

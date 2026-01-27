@@ -49,7 +49,7 @@ error_translations = (
     ("Render Canceled", "渲染取消", None),
     ("Not logged in", "未登录", None),
     ("Please input your API Key", "请输入您的API密钥", None),
-    ("Action '{action}' not supported for model '{model_id}'.", "模型 '{model_id}' 不支持操作 '{action}'。", None),
+    ("Action '{action}' not supported for model '{model_name}'.", "模型 '{model_name}' 不支持操作 '{action}'。", None),
     ("Unknown action: '{action}'.", "未知操作: '{action}'。", None),
     ("Builder '{name}' not registered.", "构建器 '{name}' 未注册。", None),
 )

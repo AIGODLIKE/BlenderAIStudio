@@ -356,7 +356,6 @@ class ModelConfig:
         self.parameters: Optional[List[Dict[str, Any]]] = config_dict.get("parameters")
         self.request_builder: Optional[str] = config_dict.get("request_builder")
         self.response_parser: Optional[str] = config_dict.get("response_parser")
-        self.price: Dict[str, int] = config_dict.get("price", {})
 
         self.actions: Dict[str, Dict[str, str]] = config_dict.get("actions", {})
         self.default_action: str = config_dict.get("default_action", "generate")
@@ -413,17 +412,6 @@ class ModelConfig:
             if param.get("name") == param_name:
                 return param
         return None
-
-    def get_price(self, resolution: str = "1K") -> int:
-        """获取指定分辨率的价格
-
-        Args:
-            resolution: 分辨率，如 "1K", "2K", "4K"
-
-        Returns:
-            价格（积分）
-        """
-        return self.price.get(resolution, 99999999)
 
     def supports_auth_mode(self, auth_mode: str) -> bool:
         """检查是否支持指定的认证模式"""
@@ -518,6 +506,7 @@ class ModelRegistry:
     def __init__(self):
         self.models: Dict[str, ModelConfig] = {}
         self._pricing_table: Dict[str, Dict[str, int]] = {}
+        self._id_to_name_by_auth_mode: Dict[str, Dict[str, str]] = {}
         self._load_model_config()
 
     @classmethod
@@ -570,11 +559,8 @@ class ModelRegistry:
     def _load_model_config(self):
         """从配置文件加载模型
 
-        加载策略：
-        1. 第一遍：收集所有基础模型到临时字典
-        2. 第二遍：按 YAML 定义顺序加载所有模型（保留原始顺序）
-           - 基础模型直接添加
-           - 继承模型从基础模型继承配置后添加
+        1. 加载配置文件
+        2. 更新id到name映射(根据auth_mode分级)
 
         Raises:
             FileNotFoundError: 配置文件不存在
@@ -598,6 +584,11 @@ class ModelRegistry:
                 logger.warning(f"Failed to parse base model: missing field {e}")
                 continue
 
+        # 加载id到name映射
+        for model in self.models.values():
+            for auth_mode in model.auth_modes:
+                self._update_id_to_name_one(auth_mode, model.model_id, model.model_name)
+
         logger.info(f"Total models loaded: {len(self.models)}")
 
     def get_model(self, model_name: str) -> ModelConfig:
@@ -616,6 +607,14 @@ class ModelRegistry:
             available = ", ".join(self.models.keys())
             raise ValueError(f"Model '{model_name}' not found. Available models: {available}")
         return self.models[model_name]
+
+    def get_model_by_id(self, auth_mode: str, model_id: str) -> ModelConfig:
+        model_name = self.resolve_model_name(auth_mode, model_id)
+        if not model_name:
+            error_msg = f"Model ID '{model_id}' not found."
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+        return self.get_model(model_name)
 
     def has_model(self, model_name: str) -> bool:
         """检查模型是否存在"""
@@ -657,3 +656,34 @@ class ModelRegistry:
 
             result.append(model)
         return result
+
+    def update_id_to_name(self, auth_mode: str, id_name_map: Dict[str, str]) -> None:
+        """更新 ID 到 Name 的映射"""
+        _id_name_map = self._id_to_name_by_auth_mode.setdefault(auth_mode, {})
+        _id_name_map.update(id_name_map)
+
+    def _update_id_to_name_one(self, auth_mode: str, model_id: str, model_name: str) -> None:
+        """更新单个 ID 到 Name 的映射"""
+        _id_name_map = self._id_to_name_by_auth_mode.setdefault(auth_mode, {})
+        _id_name_map[model_id] = model_name
+
+    def update_pricing_from_backend(self, pricing_table: Dict[str, Dict[str, int]]) -> None:
+        """更新动态定价表"""
+        self._pricing_table = pricing_table
+        logger.info(f"Pricing data updated: {len(self._pricing_table)} models")
+
+    def calc_price(self, model_name: dict, pricing_strategy: str, resolution) -> int | None:
+        price_entry: dict = self._pricing_table.get(model_name, {})
+        price_info: dict = price_entry.get(pricing_strategy, {})
+        all_prices: dict = price_info.get("price", {})
+        price = all_prices.get(resolution, 9999999)
+        return price
+
+    def resolve_submit_id(self, model_name: str, strategy: Optional[str] = None) -> str:
+        chosen_entry = self._pricing_table.get(model_name) or {}
+        print_table = chosen_entry.get(strategy, {})
+        submit_id = print_table.get("modelId")
+        return submit_id
+
+    def resolve_model_name(self, auth_mode: str, model_id: str) -> str:
+        return self._id_to_name_by_auth_mode.get(auth_mode, {}).get(model_id, "")

@@ -1252,12 +1252,12 @@ class RedeemPanel:
 
 class Bubble:
     def __init__(
-            self,
-            anim_system: AnimationSystem,
-            text: str,
-            pos: tuple[float, float] = (0, 0),
-            duration: float = 15,
-            icon: str = "account_warning",
+        self,
+        anim_system: AnimationSystem,
+        text: str,
+        pos: tuple[float, float] = (0, 0),
+        duration: float = 15,
+        icon: str = "account_warning",
     ) -> None:
         self.text = text
         self.icon = icon
@@ -1398,22 +1398,27 @@ class AIStudio(AppHud):
         # 加载模型注册表
         self.model_registry = ModelRegistry.get_instance()
 
-        # 初始化 active_client 为默认模型 ID
-        # 获取第一个可用的模型
-        available_models = self.get_available_models()
-        if available_models:
-            self.active_client = available_models[0][0]  # 使用 model_id
-            # 同步 Client 的 current_model_id
-            self.client.current_model_id = self.active_client
-        else:
-            self.active_client = ""
+        # 初始化 active_client 为默认模型 Name
+        self.active_client = ""
+        self.refresh_client()
 
-    def get_available_models(self) -> list[tuple[str, str]]:
+    def refresh_client(self):
+        available_models = self.get_available_models()
+        if not available_models:
+            self.active_client = ""
+            return
+        if self.active_client in available_models:
+            return
+
+        self.active_client = available_models[0]
+        self.client.current_model_name = self.active_client  # 通知 Client 切换模型
+
+    def get_available_models(self) -> list[str]:
         """获取当前认证模式下可用的模型列表
 
         Returns:
-            元组列表，每个元组为 (model_id, display_name)
-            例如: [("gemini-3-pro-image-preview", "google/NanoBananaPro"), ...]
+            model_name列表
+            例如: ["google/NanoBananaPro", ...]
         """
         current_auth_mode = self.state.auth_mode
 
@@ -1423,7 +1428,7 @@ class AIStudio(AppHud):
             category="IMAGE_GENERATION",  # 目前只显示图像生成模型
         )
 
-        result = [(model.model_id, model.model_name) for model in models]
+        result = [model.model_name for model in models]
         return result
 
     def calc_active_client_price(self, price_table: dict) -> int | None:
@@ -1697,8 +1702,7 @@ class AIStudio(AppHud):
                 show_stop_btn = False
                 label = "  " + _T("Start")
                 if self.state.auth_mode == AuthMode.ACCOUNT.value:
-                    price_table = self.state.get_model_price_table(self.client.model_id)
-                    price = self.calc_active_client_price(price_table)
+                    price = self.client.calc_price()
                     if price is not None:
                         label += _T("(%s/use)") % price
                 if self.client.is_task_submitting:
@@ -1788,38 +1792,26 @@ class AIStudio(AppHud):
             imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
 
             # 获取当前认证模式下可用的模型列表
+            self.refresh_client()
             available_models = self.get_available_models()
-            current_display_name = ""
-            if available_models:
-                # 尝试找到当前 active_client 对应的 display_name
-                model_items = {model_id: display_name for model_id, display_name in available_models}
-                current_display_name = model_items.get(self.active_client)
-                # 如果没找到，选择第一个
-                if not current_display_name:
-                    self.active_client = available_models[0][0]
-                    current_display_name = available_models[0][1]
-                    self.client.current_model_id = self.active_client  # 通知 Client 切换模型
-            else:
-                # 没有可用模型
-                current_display_name = "No models available"
 
             # 计算最大宽度
             max_item_width = 0
-            for (_, display_name) in available_models:
+            for display_name in available_models:
                 max_item_width = max(max_item_width, imgui.calc_text_size(display_name)[0])
             max_item_width += 2 * imgui.get_style().frame_padding[0]
             aw = imgui.get_content_region_avail()[0]
             max_item_width = max(aw, max_item_width)
 
             # 绘制下拉框
-            if imgui.begin_combo("##Item", current_display_name):
-                for model_id, display_name in available_models:
-                    is_selected = self.active_client == model_id
+            if imgui.begin_combo("##Item", self.active_client):
+                for model_name in available_models:
+                    is_selected = self.active_client == model_name
                     if is_selected:
                         imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
-                    if imgui.button(display_name, (max_item_width, 0)):
-                        self.active_client = model_id
-                        self.client.current_model_id = model_id  # 通知 Client 切换模型
+                    if imgui.button(model_name, (max_item_width, 0)):
+                        self.active_client = model_name
+                        self.client.current_model_name = model_name  # 通知 Client 切换模型
                         imgui.close_current_popup()
                     if is_selected:
                         imgui.pop_style_color()
@@ -2119,6 +2111,7 @@ class AIStudio(AppHud):
                         imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
                     if imgui.button(_T(item.display_name), (aw, 0)):
                         self.state.auth_mode = item.value
+                        self.refresh_client() # 确保客户端刷新(设置项同步)
                         imgui.close_current_popup()
                     if is_selected:
                         imgui.pop_style_color()
@@ -2240,8 +2233,7 @@ class AIStudio(AppHud):
             if imgui.is_item_hovered():
                 imgui.set_next_window_size((580, 0))
                 title = _T("Prompt Optimization")
-                tip = _T(
-                    "Enable Prompt Optimization to improve the quality of the generated image and the safety of the content.")
+                tip = _T("Enable Prompt Optimization to improve the quality of the generated image and the safety of the content.")
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             imgui.end_child()
             imgui.set_cursor_pos(pos)
@@ -2257,8 +2249,7 @@ class AIStudio(AppHud):
             if imgui.is_item_hovered():
                 imgui.set_next_window_size((710, 0))
                 title = _T("Image Resolution")
-                tip = _T(
-                    "Set the image resolution via both image size and aspect ratio, and the larger the resolution, the longer the generation time/resource required.")
+                tip = _T("Set the image resolution via both image size and aspect ratio, and the larger the resolution, the longer the generation time/resource required.")
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             return
 

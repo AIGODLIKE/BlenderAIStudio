@@ -104,6 +104,14 @@ class GeminiImageParser(ResponseParser):
             raise GeminiAPIError("Rate limit exceeded,Please check your API key and Google AI Studio account")
         elif code == 400:
             logger.debug(resp.text)
+            if isinstance(resp.reason, bytes):
+                try:
+                    reason = resp.reason.decode("utf-8")
+                except UnicodeDecodeError:
+                    reason = resp.reason.decode("iso-8859-1")
+            else:
+                reason = resp.reason
+            logger.debug(reason)
             raise GeminiAPIError("Bad request (400),Please check the network and proxy")
         elif code == 502:
             logger.debug(resp.text)

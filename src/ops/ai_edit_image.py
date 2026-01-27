@@ -99,6 +99,7 @@ class ApplyAiEditImage(bpy.types.Operator):
         print("resolution", resolution)
         from ..studio.tasks import UniversalModelTask, TaskManager, TaskResult, TaskState, Task
         from ..studio.account import Account
+        from ..studio.config.model_registry import ModelRegistry
 
         from ..preferences import AuthMode
         model_id = "gemini-3-pro-image-preview"
@@ -106,9 +107,13 @@ class ApplyAiEditImage(bpy.types.Operator):
         if account.auth_mode == AuthMode.API.value:
             credentials = {"api_key": pref.nano_banana_api}
         else:
+            submit_model_id = ModelRegistry.get_instance().resolve_submit_id(
+                model_id,
+                account.auth_mode,
+            )
             credentials = {
                 "token": account.token,
-                "modelId": model_id,
+                "modelId": submit_model_id,
                 "size": resolution,
             }
         reference_images = [mask_image_path, *reference_images_path] # 优先传递mask图片(即使为空)

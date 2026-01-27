@@ -432,17 +432,15 @@ class SceneProperty(bpy.types.PropertyGroup, History, State, ModelSelect):
         :return:
         """
         pref = get_pref()
-        price_table = Account.get_instance().price_table
         if pref.is_backup_mode:
+            registry = ModelRegistry.get_instance()
+            strategy = Account.get_instance().pricing_strategy
             resolution = self.get_out_resolution(bpy.context)
-            model_item = [i for i in price_table if
-                          isinstance(i, dict) and i.get('modelId', None) == 'gemini-3-pro-image-preview']
-            if model_item:  # 模型项
-                if price := model_item[0].get('price', None):  # 价格项
-                    return price.get(resolution, -999)
+            price = registry.calc_price("NanoBananaPro", strategy, resolution)
+            return price or 99999
         else:
             ...
-        return -999
+        return 99999
 
 
 class_list = [
