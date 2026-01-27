@@ -103,12 +103,15 @@ class OpenImageInNewWindow(bpy.types.Operator):
             data = json.loads(self.data)
             metadata = data.get("metadata", None)
             if metadata:
-                aspect_ratio = metadata.get("aspect_ratio", "AUTO")
+                aspect_ratio = metadata.get("aspect_ratio", "1:1")
                 oii = context.scene.blender_ai_studio_property
                 resolution = metadata.get("resolution", "1K")
                 oii.aspect_ratio = aspect_ratio
                 oii.resolution = resolution
         except Exception as e:
+            import traceback
+            traceback.print_exc()
+            traceback.print_stack()
             print(e)
             print("load_data error", self.data)
 
