@@ -171,6 +171,14 @@ models:
         hide_title: false
         options: [1K, 2K, 4K]
 
+      - name: api_key
+        display_name: API Key
+        category: Settings
+        type: STRING
+        hide_title: true
+        multiline: false
+        default: ""
+
     request_builder: SeedreamImageGenerateBuilder
     response_parser: SeedreamImageParser
 
@@ -242,6 +250,14 @@ models:
         type: ENUM
         hide_title: false
         options: [1K, 2K, 4K]
+
+      - name: api_key
+        display_name: API Key
+        category: Settings
+        type: STRING
+        hide_title: true
+        multiline: false
+        default: ""
 
     request_builder: SeedreamImageGenerateBuilder
     response_parser: SeedreamImageParser
