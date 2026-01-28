@@ -9,7 +9,9 @@ from .ai_edit_image import (
 from .history import (
     ViewImage,
     RestoreHistory,
-    OpenImageInNewWindow, RemoveHistory,
+    OpenImageInNewWindow,
+    RemoveHistory,
+    ClearHistory,
 )
 from .mask_image import DrawImageMask, ApplyImageMask, SelectMask
 from .prompt_edit import (
@@ -44,6 +46,7 @@ class_list = [
     RestoreHistory,
     OpenImageInNewWindow,
     RemoveHistory,
+    ClearHistory,
 
     LoginAccountAuth,
     LogoutAccountAuth,

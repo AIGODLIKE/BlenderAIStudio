@@ -167,5 +167,22 @@ class RemoveHistory(bpy.types.Operator):
     def execute(self, context):
         oii = context.scene.blender_ai_studio_property
         index = self.index
-        oii.history.remove(index)
+        oii.edit_history.remove(index)
+        return {"FINISHED"}
+
+
+class ClearHistory(bpy.types.Operator):
+    bl_idname = "bas.clear_history"
+    bl_label = "Clear All History"
+    bl_description = "Clear All History"
+    bl_translation_context = OPS_TCTX
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_confirm(self, event,
+                                                     title=self.bl_description,
+                                                     message="Are you sure you want to clear all history?")
+
+    def execute(self, context):
+        oii = context.scene.blender_ai_studio_property
+        oii.edit_history.clear()
         return {"FINISHED"}

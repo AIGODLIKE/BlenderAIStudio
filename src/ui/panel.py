@@ -3,6 +3,7 @@ import bpy
 from ..i18n import PANEL_TCTX
 from ..online_update_addon import UpdateService
 from ..studio.account import AuthMode
+from ..studio.config.model_registry import ModelRegistry
 from ..utils import get_custom_icon, get_addon_version_str, get_pref
 
 
@@ -42,38 +43,17 @@ class AIStudioImagePanel(bpy.types.Panel):
             return
 
         self.draw_image_info(context, layout)
-        is_not_run = ai.running_state != "running"
         column = layout.column(align=True)
-        column.enabled = is_not_run  # 在运行中时不允许修改
         bb = column.box()
-        row = bb.row(align=True)
-        row.label(text="", icon_value=get_custom_icon("aspect_ratio"))
-        row.prop(ai, "model", text="")
-        row = bb.row(align=True)
-        row.label(text="", icon_value=get_custom_icon("aspect_ratio"))
-        row.prop(ai, "aspect_ratio", text="")
-        row = bb.row(align=True)
-        row.label(text="", icon_value=get_custom_icon("resolution"))
-        row.prop(ai, "resolution", text="")
-        bb = column.box()
-        bb.label(text="AI Edit Prompt", icon="TEXT")
-        row = bb.row(align=True)
-        row.prop(ai, "prompt", text="")
-        row.operator("bas.prompt_edit", text="", icon="FILE_TEXT")
+        self.draw_model_parameters(context, bb)  # 动态绘制需要的参数
 
         col = layout.column(align=True)
-        col.enabled = is_not_run  # 在运行中时不允许修改
         ai.draw_reference_images(context, col)
         col.separator(factor=1.5)
         self.draw_mask(context, col)
         col.separator(factor=3)
         self.draw_ai_edit_layout(context, col)
-        if not is_not_run:
-            co = col.column(align=True)
-            co.alert = True
-            co.label(text="During task execution, parameters cannot be modified")
-        layout.separator(factor=1)
-        ai.draw_state(context, layout)
+        self.draw_task_layout(context, layout)
 
     @staticmethod
     def draw_mask(context, layout: bpy.types.UILayout):
@@ -180,35 +160,88 @@ class AIStudioImagePanel(bpy.types.Panel):
             rr.enabled = False
             rr.alert = True
         rr.operator("bas.apply_ai_edit_image", **args)
-        # row.menu("BAS_MT_render_button_menu", icon='DOWNARROW_HLT', text="")
+
+    @staticmethod
+    def draw_task_layout(context, layout: bpy.types.UILayout):
+        """绘制生成中的任务"""
+        layout.separator(factor=1)
+        layout.progress(factor=0.5, type="BAR", text="这是一个进度条")
+        layout.progress(factor=0.5, type="RING", text="这是一个进度条")
+
+    @staticmethod
+    def draw_model_parameters(context, layout: bpy.types.UILayout):
+        """动态绘制模型所需的参数"""
+        ai = context.scene.blender_ai_studio_property
+        model_register = ModelRegistry.get_instance()
+        model = model_register.get_model(ai.model)
+
+        row = layout.row(align=True)
+        row.label(text="", icon_value=get_custom_icon("aspect_ratio"))
+        row.prop(ai, "model", text="")
+        layout.separator(type="LINE")
+
+        for param in model.parameters:
+            name = param.get("name", None)
+            if draw_func := getattr(AIStudioImagePanel, f"draw_{name}", None):
+                draw_func(ai, layout)
+
+    @staticmethod
+    def draw_aspect_ratio(ai, layout: bpy.types.UILayout):
+        """绘制比例"""
+        row = layout.row(align=True)
+        row.label(text="", icon_value=get_custom_icon("aspect_ratio"))
+        row.prop(ai, "aspect_ratio", text="")
+
+    @staticmethod
+    def draw_resolution(ai, layout: bpy.types.UILayout):
+        row = layout.row(align=True)
+        row.label(text="", icon_value=get_custom_icon("resolution"))
+        row.prop(ai, "resolution", text="")
+
+    @staticmethod
+    def draw_size_config(ai, layout: bpy.types.UILayout):
+        """aspect_ratio = size_config"""
+        AIStudioImagePanel.draw_aspect_ratio(ai, layout)
+
+    @staticmethod
+    def draw_prompt(ai, layout: bpy.types.UILayout):
+        layout.label(text="AI Edit Prompt", icon="TEXT")
+        row = layout.row(align=True)
+        row.prop(ai, "prompt", text="")
+        row.operator("bas.prompt_edit", text="", icon="FILE_TEXT")
 
 
 class AIStudioHistoryPanel(bpy.types.Panel):
     bl_idname = "SDN_PT_BLENDER_AI_STUDIO_PT_History"
-    bl_label = "Generate History"
+    bl_label = ""
     bl_description = "Generate History"
     bl_space_type = "IMAGE_EDITOR"
     bl_region_type = "UI"
     bl_category = "AIStudio"
 
-    bl_options = {"DEFAULT_CLOSED"}
+    bl_options = {"DEFAULT_CLOSED", "HEADER_LAYOUT_EXPAND"}
 
     @classmethod
     def poll(cls, context):
         space_data = context.space_data
         return space_data and space_data.image is not None
 
-    # def draw_header(self, context):
-    #     oii = context.scene.blender_ai_studio_property
-    #     text = bpy.app.translations.pgettext("History")
-    #     self.layout.label(text=f"{text} {len(oii.history)}")
+    def draw_header(self, context):
+        oii = context.scene.blender_ai_studio_property
+        text = bpy.app.translations.pgettext("Generate History")
+
+        row = self.layout.row()
+        row.label(text=f"{text} {len(oii.edit_history)}")
+        row.separator()
+        row.operator("bas.clear_history", icon="X", text="", emboss=False)
+        row.separator()
 
     def draw(self, context):
         oii = context.scene.blender_ai_studio_property
         layout = self.layout
-        items = oii.history[:]
+        items = oii.edit_history[:]
         il = len(items)
         for index, h in enumerate(reversed(items)):
             h.draw_history(layout, il - index)
-        if len(oii.history) == 0:
+        if len(oii.edit_history) == 0:
             layout.label(text="No history available at the moment")

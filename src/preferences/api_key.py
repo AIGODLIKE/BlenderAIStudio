@@ -2,12 +2,9 @@ import bpy
 
 
 class ApiKey:
+    """TODO 动态注册"""
     nano_banana_api: bpy.props.StringProperty(
         name="Nano Banana API Key",
-        subtype="PASSWORD",
-    )
-    dream_api: bpy.props.StringProperty(
-        name="Dream API Key",
         subtype="PASSWORD",
     )
     seedream_api: bpy.props.StringProperty(
@@ -21,8 +18,6 @@ class ApiKey:
 
         self.draw_item_api_key(box, "nano_banana_api")
         box.separator(type="LINE")
-        self.draw_item_api_key(box, "dream_api")
-        box.separator(type="LINE")
         self.draw_item_api_key(box, "seedream_api")
 
     def draw_item_api_key(self, layout, key):
@@ -32,12 +27,10 @@ class ApiKey:
         if getattr(self, key, "None") == "":
             column.label(text="Please input your API Key")
 
-    def from_model_get_api_key(self, model: str) -> str:
-        """根据模型获取对应的api key"""
-        if model in ("gemini-3-pro-image-preview",):
+    def from_model_name_get_api_key(self, model: str) -> str:
+        """根据模型名称对应的api key"""
+        if model in ("NanoBananaPro",):
             return self.nano_banana_api
-        elif model in ("dream-studio-image-preview", "dream-studio-image-preview-v2"):
-            return self.dream_api
-        elif model in ("seedream-image-preview",):
+        elif model in ("Seedream-v4", "Seedream-v4.5"):
             return self.seedream_api
-        return ""
+        return f"error not find api key {model}"

@@ -447,7 +447,6 @@ class StudioHistoryViewer:
                             bh = h1 / 2 - style.cell_padding[1] * 2 - style.frame_padding[1]
                             imgui.table_next_column()
                             if CustomWidgets.icon_label_button("image_edit", _T("Edit"), "LEFT", (0, bh)):
-                                print("编辑图片")
                                 image = item.get_output_file_image()
                                 meta = item.stringify()
                                 context = bpy.context.copy()

@@ -5,17 +5,18 @@ from datetime import datetime
 
 import bpy
 
-from .i18n import PROP_TCTX
-from .studio.account import Account
-from .studio.config.model_registry import ModelRegistry
-from .utils import get_custom_icon, time_diff_to_str, calc_appropriate_aspect_ratio, refresh_image_preview, get_pref
+from ..i18n import PROP_TCTX
+from ..studio.account import Account
+from ..studio.config.model_registry import ModelRegistry
+from ..utils import get_custom_icon, time_diff_to_str, get_pref
 
 
 class ImageItem(bpy.types.PropertyGroup):
+    """集合使用的项,需要使用PropertyGroup包装一下才能被CollectionProperty使用"""
     image: bpy.props.PointerProperty(type=bpy.types.Image, name="图片")
 
 
-class ImageProperty(bpy.types.PropertyGroup):
+class MaskImageProperty(bpy.types.PropertyGroup):
     """
     图片属性
     """
@@ -23,55 +24,93 @@ class ImageProperty(bpy.types.PropertyGroup):
     is_mask_image: bpy.props.BoolProperty(name="Is Mask Image", default=False)
 
 
-class History:
-    origin_image: bpy.props.PointerProperty(type=bpy.types.Image, name="原图图片")
-    generated_image: bpy.props.PointerProperty(type=bpy.types.Image, name="生成的图片")
+class GeneralProperty:
+    """
+    参考图片属性
+    在历史及生成面板都有使用
+    """
 
-    generation_time: bpy.props.StringProperty()
-    generation_model: bpy.props.StringProperty()
-    history: bpy.props.CollectionProperty(type=SceneProperty)
+    reference_images: bpy.props.CollectionProperty(type=ImageItem, name="多张参考图", description="最大14张输入图片")
+    mask_images: bpy.props.CollectionProperty(type=ImageItem, name="编辑的图片")
+    mask_index: bpy.props.IntProperty(name="Mask Image Index", default=0)
+
+    prompt: bpy.props.StringProperty(name="Prompt", maxlen=10000, )
+
+
+class HistoryState:
+    running_operator: bpy.props.StringProperty()
+    running_state: bpy.props.StringProperty(name="    running    completed    failed    failed")
+    running_message: bpy.props.StringProperty()
+
+    @property
+    def is_running(self) -> bool:
+        return self.running_state == "running"
+
+    def clear_running_state(self):
+        self.running_operator = ""
+        self.running_message = ""
+        self.running_state = ""
+
+    def draw_state(self, context, layout: bpy.types.UILayout):
+        oii = context.scene.blender_ai_studio_property
+        column = layout.column(align=True)
+        state_str = self.running_state
+        time_str = ""
+
+        if state_str == "running":
+            time_str = time_diff_to_str(time_diff=time.time() - oii.start_time)
+        elif state_str in ("completed", "failed"):
+            time_str = time_diff_to_str(time_diff=oii.end_time - oii.start_time)
+        if state_str == "failed":
+            column.alert = True
+        for text in (
+                self.running_operator,
+                bpy.app.translations.pgettext(state_str.title()) + "  " + time_str,
+                self.running_message,
+        ):
+            if text.strip():
+                column.label(text=text)
+        image = context.space_data.image
+        if image == self.origin_image:
+            if gi := self.generated_image:
+                box = column.box()
+                box.context_pointer_set("image", gi)
+                if gi.preview:
+                    box.template_icon(gi.preview.icon_id, scale=6)
+                box.operator("bas.view_image", text="View Generated Image")
+        elif image == self.generated_image:
+            if oi := self.origin_image:
+                box = column.box()
+                box.context_pointer_set("image", oi)
+                if oi.preview:
+                    box.template_icon(oi.preview.icon_id, scale=6)
+                box.operator("bas.view_image", text="View Origin Image")
+
+
+class EditHistory(HistoryState, GeneralProperty, bpy.types.PropertyGroup):
+    origin_image: bpy.props.PointerProperty(type=bpy.types.Image, name="原图图片")
+    generated_images: bpy.props.PointerProperty(type=bpy.types.Image, name="生成的图片")
+
+    generation_time: bpy.props.StringProperty(name="生成时间 2025-6-6")
+    generation_model: bpy.props.StringProperty(name="生成用的模型")
 
     start_time: bpy.props.IntProperty(name="开始时间")
     end_time: bpy.props.IntProperty(name="结束时间")
 
-    def start_running(self, ):
+    expand_history: bpy.props.BoolProperty(default=False)
+
+    def start_running(self, model_name: str):
         """开始运行"""
         self.generated_image = None
         self.origin_image = None
         self.start_time = int(time.time())
         self.end_time = 0
+        self.generation_model = model_name
 
     def stop_running(self):
         """停止运行"""
         self.end_time = int(time.time())
-
-    def save_to_history(self):
-        oi = self.origin_image
-        gi = self.generated_image
-
-        nh = self.history.add()
-        nh.generation_time = nh.name = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        nh.generation_model = "NanoBanana生成"
-        nh.origin_image = oi
-        nh.generated_image = gi
-        nh.prompt = self.prompt
-        nh.mask_index = self.mask_index
-        nh.start_time = self.start_time
-        nh.end_time = self.end_time
-
-        for ri in self.reference_images:
-            nri = nh.reference_images.add()
-            nri.name = ri.name
-            nri.image = ri.image
-
-        for mi in self.mask_images:
-            nmi = nh.mask_images.add()
-            nmi.name = mi.name
-            nmi.image = mi.image
-        self.mask_images.clear()
-
-        refresh_image_preview(oi)
-        refresh_image_preview(gi)
+        self.generation_time = self.name = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     def restore_history(self, context):
         """恢复历史,将历史项里面的全部复制回来"""
@@ -119,8 +158,6 @@ class History:
         column.label(text=self.generation_time, icon_value=get_custom_icon("image_info_timestamp"))
         text = bpy.app.translations.pgettext("%s reference images") % len(self.mask_images)
         column.label(text=text)
-        # text = bpy.app.translations.pgettext("%s mask images") % len(self.reference_images)
-        # column.label(text=text)
 
         if oi := self.origin_image:
             row = box.row()
@@ -149,53 +186,8 @@ class History:
                 f"{self.prompt}\n"
                 )
 
-    generate_history: bpy.props.StringProperty(default="[]", name="3d视图的生成记录")
-
-
-class State:
-    running_operator: bpy.props.StringProperty()
-    running_state: bpy.props.StringProperty()
-    running_message: bpy.props.StringProperty()
-
-    def clear_running_state(self):
-        self.running_operator = ""
-        self.running_message = ""
-        self.running_state = ""
-
-    def draw_state(self, context, layout: bpy.types.UILayout):
-        oii = context.scene.blender_ai_studio_property
-        column = layout.column(align=True)
-        state_str = self.running_state
-        time_str = ""
-
-        if state_str == "running":
-            time_str = time_diff_to_str(time_diff=time.time() - oii.start_time)
-        elif state_str in ("completed", "failed"):
-            time_str = time_diff_to_str(time_diff=oii.end_time - oii.start_time)
-        if state_str == "failed":
-            column.alert = True
-        for text in (
-                self.running_operator,
-                bpy.app.translations.pgettext(state_str.title()) + "  " + time_str,
-                self.running_message,
-        ):
-            if text.strip():
-                column.label(text=text)
-        image = context.space_data.image
-        if image == self.origin_image:
-            if gi := self.generated_image:
-                box = column.box()
-                box.context_pointer_set("image", gi)
-                if gi.preview:
-                    box.template_icon(gi.preview.icon_id, scale=6)
-                box.operator("bas.view_image", text="View Generated Image")
-        elif image == self.generated_image:
-            if oi := self.origin_image:
-                box = column.box()
-                box.context_pointer_set("image", oi)
-                if oi.preview:
-                    box.template_icon(oi.preview.icon_id, scale=6)
-                box.operator("bas.view_image", text="View Origin Image")
+    def draw_task(self, layout: bpy.types.UILayout):
+        ...
 
 
 class DynamicEnumeration:
@@ -265,104 +257,97 @@ class DynamicEnumeration:
     )
 
 
-class SceneProperty(bpy.types.PropertyGroup, History, State, DynamicEnumeration):
+# def get_out_aspect_ratio(self, context):
+#     """获取输出比例,如果context.space_data中有image,并且是AUTO这个属性,就按这个来获取最佳的比例
+#     错误时反回1:1
+#     """
+#     aspect_ratio = self.aspect_ratio
+#     if aspect_ratio == "AUTO":
+#         if image := getattr(context.space_data, "image", None):
+#             w, h = image.size
+#             if w == 0 or h == 0:  # 图片没有尺寸,就返回1:1
+#                 return "1:1"
+#             return calc_appropriate_aspect_ratio(w, h)
+#         return "1:1"  # 图片没有找到,就返回1:1
+#     return aspect_ratio
+
+# def get_out_resolution_px_by_aspect_ratio_and_resolution(self, context) -> tuple[int, int]:
+#     """
+#     获取输出分辨率(px) 从 图像比例 及分辨率(1k,2k,4k)
+#     仅包含gemini的内容
+#     多个模型时此选项已不可用
+#
+#     # w, h = ai.get_out_resolution_px_by_aspect_ratio_and_resolution(context)
+#     # bb.label(text=bpy.app.translations.pgettext_iface("Out Resolution(px):") + f"{w} x {h}")
+#     1:1	1024x1024	1210	2048x2048	1210	4096x4096	2000
+#     2:3	848x1264	1210	1696x2528	1210	3392x5056	2000
+#     3:2	1264x848	1210	2528x1696	1210	5056x3392	2000
+#     3:4	896x1200	1210	1792x2400	1210	3584x4800	2000
+#     4:3	1200x896	1210	2400x1792	1210	4800x3584	2000
+#     4:5	928x1152	1210	1856x2304	1210	3712x4608	2000
+#     5:4	1152x928	1210	2304x1856	1210	4608x3712	2000
+#     9:16	768x1376	1210	1536x2752	1210	3072x5504	2000
+#     16:9	1376x768	1210	2752x1536	1210	5504x3072	2000
+#     21:9	1584x672	1210	3168x1344	1210	6336x2688	2000
+#     https://ai.google.dev/gemini-api/docs/image-generation?hl=zh-cn#aspect_ratios_and_image_size
+#     """
+#
+#     return {
+#         ("1:1", "1K"): (1024, 1024),
+#         ("1:1", "2K"): (2048, 2048),
+#         ("1:1", "4K"): (4096, 4096),
+#         ("2:3", "1K"): (848, 1264),
+#         ("2:3", "2K"): (1696, 2528),
+#         ("2:3", "4K"): (3392, 5056),
+#         ("3:2", "1K"): (1264, 848),
+#         ("3:2", "2K"): (2528, 1696),
+#         ("3:2", "4K"): (5056, 3392),
+#         ("3:4", "1K"): (896, 1200),
+#         ("3:4", "2K"): (1792, 2400),
+#         ("3:4", "4K"): (3584, 4800),
+#         ("4:3", "1K"): (1200, 896),
+#         ("4:3", "2K"): (2400, 1792),
+#         ("4:3", "4K"): (4800, 3584),
+#         ("4:5", "1K"): (928, 1152),
+#         ("4:5", "2K"): (1856, 2304),
+#         ("4:5", "4K"): (3712, 4608),
+#         ("5:4", "1K"): (1152, 928),
+#         ("5:4", "2K"): (2304, 1856),
+#         ("5:4", "4K"): (4608, 3712),
+#         ("9:16", "1K"): (768, 1376),
+#         ("9:16", "2K"): (1536, 2752),
+#         ("9:16", "4K"): (3072, 5504),
+#         ("16:9", "1K"): (1376, 768),
+#         ("16:9", "2K"): (2752, 1536),
+#         ("16:9", "4K"): (5504, 3072),
+#         ("21:9", "1K"): (1584, 672),
+#         ("21:9", "2K"): (3168, 1344),
+#         ("21:9", "4K"): (6336, 2688),
+#     }.get((self.get_out_aspect_ratio(context), self.get_out_resolution(context)), (0, 0))
+
+# def get_out_resolution(self, context) -> str:
+#     resolution = self.resolution
+#     if resolution == "AUTO":
+#         if image := getattr(context.space_data, "image", None):
+#             w, h = image.size
+#             resolution_str = "1K"
+#             if w >= 4096 or h >= 4096:
+#                 resolution_str = "4K"
+#             elif w >= 2048 or h >= 2048:
+#                 resolution_str = "2K"
+#             return resolution_str
+#         return "1K"
+#     return resolution
+
+
+class SceneProperty(bpy.types.PropertyGroup, GeneralProperty, DynamicEnumeration):
     """
     生成的属性
     """
-    reference_images: bpy.props.CollectionProperty(type=ImageItem, name="多张参考图", description="最大14张输入图片")
-    mask_images: bpy.props.CollectionProperty(type=ImageItem, name="编辑的图片")
-
     expand_ui: bpy.props.BoolProperty(name="Expand Ui Images", default=True,
                                       description="是否展开图片,在显示参考图")
-    expand_history: bpy.props.BoolProperty(default=False)
-    mask_index: bpy.props.IntProperty(name="Mask Image Index", default=0)
-
-    prompt: bpy.props.StringProperty(
-        name="Prompt",
-        maxlen=1000,
-    )
-
-    def get_out_aspect_ratio(self, context):
-        """获取输出比例,如果context.space_data中有image,并且是AUTO这个属性,就按这个来获取最佳的比例
-        错误时反回1:1
-        """
-        aspect_ratio = self.aspect_ratio
-        if aspect_ratio == "AUTO":
-            if image := getattr(context.space_data, "image", None):
-                w, h = image.size
-                if w == 0 or h == 0:  # 图片没有尺寸,就返回1:1
-                    return "1:1"
-                return calc_appropriate_aspect_ratio(w, h)
-            return "1:1"  # 图片没有找到,就返回1:1
-        return aspect_ratio
-
-    # def get_out_resolution_px_by_aspect_ratio_and_resolution(self, context) -> tuple[int, int]:
-    #     """
-    #     获取输出分辨率(px) 从 图像比例 及分辨率(1k,2k,4k)
-    #     仅包含gemini的内容
-    #     多个模型时此选项已不可用
-    #
-    #     # w, h = ai.get_out_resolution_px_by_aspect_ratio_and_resolution(context)
-    #     # bb.label(text=bpy.app.translations.pgettext_iface("Out Resolution(px):") + f"{w} x {h}")
-    #     1:1	1024x1024	1210	2048x2048	1210	4096x4096	2000
-    #     2:3	848x1264	1210	1696x2528	1210	3392x5056	2000
-    #     3:2	1264x848	1210	2528x1696	1210	5056x3392	2000
-    #     3:4	896x1200	1210	1792x2400	1210	3584x4800	2000
-    #     4:3	1200x896	1210	2400x1792	1210	4800x3584	2000
-    #     4:5	928x1152	1210	1856x2304	1210	3712x4608	2000
-    #     5:4	1152x928	1210	2304x1856	1210	4608x3712	2000
-    #     9:16	768x1376	1210	1536x2752	1210	3072x5504	2000
-    #     16:9	1376x768	1210	2752x1536	1210	5504x3072	2000
-    #     21:9	1584x672	1210	3168x1344	1210	6336x2688	2000
-    #     https://ai.google.dev/gemini-api/docs/image-generation?hl=zh-cn#aspect_ratios_and_image_size
-    #     """
-    #
-    #     return {
-    #         ("1:1", "1K"): (1024, 1024),
-    #         ("1:1", "2K"): (2048, 2048),
-    #         ("1:1", "4K"): (4096, 4096),
-    #         ("2:3", "1K"): (848, 1264),
-    #         ("2:3", "2K"): (1696, 2528),
-    #         ("2:3", "4K"): (3392, 5056),
-    #         ("3:2", "1K"): (1264, 848),
-    #         ("3:2", "2K"): (2528, 1696),
-    #         ("3:2", "4K"): (5056, 3392),
-    #         ("3:4", "1K"): (896, 1200),
-    #         ("3:4", "2K"): (1792, 2400),
-    #         ("3:4", "4K"): (3584, 4800),
-    #         ("4:3", "1K"): (1200, 896),
-    #         ("4:3", "2K"): (2400, 1792),
-    #         ("4:3", "4K"): (4800, 3584),
-    #         ("4:5", "1K"): (928, 1152),
-    #         ("4:5", "2K"): (1856, 2304),
-    #         ("4:5", "4K"): (3712, 4608),
-    #         ("5:4", "1K"): (1152, 928),
-    #         ("5:4", "2K"): (2304, 1856),
-    #         ("5:4", "4K"): (4608, 3712),
-    #         ("9:16", "1K"): (768, 1376),
-    #         ("9:16", "2K"): (1536, 2752),
-    #         ("9:16", "4K"): (3072, 5504),
-    #         ("16:9", "1K"): (1376, 768),
-    #         ("16:9", "2K"): (2752, 1536),
-    #         ("16:9", "4K"): (5504, 3072),
-    #         ("21:9", "1K"): (1584, 672),
-    #         ("21:9", "2K"): (3168, 1344),
-    #         ("21:9", "4K"): (6336, 2688),
-    #     }.get((self.get_out_aspect_ratio(context), self.get_out_resolution(context)), (0, 0))
-
-    def get_out_resolution(self, context) -> str:
-        resolution = self.resolution
-        if resolution == "AUTO":
-            if image := getattr(context.space_data, "image", None):
-                w, h = image.size
-                resolution_str = "1K"
-                if w >= 4096 or h >= 4096:
-                    resolution_str = "4K"
-                elif w >= 2048 or h >= 2048:
-                    resolution_str = "2K"
-                return resolution_str
-            return "1K"
-        return resolution
+    edit_history: bpy.props.CollectionProperty(type=EditHistory, name="这个是编辑的历史记录")
+    generate_history: bpy.props.StringProperty(default="[]", name="3d视图的生成记录")
 
     @property
     def all_references_images(self) -> list[bpy.types.Image]:
@@ -378,7 +363,14 @@ class SceneProperty(bpy.types.PropertyGroup, History, State, DynamicEnumeration)
             return self.mask_images[index].image
         return None
 
+    @property
+    def running_task_list(self) -> list[EditHistory]:
+        """反回运行中的任务列表
+        只要是在运行中就反回这个"""
+        return [h for h in self.edit_history if h.is_running]
+
     def draw_reference_images(self, context, layout: bpy.types.UILayout):
+        """绘制参考图片"""
         box = layout.box()
 
         # 参考图头
@@ -411,7 +403,7 @@ class SceneProperty(bpy.types.PropertyGroup, History, State, DynamicEnumeration)
             return
 
         column = box.column()
-        is_small_width = context.region.width < 200
+        is_small_width = context.region.width < 200  # 是太小的宽度
         if alert:
             col = column.column()
             col.alert = True
@@ -446,18 +438,25 @@ class SceneProperty(bpy.types.PropertyGroup, History, State, DynamicEnumeration)
         if pref.is_backup_mode:
             registry = ModelRegistry.get_instance()
             strategy = Account.get_instance().pricing_strategy
-            resolution = self.get_out_resolution(bpy.context)
+            resolution = self.resolution
             price = registry.calc_price("NanoBananaPro", strategy, resolution)
             return price or 99999
         else:
             ...
         return 99999
 
+    def clear_task_running_state(self):
+        """TODO 清理任务的运行状态
+        只会在启动插件或加载文件时进行
+        """
+        ...
+
 
 class_list = [
     ImageItem,
+    EditHistory,
     SceneProperty,
-    ImageProperty,
+    MaskImageProperty,
 ]
 register_class, unregister_class = bpy.utils.register_classes_factory(class_list)
 
@@ -465,7 +464,7 @@ from bpy.app.handlers import persistent
 
 
 def clear_run():
-    bpy.context.scene.blender_ai_studio_property.clear_running_state()
+    bpy.context.scene.blender_ai_studio_property.clear_task_running_state()
 
 
 @persistent
@@ -476,7 +475,7 @@ def load_post(a, b):
 def register():
     register_class()
     bpy.types.Scene.blender_ai_studio_property = bpy.props.PointerProperty(type=SceneProperty)
-    bpy.types.Image.blender_ai_studio_property = bpy.props.PointerProperty(type=ImageProperty)
+    bpy.types.Image.blender_ai_studio_property = bpy.props.PointerProperty(type=MaskImageProperty)
     bpy.types.Text.blender_ai_studio_prompt_hash = bpy.props.StringProperty()
     bpy.app.timers.register(clear_run, persistent=True)
     bpy.app.handlers.load_post.append(load_post)
