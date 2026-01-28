@@ -2238,7 +2238,7 @@ class AIStudio(AppHud):
             imgui.end_child()
             imgui.set_cursor_pos(pos)
             return
-        if widget.widget_name == "size_config":
+        if widget.widget_name == "aspect_ratio":
             if imgui.is_item_hovered():
                 imgui.set_next_window_size((450, 0))
                 title = _T("Image Size Config")

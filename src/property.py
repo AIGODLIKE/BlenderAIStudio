@@ -211,7 +211,7 @@ class DynamicEnumeration:
 
     model: bpy.props.EnumProperty(items=get_models_items, name="Model")
 
-    def get_size_config_items(self, context) -> list[(str, str, str),]:
+    def get_aspect_ratio_items(self, context) -> list[(str, str, str),]:
         """
         [
             ("AUTO", "Auto", "Auto"),
@@ -229,8 +229,8 @@ class DynamicEnumeration:
         """
         try:
             model = self._model_registry.get_model(self.model)
-            if size_config := model.get_parameter("size_config"):
-                if options := size_config.get("options", None):
+            if aspect_ratio := model.get_parameter("aspect_ratio"):
+                if options := aspect_ratio.get("options", None):
                     return [(i, i, i) for i in options]
         except Exception as e:
             print(e)
@@ -261,7 +261,7 @@ class DynamicEnumeration:
 
     aspect_ratio: bpy.props.EnumProperty(
         name="Aspect Ratio",
-        items=get_size_config_items
+        items=get_aspect_ratio_items
     )
 
 

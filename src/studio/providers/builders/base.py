@@ -31,7 +31,7 @@ class RequestBuilder(ABC):
 
         Args:
             params: 用户提供的参数字典（已由 InputProcessor 处理）
-                   例如：{"prompt": "...", "image_path": "/tmp/render.png", "size_config": "16:9"}
+                   例如：{"prompt": "...", "image_path": "/tmp/render.png", "aspect_ratio": "16:9"}
             model_config: 模型配置对象
             auth_mode: 认证模式
             credentials: 认证凭证（如 {"api_key": "xxx"}）

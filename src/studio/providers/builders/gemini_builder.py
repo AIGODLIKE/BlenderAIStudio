@@ -108,7 +108,7 @@ class GeminiImageGenerateBuilder(RequestBuilder):
         - 处理提示词 (prompt → user_prompt)
         - 处理内部提示词 (use_internal_prompt)
         - 处理分辨率 (resolution → width/height)
-        - 处理宽高比 (size_config → aspect_ratio)
+        - 处理宽高比
 
         Args:
             params: 原始参数
@@ -147,19 +147,19 @@ class GeminiImageGenerateBuilder(RequestBuilder):
             processed["width"] = width
             processed["height"] = height
 
-        # 4. 处理宽高比：将 size_config 转换为 aspect_ratio
-        if "size_config" in processed and "aspect_ratio" not in processed:
-            size_config = processed["size_config"]
+        # 4. 处理宽高比
+        if "aspect_ratio" in processed:
+            aspect_ratio = processed["aspect_ratio"]
 
-            if size_config == "Auto":
+            if aspect_ratio == "Auto":
                 try:
                     scene_width = bpy.context.scene.render.resolution_x
                     scene_height = bpy.context.scene.render.resolution_y
-                    size_config = calc_appropriate_aspect_ratio(scene_width, scene_height)
+                    aspect_ratio = calc_appropriate_aspect_ratio(scene_width, scene_height)
                 except Exception:
-                    size_config = "1:1"  # 默认值
+                    aspect_ratio = "1:1"  # 默认值
 
-            processed["aspect_ratio"] = size_config
+            processed["aspect_ratio"] = aspect_ratio
 
         # 5. 设置默认 action
         if "__action" not in processed:

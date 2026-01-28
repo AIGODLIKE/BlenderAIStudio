@@ -61,7 +61,7 @@ models:
         hide_title: false
         limit: 12
 
-      - name: size_config
+      - name: aspect_ratio
         display_name: Size Config
         category: Input
         type: ENUM
