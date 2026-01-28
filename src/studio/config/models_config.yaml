@@ -132,7 +132,23 @@ models:
 
         response_parser: SeedreamImageParserAccount
 
+    input_processors:
+      - processor: RenderProcessor
+        group: main_image
+        input_mapping:
+          input_type: input_image_type
+        output_mapping:
+          image_path: main_image
+
     parameters:
+      - name: input_image_type
+        display_name: Input Image
+        category: Input
+        type: ENUM
+        hide_title: false
+        options: [CameraRender, CameraDepth, FastRender, NoInput]
+        default: CameraRender
+
       - name: prompt
         display_name: Prompt
         category: Input
@@ -140,6 +156,13 @@ models:
         hide_title: false
         multiline: true
         default: ""
+
+      - name: reference_images
+        display_name: Reference Images
+        category: Input
+        type: IMAGE_LIST
+        hide_title: false
+        limit: 12
 
       - name: resolution
         display_name: Resolution
@@ -181,7 +204,23 @@ models:
 
         response_parser: SeedreamImageParserAccount
 
+    input_processors:
+      - processor: RenderProcessor
+        group: main_image
+        input_mapping:
+          input_type: input_image_type
+        output_mapping:
+          image_path: main_image
+
     parameters:
+      - name: input_image_type
+        display_name: Input Image
+        category: Input
+        type: ENUM
+        hide_title: false
+        options: [CameraRender, CameraDepth, FastRender, NoInput]
+        default: CameraRender
+
       - name: prompt
         display_name: Prompt
         category: Input
@@ -189,6 +228,13 @@ models:
         hide_title: false
         multiline: true
         default: ""
+
+      - name: reference_images
+        display_name: Reference Images
+        category: Input
+        type: IMAGE_LIST
+        hide_title: false
+        limit: 12
 
       - name: resolution
         display_name: Resolution
