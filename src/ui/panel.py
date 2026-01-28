@@ -164,9 +164,10 @@ class AIStudioImagePanel(bpy.types.Panel):
     @staticmethod
     def draw_task_layout(context, layout: bpy.types.UILayout):
         """绘制生成中的任务"""
-        layout.separator(factor=1)
-        layout.progress(factor=0.5, type="BAR", text="这是一个进度条")
-        layout.progress(factor=0.5, type="RING", text="这是一个进度条")
+        ai = context.scene.blender_ai_studio_property
+        for i in ai.running_task_list:
+            layout.separator(factor=1)
+            i.draw_task(context, layout)
 
     @staticmethod
     def draw_model_parameters(context, layout: bpy.types.UILayout):
@@ -242,6 +243,6 @@ class AIStudioHistoryPanel(bpy.types.Panel):
         items = oii.edit_history[:]
         il = len(items)
         for index, h in enumerate(reversed(items)):
-            h.draw_history(layout, il - index - 1)
+            h.draw_history(context, layout, il - index - 1)
         if len(oii.edit_history) == 0:
             layout.label(text="No history available at the moment")

@@ -152,6 +152,8 @@ class ApplyAiEditImage(bpy.types.Operator):
         edit_history.prompt = oii.prompt
         edit_history.origin_image = origin_image
         edit_history.mask_index = oii.mask_index
+        edit_history.running_state = "running"
+        edit_history.running_progress = 0.1
         refresh_image_preview(origin_image)
 
         logger.info(f"model_name: {model_name} model_id:{model_id} auth_mode: {account.auth_mode}")
@@ -177,7 +179,8 @@ class ApplyAiEditImage(bpy.types.Operator):
         }
 
         ww = credentials.copy()
-        ww.pop("token")
+        if "token" in ww:
+            ww.pop("token")
         logger.info(f"credentials {json.dumps(ww, indent=4)}")
         logger.info(f"params {json.dumps(params, indent=4)}")
 
@@ -217,6 +220,7 @@ class ApplyAiEditImage(bpy.types.Operator):
                 percent = progress["percentage"]
                 message = progress["message"]
                 p = bpy.app.translations.pgettext("Progress")
+                edit_history.running_progress = percent
                 text = f"{p}: {percent * 100}% - {message}"
 
                 edit_history.running_message = text
@@ -250,15 +254,15 @@ class ApplyAiEditImage(bpy.types.Operator):
                 edit_history.running_message = "Running completed"
 
                 if gi := bpy.data.images.load(str(save_file), check_existing=False):
-                    edit_history.generated_image = gi
-                    gi.preview_ensure()
-                    gi.name = generate_image_name
                     try:
+                        gi.preview_ensure()
+                        gi.name = generate_image_name
                         space_data.image = gi
+                        gih = edit_history.generated_images.add()
+                        gih.image = gi
                     except Exception as e:
                         print("生成完成设置生成图像到活动项错误 error", e)
                         import traceback
-
                         traceback.print_exc()
                         traceback.print_stack()
                 else:

@@ -21,7 +21,6 @@ class ViewImage(bpy.types.Operator):
 
     def execute(self, context):
         image = getattr(context, "image", None)
-        print(self.bl_idname, image)
         if not image:
             self.report({"ERROR"}, "No image")
             return {"CANCELLED"}
@@ -185,4 +184,6 @@ class ClearHistory(bpy.types.Operator):
     def execute(self, context):
         oii = context.scene.blender_ai_studio_property
         oii.edit_history.clear()
+        if context.area:
+            context.area.tag_redraw()
         return {"FINISHED"}
