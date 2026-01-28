@@ -351,7 +351,7 @@ class Account:
                             "modelId": "gemini-3-pro-image-preview",
                             "price": {"1K": 36, "2K": 36, "4K": 63},
                         },
-                        "bestBalance": {
+                        "bestPrice": {
                             "modelId": "gemini-3-pro-image-preview-SO",
                             "price": {"1K": 18, "2K": 18, "4K": 32},
                         },

@@ -43,7 +43,7 @@ class AuthMode(Enum):
 
 class PricingStrategy(Enum):
     BEST_SPEED = "bestSpeed"
-    BEST_BALANCE = "bestBalance"
+    BEST_BALANCE = "bestPrice"
 
     @property
     def display_name(self) -> str:
