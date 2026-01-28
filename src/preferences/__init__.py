@@ -115,10 +115,35 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey):
         items=[(item.value, item.display_name, "") for item in PricingStrategy],
         **translation_context,
     )
-    
+
     def set_account_pricing_strategy(self, value):
         self.account_pricing_strategy = value
         bpy.context.preferences.use_preferences_save = True
+
+    # 环境配置
+    use_dev_environment: bpy.props.BoolProperty(
+        name="Use Development Environment",
+        default=False,
+        **translation_context,
+    )
+
+    dev_api_base_url: bpy.props.StringProperty(
+        name="Dev API Base URL",
+        default="",
+        **translation_context,
+    )
+
+    dev_login_url: bpy.props.StringProperty(
+        name="Dev Login URL",
+        default="",
+        **translation_context,
+    )
+
+    dev_token: bpy.props.StringProperty(
+        name="Dev Token",
+        default="",
+        **translation_context,
+    )
 
     def draw(self, context):
         layout = self.layout
@@ -142,6 +167,17 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey):
         layout.label(text="Service")
         layout.prop(self, "account_pricing_strategy", text="Pricing Strategy")
         layout.prop(self, "account_auth_mode", text="Operating Mode")
+
+        # 环境配置
+        box = layout.box()
+        box.label(text="Environment Settings")
+        box.prop(self, "use_dev_environment")
+
+        if self.use_dev_environment:
+            box.prop(self, "dev_api_base_url")
+            box.prop(self, "dev_login_url")
+            box.prop(self, "dev_token")
+
         if self.is_backup_mode:
             account = Account.get_instance()
             if account.is_logged_in():

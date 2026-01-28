@@ -3,6 +3,7 @@ import json
 import tempfile
 import traceback
 import webbrowser
+from copy import deepcopy
 from pathlib import Path
 from threading import Thread
 from typing import Self
@@ -11,6 +12,7 @@ import bpy
 from bpy.app.translations import pgettext as _T
 
 from .config.model_registry import ModelRegistry
+from .config.url_config import URLConfigManager
 from .exception import (
     APIRequestException,
     AuthFailedException,
@@ -34,10 +36,6 @@ except Exception:
     from websockets import WebSocketServerProtocol
     from websockets.exceptions import ConnectionClosedOK, ConnectionClosed
 
-HELP_URL = "https://shimo.im/docs/47kgMZ7nj4Sm963V"
-SERVICE_BASE_URL = "https://api-addon.acggit.com"
-SERVICE_URL = f"{SERVICE_BASE_URL}/v1"
-LOGIN_URL = "https://addon-login.acggit.com"
 AUTH_PATH = Path(tempfile.gettempdir(), "aistudio/auth.json")
 try:
     AUTH_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -56,11 +54,10 @@ class Account:
 
     def __init__(self) -> None:
         self.nickname = ""
-        self.help_url = HELP_URL
         self.logged_in = False
         self.services_connected = False
         self.credits = 0
-        self.token = ""
+        self._token = ""  # 内部 token 存储
         self.price_table = {}
         self.redeem_to_credits_table = {
             6: 600,
@@ -71,6 +68,7 @@ class Account:
         self.initialized = False
         self.error_messages: list = []
         self.waiting_for_login = False
+        self._url_manager = URLConfigManager.get_instance()
         self.load_account_info_from_local()
         self.ping_once()
 
@@ -89,6 +87,34 @@ class Account:
     @pricing_strategy.setter
     def pricing_strategy(self, strategy: str):
         get_pref().set_account_pricing_strategy(strategy)
+
+    @property
+    def help_url(self) -> str:
+        return self._url_manager.get_help_url()
+
+    @property
+    def service_url(self) -> str:
+        """获取服务 URL（动态，支持环境切换）"""
+        return self._url_manager.get_service_url()
+
+    @property
+    def login_url(self) -> str:
+        """获取登录 URL（动态，支持环境切换）"""
+        return self._url_manager.get_login_url()
+
+    @property
+    def token(self) -> str:
+        """获取 token（支持测试环境 token）"""
+        # 如果使用测试环境且设置了测试 token，优先使用
+        dev_token = self._url_manager.get_dev_token()
+        if dev_token:
+            return dev_token
+        return self._token
+
+    @token.setter
+    def token(self, value: str):
+        """设置 token"""
+        self._token = value
 
     def take_errors(self) -> list:
         errors = self.error_messages[:]
@@ -124,7 +150,7 @@ class Account:
         if self.waiting_for_login:
             return
         self.waiting_for_login = True
-        webbrowser.open(LOGIN_URL)
+        webbrowser.open(self.login_url)
 
         async def login_callback(server: WebSocketClient, websocket: "WebSocketServerProtocol", event: dict):
             try:
@@ -164,7 +190,7 @@ class Account:
         job.start()
 
     def ping_once(self):
-        url = f"{SERVICE_URL}/billing/model-price"
+        url = f"{self.service_url}/billing/model-price"
         headers = {
             "Content-Type": "application/json",
         }
@@ -172,6 +198,7 @@ class Account:
         def job():
             try:
                 import requests
+
                 resp = requests.get(url, headers=headers, timeout=2)
                 self.services_connected = resp.status_code == 200
             except Exception:
@@ -204,7 +231,7 @@ class Account:
             self.push_error(_T("Invalid auth data"))
             return
         self.nickname = data.get("nickname", "")
-        self.token = data.get("token", "")
+        self._token = data.get("token", "")
         self.credits = data.get("coin", 0)
         self.logged_in = True
 
@@ -225,7 +252,7 @@ class Account:
         self.logged_in = False
         self.nickname = "Not Login"
         self.credits = 0
-        self.token = ""
+        self._token = ""
         if not self._AUTH_PATH.exists():
             return
         try:
@@ -235,7 +262,7 @@ class Account:
 
     # 兑换积分
     def redeem_credits(self, code: str) -> int:
-        url = f"{SERVICE_URL}/billing/redeem-code"
+        url = f"{self.service_url}/billing/redeem-code"
         headers = {
             "X-Auth-T": self.token,
             "Content-Type": "application/json",
@@ -245,6 +272,7 @@ class Account:
         }
         try:
             import requests
+
             resp = requests.post(url, headers=headers, json=payload)
         except ConnectionError:
             self.push_error(_T("Network connection failed"))
@@ -290,12 +318,13 @@ class Account:
         def _fetch_credits_price():
             if self.price_table:
                 return
-            url = f"{SERVICE_URL}/billing/model-price"
+            url = f"{self.service_url}/billing/model-price"
             headers = {
                 "Content-Type": "application/json",
             }
             try:
                 import requests
+
                 resp = requests.get(url, headers=headers)
             except ConnectionError:
                 self.push_error(_T("Network connection failed"))
@@ -343,13 +372,14 @@ class Account:
         def _fetch_credits():
             if self.auth_mode != AuthMode.ACCOUNT.value:
                 return
-            url = f"{SERVICE_URL}/billing/balance"
+            url = f"{self.service_url}/billing/balance"
             headers = {
                 "X-Auth-T": self.token,
                 "Content-Type": "application/json",
             }
             try:
                 import requests
+
                 resp = requests.get(url, headers=headers)
             except ConnectionError:
                 self.push_error(_T("Network connection failed"))

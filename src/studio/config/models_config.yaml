@@ -18,7 +18,7 @@ models:
 
       account:
         help_url: https://shimo.im/docs/47kgMZ7nj4Sm963V
-        base_url: https://api-addon.acggit.com/v1
+        base_url: "{account_api_base_url}"
         entry: service/cpick
         method: POST
         headers:
@@ -121,7 +121,7 @@ models:
     endpoints:
       account:
         help_url: https://shimo.im/docs/47kgMZ7nj4Sm963V
-        base_url: https://api-addon.acggit.com/v1
+        base_url: "{account_api_base_url}"
         entry: service/cpick
         method: POST
         headers:

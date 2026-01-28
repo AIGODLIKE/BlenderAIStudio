@@ -382,7 +382,7 @@ class ModelConfig:
         return endpoint.get("help_url", "")
 
     def build_api_url(self, auth_mode: str) -> str:
-        """构建完整的 API URL
+        """构建完整的 API URL（支持占位符替换）
 
         Args:
             auth_mode: 认证模式
@@ -393,6 +393,17 @@ class ModelConfig:
         endpoint = self.get_endpoint(auth_mode)
         base_url = endpoint.get("base_url", "")
         entry: str = endpoint.get("entry", "")
+
+        # 如果 base_url 是占位符，从 URLConfigManager 获取
+        if "{account_api_base_url}" in base_url:
+            try:
+                from .url_config import URLConfigManager
+                url_manager = URLConfigManager.get_instance()
+                dynamic_base_url = url_manager.get_model_api_base_url(auth_mode)
+                if dynamic_base_url:
+                    base_url = base_url.replace("{account_api_base_url}", dynamic_base_url)
+            except Exception as e:
+                logger.warning(f"Failed to resolve base_url placeholder: {e}")
 
         # 替换 entry 中的占位符
         entry = entry.replace("{model}", self.model_id)
