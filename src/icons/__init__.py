@@ -59,7 +59,7 @@ def check_icons_is_ready():
 
 def register():
     load_icons()
-    bpy.app.timers.register(check_icons_is_ready, first_interval=1)
+    bpy.app.timers.register(check_icons_is_ready, first_interval=2)
 
 
 def unregister():
