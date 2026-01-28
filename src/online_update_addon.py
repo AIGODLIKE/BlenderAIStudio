@@ -453,7 +453,7 @@ register_class, unregister_class = bpy.utils.register_classes_factory(class_list
 
 
 def register():
-    # OnlineUpdateAddon.update_addon_version_info() #禁用启动检查,改为手动检查
+    OnlineUpdateAddon.update_addon_version_info()  # 启动自检更新,如果有测提示更新
     register_class()
 
 
