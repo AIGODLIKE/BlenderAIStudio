@@ -36,7 +36,12 @@ class SeedreamImageParser(ResponseParser):
         # 账号模式：提取 data 字段
         data = self._process_resp_json(resp_json)
 
-        return _parse_image_data_from_response_json(data)
+        try:
+            res = _parse_image_data_from_response_json(data)
+        except Exception as e:
+            print(data)
+            raise e
+        return res
 
     def _check_response_custom(self, resp: dict):
         # 账号端点常见：{'responseId': ..., 'code': -4, 'errCode': -4000, 'errMsg': '请先登录!'}
