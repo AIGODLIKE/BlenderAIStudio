@@ -59,6 +59,7 @@ class Account:
         self.credits = 0
         self._token = ""  # 内部 token 存储
         self.price_table = {}
+        self.provider_count_map = {}
         self.redeem_to_credits_table = {
             6: 600,
             30: 3300,
@@ -345,24 +346,18 @@ class Account:
                     return
                 data: dict = resp_json.get("data", {})
                 self.price_table = data
-                data = {
-                    "NanoBananaPro": {
-                        "bestSpeed": {
-                            "modelId": "gemini-3-pro-image-preview",
-                            "price": {"1K": 36, "2K": 36, "4K": 63},
-                        },
-                        "bestPrice": {
-                            "modelId": "gemini-3-pro-image-preview-SO",
-                            "price": {"1K": 18, "2K": 18, "4K": 32},
-                        },
-                    }
-                }
-                ModelRegistry.get_instance().update_pricing_from_backend(data)
-                data = {
-                    "gemini-3-pro-image-preview": "NanoBananaPro",
-                    "gemini-3-pro-image-preview-SO": "NanoBananaPro",
-                }
-                ModelRegistry.get_instance().update_id_to_name(AuthMode.ACCOUNT.value, data)
+                pricing_data = {}
+                for item in data:
+                    model_name = item.pop("modelName", None)
+                    self.provider_count_map[model_name] = item.pop("providerCount", 0)
+                    pricing_data[model_name] = deepcopy(item)
+                ModelRegistry.get_instance().update_pricing_from_backend(pricing_data)
+                id_map = {}
+                for model_name, model_data in pricing_data.items():
+                    for value in model_data.values():
+                        if isinstance(value, dict) and "modelId" in value:
+                            id_map[value["modelId"]] = model_name
+                ModelRegistry.get_instance().update_id_to_name(AuthMode.ACCOUNT.value, id_map)
             else:
                 self.push_error(_T("Price fetch failed") + ": " + resp.text)
 
