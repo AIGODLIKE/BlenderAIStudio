@@ -124,12 +124,6 @@ class EditHistory(HistoryState, GeneralProperty, bpy.types.PropertyGroup):
         if not self.expand_history:
             return
 
-        if oi := self.origin_image:
-            row = box.row()
-            row.context_pointer_set("image", oi)
-            row.template_icon(oi.preview.icon_id, scale=2)
-            row.operator("bas.view_image", text="View Origin Image")
-
         column = box.column()
         if generated_images := self.generated_images:
             row = column.row()
@@ -141,12 +135,21 @@ class EditHistory(HistoryState, GeneralProperty, bpy.types.PropertyGroup):
         text = bpy.app.translations.pgettext("%s reference images") % len(self.mask_images)
         column.label(text=text)
 
+        box.separator(factor=2)
+        icon_size = 1
         if generated_images := self.generated_images:
-            for gi in generated_images:
+            for gih in generated_images:
+                gi = gih.image
                 row = box.row()
                 row.context_pointer_set("image", gi)
-                row.template_icon(gi.preview.icon_id, scale=2)
+                row.template_icon(gi.preview.icon_id, scale=icon_size)
                 row.operator("bas.view_image", text="View Generated Image")
+        box.separator()
+        if oi := self.origin_image:
+            row = box.row()
+            row.context_pointer_set("image", oi)
+            row.template_icon(oi.preview.icon_id, scale=icon_size)
+            row.operator("bas.view_image", text="View Origin Image")
         box.context_pointer_set("history", self)
         box.operator("bas.restore_history", icon="FILE_PARENT")
 
