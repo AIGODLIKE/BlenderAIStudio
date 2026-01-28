@@ -290,7 +290,8 @@ class SimpleYAMLParser:
                         next_line = self.lines[self.current_line]
 
                         # 跳过空行和注释
-                        while self.current_line < len(self.lines) and self._is_empty_or_comment(self.lines[self.current_line]):
+                        while self.current_line < len(self.lines) and self._is_empty_or_comment(
+                                self.lines[self.current_line]):
                             self.current_line += 1
                             consumed_lines += 1
 
@@ -636,10 +637,10 @@ class ModelRegistry:
         return list(self.models.values())
 
     def list_models(
-        self,
-        category: Optional[str] = None,
-        auth_mode: Optional[str] = None,
-        provider: Optional[str] = None,
+            self,
+            category: Optional[str] = None,
+            auth_mode: Optional[str] = None,
+            provider: Optional[str] = None,
     ) -> List[ModelConfig]:
         """列出符合条件的模型
 
@@ -690,6 +691,9 @@ class ModelRegistry:
         return price
 
     def resolve_submit_id(self, model_name: str, strategy: Optional[str] = None) -> str:
+        """
+        resolve_submit_id("NanoBananaPro","bestSpeed")
+        """
         chosen_entry = self._pricing_table.get(model_name) or {}
         print_table = chosen_entry.get(strategy, {})
         submit_id = print_table.get("modelId")

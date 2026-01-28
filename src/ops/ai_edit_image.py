@@ -141,8 +141,9 @@ class ApplyAiEditImage(bpy.types.Operator):
 
         account = Account.get_instance()
         model_registry = ModelRegistry.get_instance()
-        model_name = oii.model  # "gemini-3-pro-image-preview"
-        model_id = model_registry.resolve_model_id(model_name, account.auth_mode)
+        model_name = oii.model  # NanoBananaPro
+        model = model_registry.get_model(model_name)  # ModelConfig
+        model_id = model.model_id  # "gemini-3-pro-image-preview"
 
         # 创建历史记录 ,在这个时候就需要保存信息了
         edit_history = oii.edit_history.add()  # 添加历史记录,将当前任务加入历史记录，历史记录当做一个任务进行显示
@@ -153,12 +154,12 @@ class ApplyAiEditImage(bpy.types.Operator):
         edit_history.mask_index = oii.mask_index
         refresh_image_preview(origin_image)
 
-        logger.info(f"model_name: {model_name} auth_mode: {account.auth_mode}")
+        logger.info(f"model_name: {model_name} model_id:{model_id} auth_mode: {account.auth_mode}")
 
         if account.auth_mode == AuthMode.API.value:
             credentials = {"api_key": pref.from_model_name_get_api_key(model_name)}
         else:
-            submit_model_id = model_registry.resolve_submit_id(model_name, account.auth_mode, )
+            submit_model_id = model_registry.resolve_submit_id(model_name, account.pricing_strategy)
             credentials = {
                 "token": account.token,
                 "modelId": submit_model_id,
@@ -181,7 +182,7 @@ class ApplyAiEditImage(bpy.types.Operator):
         logger.info(f"params {json.dumps(params, indent=4)}")
 
         task = UniversalModelTask(
-            model_id=model_name,
+            model_id=model_id,
             auth_mode=account.auth_mode,
             credentials=credentials,
             params=params,
