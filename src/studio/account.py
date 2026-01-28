@@ -28,12 +28,10 @@ from ..utils import get_pref
 # TODO 导入耗时+300~ms
 try:
     from ...External.websockets.server import serve
-    from ...External.websockets.legacy.server import WebSocketServer
     from ...External.websockets.exceptions import ConnectionClosedOK, ConnectionClosed
 except Exception:
     from websockets.server import serve
     from websockets import WebSocketServerProtocol
-    from websockets.legacy.server import WebSocketServer
     from websockets.exceptions import ConnectionClosedOK, ConnectionClosed
 
 HELP_URL = "https://shimo.im/docs/47kgMZ7nj4Sm963V"
@@ -128,7 +126,7 @@ class Account:
         self.waiting_for_login = True
         webbrowser.open(LOGIN_URL)
 
-        async def login_callback(server: WebSocketServer, websocket: "WebSocketServerProtocol", event: dict):
+        async def login_callback(server: WebSocketClient, websocket: "WebSocketServerProtocol", event: dict):
             try:
                 data: dict = event.get("data", {})
                 self.load_account_info(data)
@@ -149,7 +147,7 @@ class Account:
             server = None
             for p in range(*port_range):
                 try:
-                    server = WebSocketServer(p)
+                    server = WebSocketClient(p)
                     server.reg_handler("send_token", login_callback)
                     server.run()
                     break
@@ -383,7 +381,7 @@ class Account:
         Thread(target=_fetch_credits, daemon=True).start()
 
 
-class WebSocketServer:
+class WebSocketClient:
     _host = "127.0.0.1"
 
     def __init__(self, port):
@@ -418,7 +416,7 @@ class WebSocketServer:
             self.logger.error(traceback.format_exc())
 
     @staticmethod
-    async def _default(server: "WebSocketServer", websocket: "WebSocketServerProtocol", event: dict):
+    async def _default(server: "WebSocketClient", websocket: "WebSocketServerProtocol", event: dict):
         try:
             server.logger.warning(f"默认消息: {event}")
             event = {
@@ -430,7 +428,7 @@ class WebSocketServer:
             pass
 
     @staticmethod
-    async def _query_status(server: "WebSocketServer", websocket: "WebSocketServerProtocol", event: dict):
+    async def _query_status(server: "WebSocketClient", websocket: "WebSocketServerProtocol", event: dict):
         try:
             server.logger.warning(f"查询状态: {event}")
             event = {
