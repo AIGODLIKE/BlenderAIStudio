@@ -249,7 +249,7 @@ models:
         category: Input
         type: ENUM
         hide_title: false
-        options: [1K, 2K, 4K]
+        options: [2K, 4K]
 
       - name: api_key
         display_name: API Key
