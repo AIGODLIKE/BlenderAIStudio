@@ -159,7 +159,7 @@ class ApplyAiEditImage(bpy.types.Operator):
         if account.auth_mode == AuthMode.API.value:
             credentials = {"api_key": pref.from_model_name_get_api_key(model_name)}
         else:
-            submit_model_id = model_registry.resolve_submit_id(model_name, account.pricing_strategy)
+            model_id = submit_model_id = model_registry.resolve_submit_id(model_name, account.pricing_strategy)
             credentials = {
                 "token": account.token,
                 "modelId": submit_model_id,

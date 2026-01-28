@@ -242,6 +242,6 @@ class AIStudioHistoryPanel(bpy.types.Panel):
         items = oii.edit_history[:]
         il = len(items)
         for index, h in enumerate(reversed(items)):
-            h.draw_history(layout, il - index)
+            h.draw_history(layout, il - index - 1)
         if len(oii.edit_history) == 0:
             layout.label(text="No history available at the moment")
