@@ -434,10 +434,13 @@ class SceneProperty(bpy.types.PropertyGroup, GeneralProperty, DynamicEnumeration
         return 99999
 
     def clear_task_running_state(self):
-        """TODO 清理任务的运行状态
+        """
+        清理任务的运行状态
         只会在启动插件或加载文件时进行
         """
-        ...
+        for h in self.edit_history:
+            if h.running_state not in ("completed", "failed", "cancelled",):
+                h.running_state = "failed"
 
 
 class_list = [
@@ -457,7 +460,8 @@ def clear_run():
 
 @persistent
 def load_post(a, b):
-    clear_run()
+    # clear_run()
+    ...
 
 
 def register():

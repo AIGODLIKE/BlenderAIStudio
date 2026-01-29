@@ -200,8 +200,11 @@ class ApplyAiEditImage(bpy.types.Operator):
                 old_state: TaskState = event_data["old_state"]
                 new_state: TaskState = event_data["new_state"]
                 text = f"状态改变: {old_state.value} -> {new_state.value}"
-                edit_history.running_state = new_state.value
                 logger.info(text)
+                try:
+                    edit_history.running_state = new_state.value
+                except Exception as e:
+                    logger.error(str(e))
 
             bpy.app.timers.register(f, first_interval=0.1)
 
@@ -219,10 +222,13 @@ class ApplyAiEditImage(bpy.types.Operator):
                 percent = progress["percentage"]
                 message = progress["message"]
                 p = bpy.app.translations.pgettext("Progress")
-                edit_history.running_progress = percent
                 text = f"{p}: {percent * 100}% - {message}"
 
-                edit_history.running_message = text
+                try:
+                    edit_history.running_progress = percent
+                    edit_history.running_message = text
+                except Exception as e:
+                    logger.error(str(e))
                 logger.info(text)
 
             bpy.app.timers.register(f, first_interval=0.1)
@@ -249,27 +255,30 @@ class ApplyAiEditImage(bpy.types.Operator):
                 save_file = Path(temp_folder).joinpath(f"{generate_image_name}_Output{ext}")
                 save_file.write_bytes(result_data[1])
                 text = f"任务完成: {_task.task_id} {save_file}"
-
-                edit_history.running_message = "Running completed"
-
-                if gi := bpy.data.images.load(str(save_file), check_existing=False):
-                    try:
-                        gi.preview_ensure()
-                        gi.name = generate_image_name
-                        space_data.image = gi
-                        gih = edit_history.generated_images.add()
-                        gih.image = gi
-                    except Exception as e:
-                        print("生成完成设置生成图像到活动项错误 error", e)
-                        import traceback
-                        traceback.print_exc()
-                        traceback.print_stack()
-                else:
-                    ut = bpy.app.translations.pgettext("Unable to load generated image!")
-                    edit_history.running_message = ut + " " + str(save_file)
-
-                edit_history.stop_running()
                 logger.info(text)
+
+                try:
+                    edit_history.running_message = "Running completed"
+
+                    if gi := bpy.data.images.load(str(save_file), check_existing=False):
+                        try:
+                            gi.preview_ensure()
+                            gi.name = generate_image_name
+                            space_data.image = gi
+                            gih = edit_history.generated_images.add()
+                            gih.image = gi
+                        except Exception as e:
+                            print("生成完成设置生成图像到活动项错误 error", e)
+                            import traceback
+                            traceback.print_exc()
+                            traceback.print_stack()
+                    else:
+                        ut = bpy.app.translations.pgettext("Unable to load generated image!")
+                        edit_history.running_message = ut + " " + str(save_file)
+
+                    edit_history.stop_running()
+                except Exception as e:
+                    logger.error(str(e))
 
             bpy.app.timers.register(f, first_interval=0.1)
 
@@ -280,12 +289,15 @@ class ApplyAiEditImage(bpy.types.Operator):
 
                 _task: Task = event_data["task"]
                 result: TaskResult = event_data["result"]
-                if not result.success:
-                    edit_history.running_message = str(result.error)
-                    logger.info(edit_history.running_message)
-                else:
-                    edit_history.running_message = "Unknown error" + " " + str(result.data)
-                edit_history.stop_running()
+                try:
+                    if not result.success:
+                        edit_history.running_message = str(result.error)
+                        logger.info(edit_history.running_message)
+                    else:
+                        edit_history.running_message = "Unknown error" + " " + str(result.data)
+                    edit_history.stop_running()
+                except Exception as e:
+                    logger.error(str(e))
 
             bpy.app.timers.register(f, first_interval=0.1)
 
