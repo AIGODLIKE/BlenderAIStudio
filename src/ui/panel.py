@@ -174,21 +174,25 @@ class AIStudioImagePanel(bpy.types.Panel):
         """动态绘制模型所需的参数"""
         ai = context.scene.blender_ai_studio_property
         model_register = ModelRegistry.get_instance()
-        model = model_register.get_model(ai.model)
         pref = get_pref()
 
-        pref.draw_account(layout)
+        column = layout.column()
+        pref.draw_account(column)
 
-        row = layout.row(align=True)
+        row = column.row(align=True)
         row.label(text="", icon_value=get_custom_icon("aspect_ratio"))
-        row.prop(ai, "model", text="")
-        pref.have_input_api_key(context, layout)
-        layout.separator(type="LINE")
+        row.prop(ai, "model_name", text="")
+        pref.have_input_api_key(context, column)
+        column.separator(type="LINE")
 
-        for param in model.parameters:
-            name = param.get("name", None)
-            if draw_func := getattr(AIStudioImagePanel, f"draw_{name}", None):
-                draw_func(ai, layout)
+        try:
+            model = model_register.get_model(ai.model_name)
+            for param in model.parameters:
+                name = param.get("name", None)
+                if draw_func := getattr(AIStudioImagePanel, f"draw_{name}", None):
+                    draw_func(ai, column)
+        except ValueError as e:
+            ...
 
     @staticmethod
     def draw_aspect_ratio(ai, layout: bpy.types.UILayout):

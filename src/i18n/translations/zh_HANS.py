@@ -236,6 +236,7 @@ translations = (
     ("ReRender Image", "重渲染图像", OPS_TCTX),
     ("Clear All History", "清理所有历史", OPS_TCTX),
     ("Clear All History", "清理所有历史", ""),
+    ("Dev Environment", "开发环境", ""),
     ("Are you sure you want to clear all history?", "您确定要清除所有历史记录吗?", ""),
     ("ReRender Image", "重渲染图像", None),
     ("Render", "渲染", OPS_TCTX),

@@ -9,6 +9,7 @@ from ..i18n import PROP_TCTX
 from ..studio.account import Account
 from ..studio.config.model_registry import ModelRegistry
 from ..utils import get_custom_icon, time_diff_to_str, get_pref
+from ..utils.property import get_bl_property, set_bl_property
 
 
 class ImageItem(bpy.types.PropertyGroup):
@@ -212,15 +213,65 @@ class EditHistory(HistoryState, GeneralProperty, bpy.types.PropertyGroup):
 class DynamicEnumeration:
     _model_registry = ModelRegistry.get_instance()
 
-    def get_models_items(self, context):
+    def get_models_name_items(self, context):
         try:
-            models = self._model_registry.get_all_models()
-            return [(model.model_name, model.model_name, model.provider) for model in models]
+            pref = get_pref()
+            models = self._model_registry.list_models(
+                auth_mode=pref.account_auth_mode,
+                category="IMAGE_GENERATION",  # 目前只显示图像生成模型
+            )
+            return [(m.model_name, m.model_name, m.provider) for m in models]
         except Exception as e:
             print(e)
             return [("None", "None", "None"), ]
 
-    model: bpy.props.EnumProperty(items=get_models_items, name="Model")
+    def get_model_name(self):
+        account_auth_mode = get_pref().account_auth_mode
+        key = f"{account_auth_mode}_model_name"
+
+        return get_bl_property(self, key, 0)
+
+    def set_model_name(self, value):
+        account_auth_mode = get_pref().account_auth_mode
+        key = f"{account_auth_mode}_model_name"
+        set_bl_property(self, key, value)
+
+    model_name: bpy.props.EnumProperty(items=get_models_name_items, name="Model", get=get_model_name,
+                                       set=set_model_name)
+
+    def get_resolution_items(self, context) -> list[(str, str, str),]:
+        """
+        [
+            ("AUTO", "Auto", "Keep original resolution"),
+            ("1K", "1k", "1k resolution"),
+            ("2K", "2k", "2k resolution"),
+            ("4K", "4k", "4k resolution"),
+        ]
+        """
+        try:
+            model = self._model_registry.get_model(self.model_name)
+            if res := model.get_parameter("resolution"):
+                if options := res.get("options", None):
+                    return [(i, i, i) for i in options]
+        except Exception as e:
+            print(e)
+        return [("None", "None", "None"), ]
+
+    def get_resolution(self):
+        key = f"{self.model_name}_resolution"
+
+        return get_bl_property(self, key, 0)
+
+    def set_resolution(self, value):
+        key = f"{self.model_name}_resolution"
+        set_bl_property(self, key, value)
+
+    resolution: bpy.props.EnumProperty(
+        name="Out Resolution",
+        items=get_resolution_items,
+        get=get_resolution,
+        set=set_resolution
+    )
 
     def get_aspect_ratio_items(self, context) -> list[(str, str, str),]:
         """
@@ -239,7 +290,7 @@ class DynamicEnumeration:
         ]
         """
         try:
-            model = self._model_registry.get_model(self.model)
+            model = self._model_registry.get_model(self.model_name)
             if aspect_ratio := model.get_parameter("aspect_ratio"):
                 if options := aspect_ratio.get("options", None):
                     return [(i, i, i) for i in options]
@@ -247,32 +298,20 @@ class DynamicEnumeration:
             print(e)
         return [("None", "None", "None"), ]
 
-    def get_resolution_items(self, context) -> list[(str, str, str),]:
-        """
-        [
-            ("AUTO", "Auto", "Keep original resolution"),
-            ("1K", "1k", "1k resolution"),
-            ("2K", "2k", "2k resolution"),
-            ("4K", "4k", "4k resolution"),
-        ]
-        """
-        try:
-            model = self._model_registry.get_model(self.model)
-            if res := model.get_parameter("resolution"):
-                if options := res.get("options", None):
-                    return [(i, i, i) for i in options]
-        except Exception as e:
-            print(e)
-        return [("None", "None", "None"), ]
+    def get_aspect_ratio(self):
+        key = f"{self.model_name}_aspect_ratio"
 
-    resolution: bpy.props.EnumProperty(
-        name="Out Resolution",
-        items=get_resolution_items
-    )
+        return get_bl_property(self, key, 0)
+
+    def set_aspect_ratio(self, value):
+        key = f"{self.model_name}_aspect_ratio"
+        set_bl_property(self, key, value)
 
     aspect_ratio: bpy.props.EnumProperty(
         name="Aspect Ratio",
-        items=get_aspect_ratio_items
+        items=get_aspect_ratio_items,
+        get=get_aspect_ratio,
+        set=set_aspect_ratio
     )
 
 

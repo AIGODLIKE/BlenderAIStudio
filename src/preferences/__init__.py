@@ -93,6 +93,7 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey):
         name="Page Type",
         items=[
             ("SETTING", "Setting", ""),
+            ("DEV", "Dev Environment", ""),
             ("ONLINE_UPDATE", "Update Addon", ""),
         ],
         **translation_context,
@@ -167,17 +168,10 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey):
 
     def draw_account(self, layout):
         layout.prop(self, "account_auth_mode", text="Operating Mode")
-        column = layout.column()
-        if self.is_api_mode:
-            column.active = False
-        column.prop(self, "account_pricing_strategy", text="Pricing Strategy")
+        if not self.is_api_mode:
+            layout.prop(self, "account_pricing_strategy", text="Pricing Strategy")
 
-    def draw_service(self, layout):
-        from ..studio.account import Account
-
-        layout.label(text="Service")
-        self.draw_account(layout)
-
+    def draw_dev(self, layout):
         # 环境配置
         box = layout.box()
         box.label(text="Environment Settings")
@@ -187,6 +181,12 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey):
             box.prop(self, "dev_api_base_url")
             box.prop(self, "dev_login_url")
             box.prop(self, "dev_token")
+
+    def draw_service(self, layout):
+        from ..studio.account import Account
+
+        layout.label(text="Service")
+        self.draw_account(layout)
 
         if self.is_backup_mode:
             account = Account.get_instance()

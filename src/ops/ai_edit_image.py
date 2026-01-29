@@ -141,7 +141,7 @@ class ApplyAiEditImage(bpy.types.Operator):
 
         account = Account.get_instance()
         model_registry = ModelRegistry.get_instance()
-        model_name = oii.model  # NanoBananaPro
+        model_name = oii.model_name  # NanoBananaPro
         model = model_registry.get_model(model_name)  # ModelConfig
         model_id = model.model_id  # "gemini-3-pro-image-preview"
 

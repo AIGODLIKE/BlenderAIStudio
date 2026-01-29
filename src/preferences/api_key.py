@@ -1,32 +1,18 @@
 import bpy
 
+from ..utils.property import set_bl_property, get_bl_property
+
 
 class ApiKey:
     def get_api_key(self):
         """获取api key"""
-        model = bpy.context.scene.blender_ai_studio_property.model
-        key = f"api_key_{model}"
-        if api_key := getattr(self, key, None):
-            return api_key
-        try:
-            properties = self.bl_system_properties_get()
-            if key in properties:
-                return properties[key]
-        except Exception as e:
-            print(e.args)
-        return ""
+        key = f"api_key_{bpy.context.scene.blender_ai_studio_property.model_name}"
+        return get_bl_property(self, key, "")
 
     def set_api_key(self, value):
         """设置api key"""
-        model = bpy.context.scene.blender_ai_studio_property.model
-        key = f"api_key_{model}"
-        try:
-            self[key] = value
-            setattr(self, key, value)
-        except Exception as e:
-            properties = self.bl_system_properties_get()
-            properties[key] = value
-            print(e.args)
+        key = f"api_key_{bpy.context.scene.blender_ai_studio_property.model_name}"
+        set_bl_property(self, key, value)
 
     api_key: bpy.props.StringProperty(
         name="API Key",
@@ -39,9 +25,9 @@ class ApiKey:
         box = layout.box()
         box.label(text="API Key")
 
-        model = bpy.context.scene.blender_ai_studio_property.model
-        column = layout.column()
-        column.prop(self, "api_key", text=model)
+        model_name = bpy.context.scene.blender_ai_studio_property.model_name
+        column = box.column()
+        column.prop(self, "api_key", text=model_name)
         if self.api_key == "":
             column.label(text="Please input your API Key")
 
