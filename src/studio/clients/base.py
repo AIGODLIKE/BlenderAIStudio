@@ -5,7 +5,7 @@ import time
 import traceback
 from pathlib import Path
 from threading import Thread
-from typing import Self
+from typing import Optional, Self
 from ..account import Account
 from ..tasks import TaskManager, TaskState, Task, TaskResult
 from ..wrapper import BaseAdapter
@@ -14,6 +14,14 @@ from ...i18n import PROP_TCTX
 
 
 class StudioHistoryItem:
+    STATUS_PENDING = "pending"
+    STATUS_PREPARING = "preparing"
+    STATUS_RUNNING = "running"
+    STATUS_PROCESSING = "processing"
+    STATUS_SUCCESS = "success"
+    STATUS_FAILED = "failed"
+    STATUS_CANCELLED = "cancelled"
+
     def __init__(self) -> None:
         self.result: dict = {}
         self.outputs: list[tuple[str, str]] = []
@@ -22,7 +30,16 @@ class StudioHistoryItem:
         self.index: int = 0
         self.timestamp: float = 0
         self.show_detail: bool = False
-        self.task_id: str = ""  # 关联的任务 ID
+        self.task_id: str = ""
+        self.status: str = self.STATUS_PENDING
+        self.progress: float = 0.0
+        self.progress_message: str = ""
+        self.elapsed_time: float = 0.0
+        self.error_message: str = ""
+        self.created_at: float = 0.0
+        self.started_at: float = 0.0
+        self.finished_at: float = 0.0
+        self.task_manager: TaskManager = TaskManager.get_instance()
 
     def stringify(self) -> str:
         """序列化"""
@@ -38,6 +55,14 @@ class StudioHistoryItem:
             "index": self.index,
             "timestamp": self.timestamp,
             "task_id": self.task_id,
+            "status": self.status,
+            "progress": self.progress,
+            "progress_message": self.progress_message,
+            "elapsed_time": self.elapsed_time,
+            "error_message": self.error_message,
+            "created_at": self.created_at,
+            "started_at": self.started_at,
+            "finished_at": self.finished_at,
         }
 
     @staticmethod
@@ -52,8 +77,29 @@ class StudioHistoryItem:
 
     # 旧版本历史记录兼容
     def load_old(self, data: dict):
-        self.outputs = [("image/png", data.get("output_file", ""))]
+        # 老版本只有图像数据
+        if "vendor" not in data:
+            return
         self.model = data.get("vendor", "")
+        self.outputs = [("image/png", data.get("output_file", ""))]
+        if "status" not in data and self.get_output_file_image():
+            self.status = self.STATUS_SUCCESS
+        else:
+            self.status = self.STATUS_FAILED
+
+    def is_success(self) -> bool:
+        return self.status == StudioHistoryItem.STATUS_SUCCESS or bool(self.outputs)
+
+    def has_image(self) -> bool:
+        return bool(self.get_output_file_image())
+
+    def update_elapsed_time(self):
+        if self.status not in (StudioHistoryItem.STATUS_RUNNING, StudioHistoryItem.STATUS_PROCESSING):
+            return
+        if not self.task_id:
+            return
+        task = self.task_manager.get_task(self.task_id)
+        self.elapsed_time = task.get_elapsed_time() if task else self.elapsed_time
 
     def get_prompt(self):
         # 尝试从不同位置获取提示词
@@ -122,6 +168,15 @@ class StudioHistory:
             self.save_history()
         except ValueError:
             pass
+
+    def find_by_task_id(self, task_id: str) -> Optional["StudioHistoryItem"]:
+        for item in self.items:
+            if item.task_id == task_id:
+                return item
+        return None
+
+    def update_item(self, item: "StudioHistoryItem"):
+        self.save_history()
 
     def save_history(self):
         """在添加的时候就保存到场景一下"""
@@ -232,36 +287,59 @@ class StudioClient(BaseAdapter):
         """状态变化通用处理"""
         state = event_data["new_state"]
         task: Task = event_data["task"]
-
+        item = self.history.find_by_task_id(task.task_id)
+        if item:
+            if state == TaskState.PREPARING:
+                item.status = StudioHistoryItem.STATUS_PREPARING
+                if not item.started_at:
+                    item.started_at = time.time()
+            elif state == TaskState.RUNNING or state == TaskState.PROCESSING:
+                item.status = StudioHistoryItem.STATUS_RUNNING if state == TaskState.RUNNING else StudioHistoryItem.STATUS_PROCESSING
+                if not item.started_at:
+                    item.started_at = time.time()
+            elif state == TaskState.COMPLETED:
+                self.task_id = ""
         if state == TaskState.PREPARING:
             logger.info(f"⏳ 任务准备 {task.progress.message}")
         elif state == TaskState.RUNNING:
             logger.info(f"🚀 任务运行 {task.progress.message}")
         elif state == TaskState.COMPLETED:
             logger.info(f"✅ 任务完成: {task.task_id}")
-            self.task_id = ""  # 清除任务 ID
 
     def _on_progress(self, event_data):
-        _task: Task = event_data["task"]
+        task: Task = event_data["task"]
         progress: dict = event_data["progress"]
-        percent = progress["percentage"]
-        message = progress["message"]
-        logger.info(f"进度: {percent * 100}% - {message}")
+        item = self.history.find_by_task_id(task.task_id)
+        if item:
+            item.progress = progress["percentage"]
+            item.progress_message = progress.get("message", "")
+            item.elapsed_time = task.get_elapsed_time()
+        logger.info(f"进度: {progress['percentage'] * 100}% - {progress.get('message', '')}")
 
     def _on_task_cancelled(self, event_data):
-        _task: Task = event_data["task"]
-        if self.task_id == _task.task_id:
-            self.task_id = None
-        logger.info(f"任务已取消: {_task.task_id}")
+        task: Task = event_data["task"]
+        if self.task_id == task.task_id:
+            self.task_id = ""
+        item = self.history.find_by_task_id(task.task_id)
+        if item:
+            item.status = StudioHistoryItem.STATUS_CANCELLED
+            item.finished_at = time.time()
+            self.history.update_item(item)
+        logger.info(f"任务已取消: {task.task_id}")
 
     def _on_task_failed(self, event_data):
-        """失败通用处理"""
-        _task: Task = event_data["task"]
+        task: Task = event_data["task"]
         result: TaskResult = event_data["result"]
         if not result.success:
-            self.push_error(result.error)
-            logger.error(result.error)
-            logger.critical(f"任务失败: {_task.task_id}")
+            self.push_error(result.error_message)
+            logger.error(result.error_message)
+            logger.critical(f"任务失败: {task.task_id}")
+        item = self.history.find_by_task_id(task.task_id)
+        if item:
+            item.status = StudioHistoryItem.STATUS_FAILED
+            item.error_message = result.error_message or str(result.error or "")
+            item.finished_at = time.time()
+            self.history.update_item(item)
         Account.get_instance().fetch_credits()
 
     def cancel_generate_task(self):
