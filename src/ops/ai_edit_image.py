@@ -1,4 +1,3 @@
-import json
 import mimetypes
 from pathlib import Path
 
@@ -178,11 +177,11 @@ class ApplyAiEditImage(bpy.types.Operator):
             "__action": "edit",
         }
 
-        ww = credentials.copy()
-        if "token" in ww:
-            ww.pop("token")
-        logger.info(f"credentials {json.dumps(ww, indent=4)}")
-        logger.info(f"params {json.dumps(params, indent=4)}")
+        # ww = credentials.copy()
+        # if "token" in ww:
+        #     ww.pop("token")
+        # logger.info(f"credentials {json.dumps(ww, indent=4)}")
+        # logger.info(f"params {json.dumps(params, indent=4)}")
 
         task = UniversalModelTask(
             model_id=model_id,
