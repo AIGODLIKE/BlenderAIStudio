@@ -289,6 +289,11 @@ class GeminiImageGenerateBuilder(RequestBuilder):
                 continue
             add_part(ref_path)
 
+        image_config = {}
+        if self.is_pro:
+            image_config["imageSize"] = image_size
+        image_config["aspectRatio"] = aspect_ratio
+
         payload = {
             "contents": [{"parts": parts}],
             "generationConfig": {
@@ -296,10 +301,7 @@ class GeminiImageGenerateBuilder(RequestBuilder):
                 "maxOutputTokens": 32768,
                 "candidateCount": 1,
                 "responseModalities": ["TEXT", "IMAGE"],
-                "imageConfig": {
-                    "imageSize": image_size,
-                    "aspectRatio": aspect_ratio,
-                },
+                "imageConfig": image_config,
             },
         }
         return payload
