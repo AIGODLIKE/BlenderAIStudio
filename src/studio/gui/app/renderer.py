@@ -124,6 +124,7 @@ class Renderer:
         bool ShouldClip(vec2 pos, vec4 rect) {
             return pos.x < rect.x || pos.x > rect.z || pos.y < rect.y || pos.y > rect.w;
         }
+<<<<<<< HEAD
         
         vec3 LinearToSrgb(vec3 linear) {
             return pow(linear, vec3(1.0 / 2.2));
@@ -133,6 +134,17 @@ class Renderer:
             return pow(srgb, vec3(2.2));
         }
         
+=======
+
+        vec3 LinearToSrgb(vec3 linear) {
+            return pow(linear, vec3(1.0 / 2.2));
+        }
+
+        vec3 SrgbToLinear(vec3 srgb) {
+            return pow(srgb, vec3(2.2));
+        }
+
+>>>>>>> e76a54c (ignore: code crlf -> lf)
         void main() {
             if (ShouldClip(VertPos, ClipRect)) discard; // 如果超出裁剪区域，则不渲染
             FragColor = InColor * texture(Texture, FragUV);
