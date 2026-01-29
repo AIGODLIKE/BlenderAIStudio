@@ -18,6 +18,8 @@ error_translations = (
     ("Failed to parse API response", "解析API响应失败", None),
     ("API key invalid or quota exceeded,Please Check your Google AI Studio account",
      "API 密钥无效或配额超过限制,请检查您的 Google AI Studio 账户", None),
+    ("API key not valid. Please pass a valid API key.", "API 密钥无效。请检查您的API密钥!", None),
+    ("Request contains an invalid argument.", "模型参数无效。请联系开发者!", None),
     ("Rate limit exceeded,Please check your API key and Google AI Studio account",
      "超过速率限制,请检查您的Api key及请Google AI Studio 账户", None),
     ("Bad request (400).", "错误的请求 (400),请检查网络及代理", None),

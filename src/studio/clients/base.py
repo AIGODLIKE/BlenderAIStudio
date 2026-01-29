@@ -318,7 +318,7 @@ class StudioClient(BaseAdapter):
         task: Task = event_data["task"]
         result: TaskResult = event_data["result"]
         if not result.success:
-            self.push_error(result.error_message)
+            self.push_error(result.error or result.error_message)
             logger.error(result.error_message)
             logger.critical(f"任务失败: {task.task_id}")
         item = self.history.find_by_task_id(task.task_id)

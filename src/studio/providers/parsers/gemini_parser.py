@@ -96,6 +96,8 @@ class GeminiImageParser(ResponseParser):
         return resp
 
     def _check_response(self, response: requests.Response) -> None:
+        if response.status_code == 200:
+            return
         resp = response
         code = resp.status_code
         if code == 403:
@@ -112,23 +114,33 @@ class GeminiImageParser(ResponseParser):
             else:
                 reason = resp.reason
             logger.debug(reason)
+            _check_error_response_with_raise(resp)
             raise GeminiAPIError("Bad request (400),Please check the network and proxy")
         elif code == 502:
             logger.debug(resp.text)
             raise GeminiAPIError("Server Error: Bad Gateway,Please check the network and proxy.")
-        elif code != 200:
-            try:
-                error_info: dict = resp.json().get("error", {})
-                if isinstance(error_info, str):
-                    raise GeminiAPIError(error_info)
-                _code = error_info.get("code")
-                if "message" in error_info:
-                    error_message = error_info.get("message", "Unknown error")
-                    raise GeminiAPIError(error_message)
-                raise Exception
-            except Exception:
-                logger.error(resp.text)
-                raise GeminiAPIError("API request failed. Unknown error.")
+        try:
+            error_info: dict = resp.json().get("error", {})
+            if isinstance(error_info, str):
+                raise GeminiAPIError(error_info)
+            _check_error_response_with_raise(resp)
+        except Exception:
+            logger.error(resp.text)
+            raise GeminiAPIError("API request failed. Unknown error.")
+
+
+def _check_error_response_with_raise(response: requests.Response):
+    try:
+        data = response.json()
+        if not isinstance(data, dict):
+            return
+    except Exception:
+        return
+    error_info = data.get("error", {})
+    if not isinstance(error_info, dict):
+        return
+    error_message = error_info.get("message", "Unknown error")
+    raise Exception(error_message)
 
 
 class GeminiAPIError(StudioException):

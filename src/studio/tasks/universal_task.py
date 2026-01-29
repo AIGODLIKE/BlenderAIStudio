@@ -280,7 +280,7 @@ class UniversalModelTask(Task):
 
         except Exception as e:
             print_exc()
-            error_msg = f"任务: {self.task_name} 执行失败 -> {str(e)}"
+            error_msg = str(e)
             self.update_progress(message=error_msg)
             return TaskResult.failure_result(e, error_msg)
 
