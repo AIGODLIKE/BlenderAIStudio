@@ -278,17 +278,24 @@ class UniversalClient(StudioClient):
         task.register_callback("completed", self._on_completed)
         # 提交任务
         self.task_id = self.task_manager.submit_task(task)
+        item = StudioHistoryItem()
+        item.task_id = self.task_id
+        item.model = self.model_name
+        item.created_at = time.time()
+        item.status = StudioHistoryItem.STATUS_PREPARING
+        item.metadata.setdefault("params", {}).update(params)
+        self.history.add(item)
         logger.info(f"任务已提交: {self.task_id}")
 
     def _on_completed(self, event_data):
-        _task: Task = event_data["task"]
+        task: Task = event_data["task"]
         result: TaskResult = event_data["result"]
         parsed_data: list[tuple[str, str | bytes]] = result.data
         metadata: Dict[str, Any] = result.metadata
         try:
-            outputs = self._save_result_file(parsed_data)  # 存储结果
-            self._create_history_item(parsed_data, outputs, metadata)  # 存储历史记录
-            self._load_into_blender(outputs)  # 加载到 Blender
+            outputs = self._save_result_file(parsed_data)
+            self._update_history_item_on_complete(task.task_id, parsed_data, outputs, metadata)
+            self._load_into_blender(outputs)
         except Exception:
             logger.exception("处理任务结果时发生错误")
             print_exc()
@@ -341,27 +348,25 @@ class UniversalClient(StudioClient):
 
                 Timer.put((load_image_into_blender, file_path))
 
-    @staticmethod
-    def _create_history_item(response_data: Dict[str, Any], outputs: list[tuple[str, str]], metadata: Dict[str, Any]):
-        """创建历史记录
-
-        Args:
-            response_data: 响应数据
-            outputs: 输出文件路径列表
-            metadata: 元数据
-        """
-        history_item = StudioHistoryItem()
-        history_item.result = response_data
-        history_item.outputs = outputs
-        history_item.metadata = metadata
-        history_item.model = metadata.get("model_name", "Unknown")
-        history_item.timestamp = time.time()
-        history_item.task_id = metadata.get("task_id", "")
-
-        # 添加到历史
-        history = StudioHistory.get_instance()
-        history.add(history_item)
-        logger.info(f"任务完成: {history_item.task_id}")
+    def _update_history_item_on_complete(
+        self,
+        task_id: str,
+        response_data: list,
+        outputs: list[tuple[str, str]],
+        metadata: Dict[str, Any],
+    ):
+        item = self.history.find_by_task_id(task_id)
+        if not item:
+            return
+        item.result = response_data
+        item.outputs = outputs
+        item.metadata.update(metadata)
+        item.model = metadata.get("model_name", item.model)
+        item.timestamp = time.time()
+        item.status = StudioHistoryItem.STATUS_SUCCESS
+        item.finished_at = time.time()
+        self.history.update_item(item)
+        logger.info(f"任务完成: {task_id}")
 
     def cancel_generate_task(self):
         self.task_manager.cancel_task(self.task_id)
