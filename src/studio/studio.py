@@ -2135,16 +2135,26 @@ class AIStudio(AppHud):
         imgui.pop_style_color(3)
         flags = imgui.ChildFlags.FRAME_STYLE | imgui.ChildFlags.AUTO_RESIZE_Y
         with with_child("Outer", (0, 0), flags):
-            wrapper = self.client_wrapper
-            wrapper.load(self.client)  # TODO: 性能改进
-            for wrapper in [wrapper]:
-                widgets = wrapper.get_widgets_by_category("Settings")
-                if not widgets:
-                    continue
-                imgui.push_style_color(imgui.Col.FRAME_BG, Const.FRAME_BG)
-                with with_child("Inner", (0, 0), flags):
-                    # --- 标题: 名称 + 导航按钮 ---
-                    if True:
+            # 记录当前激活模型，遍历所有可用模型的设置项
+            original_model_name = self.client.current_model_name
+            available_models = self.get_available_models()
+
+            try:
+                for model_name in available_models:
+                    # 临时切换到该模型，生成对应的设置控件
+                    self.client.current_model_name = model_name
+
+                    wrapper = self.client_wrapper
+                    wrapper.load(self.client)  # 根据当前模型重建 widgets
+
+                    widgets = wrapper.get_widgets_by_category("Settings")
+                    if not widgets:
+                        continue
+
+                    imgui.push_style_color(imgui.Col.FRAME_BG, Const.FRAME_BG)
+                    # 为每个模型使用独立的子窗口名，避免 ID 冲突
+                    with with_child(f"Inner_{model_name}", (0, 0), flags):
+                        # --- 标题: 名称 + 导航按钮 ---
                         imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
                         imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
                         imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
@@ -2165,19 +2175,23 @@ class AIStudio(AppHud):
                             webbrowser.open(wrapper.studio_client.help_url)
                         imgui.pop_style_color(1)
 
-                    imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, imgui.get_style().frame_rounding * 0.5)
-                    for widget in widgets:
-                        # ✅ 添加可见性判断
-                        if not widget.is_visible():
-                            continue
+                        imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, imgui.get_style().frame_rounding * 0.5)
+                        for widget in widgets:
+                            # ✅ 添加可见性判断
+                            if not widget.is_visible():
+                                continue
 
-                        widget.col_bg = Const.WINDOW_BG
-                        widget.col_widget = Const.WINDOW_BG
-                        widget.display_begin(widget, self)
-                        widget.display(widget, self)
-                        widget.display_end(widget, self)
-                    imgui.pop_style_var(1)
-                imgui.pop_style_color(1)
+                            widget.col_bg = Const.WINDOW_BG
+                            widget.col_widget = Const.WINDOW_BG
+                            widget.display_begin(wrapper, self)
+                            widget.display(wrapper, self)
+                            widget.display_end(wrapper, self)
+                        imgui.pop_style_var(1)
+                    imgui.pop_style_color(1)
+            finally:
+                # 恢复当前激活模型，避免影响其它逻辑（如生成面板）
+                if original_model_name:
+                    self.client.current_model_name = original_model_name
 
     def draw_panel_close_button(self):
         # 关闭按钮
