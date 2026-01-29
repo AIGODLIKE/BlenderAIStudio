@@ -562,7 +562,8 @@ class StudioWrapper:
     def __init__(self):
         self.studio_client: UniversalClient = None
         self.display_name: str = ""
-        self.widgets: dict[str, list[WidgetDescriptor]] = {}
+        self.model_name: str = ""
+        self.widgets: dict[str, dict[str, list[WidgetDescriptor]]] = {}
         self.adapter: BaseAdapter = None
 
     @property
@@ -573,7 +574,10 @@ class StudioWrapper:
         self.studio_client = client
         self.adapter = client
         self.display_name = client.model_name
-        self.widgets.clear()
+        self.model_name = client.model_name
+        if self.model_name in self.widgets:
+            return
+        widgets = self.widgets.setdefault(self.model_name, {})
 
         for prop_name in client.get_properties():
             meta = client.get_meta(prop_name)
@@ -582,13 +586,13 @@ class StudioWrapper:
             widget.adapter = client
             widget.widget_def = meta
             category = widget.category
-            if category not in self.widgets:
-                self.widgets[category] = []
-            self.widgets[category].append(widget)
+            if category not in widgets:
+                widgets[category] = []
+            widgets[category].append(widget)
         self.adapter = None
 
     def get_widgets_by_category(self, category: str):
-        return self.widgets.get(category, [])
+        return self.widgets.get(self.model_name, {}).get(category, [])
 
 
 class AIStudioPanelType(Enum):

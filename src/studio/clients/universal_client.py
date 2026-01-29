@@ -47,6 +47,8 @@ class UniversalClient(StudioClient):
 
         self._model_config: ModelConfig = None
 
+        self._meta_cache: Dict[str, Dict[str, Any]] = {}
+
         # 当前选择的模型 ID
         self._current_model_name = self.DEFAULT_MODEL_NAME
 
@@ -55,7 +57,7 @@ class UniversalClient(StudioClient):
         self._update_model_config()
 
         # 生成 meta（用于 UI）
-        self.meta = self._generate_meta()
+        self._meta_cache[self.model_name] = self._generate_meta()
 
     @property
     def api_key(self) -> str:
@@ -90,6 +92,10 @@ class UniversalClient(StudioClient):
             return self._model_config.model_id
         strategy = account.pricing_strategy
         return self._model_registry.resolve_submit_id(self.model_name, strategy)
+
+    @property
+    def meta(self) -> Dict[str, Any]:
+        return self._meta_cache.get(self.model_name, {})
 
     @property
     def current_model_name(self) -> str:
@@ -158,8 +164,9 @@ class UniversalClient(StudioClient):
             auth_mode = account.auth_mode if pref.is_backup_mode else AuthMode.API.value
             self.help_url = self._model_config.get_help_url(auth_mode)
 
-            # 重新生成 meta
-            self.meta = self._generate_meta()
+            # 重新生成 meta(缓存模型参数)
+            if self.model_name not in self._meta_cache:
+                self._meta_cache[self.model_name] = self._generate_meta()
         except ValueError as e:
             logger.error(f"无法加载模型配置: {e}")
             self._model_config = None
