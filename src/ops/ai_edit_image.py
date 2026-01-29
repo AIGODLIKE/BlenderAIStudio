@@ -63,7 +63,7 @@ class ApplyAiEditImage(bpy.types.Operator):
         if pref.is_backup_mode:
             ...
         else:
-            if not pref.nano_banana_api:
+            if not pref.api_key:
                 self.report({"ERROR"}, "NANO API key not set, Enter it in addon preferences")
                 return {"CANCELLED"}
 
@@ -159,7 +159,7 @@ class ApplyAiEditImage(bpy.types.Operator):
         logger.info(f"model_name: {model_name} model_id:{model_id} auth_mode: {account.auth_mode}")
 
         if account.auth_mode == AuthMode.API.value:
-            credentials = {"api_key": pref.from_model_name_get_api_key(model_name)}
+            credentials = {"api_key": pref.api_key}
         else:
             model_id = submit_model_id = model_registry.resolve_submit_id(model_name, account.pricing_strategy)
             credentials = {

@@ -55,11 +55,6 @@ def get_pref():
     return bpy.context.preferences.addons[base_name].preferences
 
 
-def get_api():
-    pref = get_pref()
-    return pref.nano_banana_api
-
-
 def get_keymap(context, keymap_name):
     kc = context.window_manager.keyconfigs
     keymaps = kc.user.keymaps

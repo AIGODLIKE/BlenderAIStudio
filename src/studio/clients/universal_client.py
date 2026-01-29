@@ -64,14 +64,14 @@ class UniversalClient(StudioClient):
         # api_key_from_params = self.get_value("api_key")
         # if api_key_from_params:
         #     return api_key_from_params
-        return get_pref().nano_banana_api
+        return get_pref().api_key
 
     @api_key.setter
     def api_key(self, value: str) -> None:
         # TODO 特殊变量
         # 保存到模型参数
         # self.set_value("api_key", value)
-        get_pref().nano_banana_api = value
+        get_pref().api_key = value
         bpy.context.preferences.use_preferences_save = True
 
     @property
