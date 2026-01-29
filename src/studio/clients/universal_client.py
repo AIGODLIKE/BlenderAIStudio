@@ -107,7 +107,7 @@ class UniversalClient(StudioClient):
         if prop == "api_key":
             return self.api_key
         model_params = self._get_model_params()
-        return model_params[prop]
+        return model_params.get(prop, None)
 
     def set_value(self, prop: str, value):
         if prop == "api_key":

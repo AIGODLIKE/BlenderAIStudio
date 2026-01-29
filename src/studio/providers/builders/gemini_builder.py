@@ -33,6 +33,9 @@ class GeminiImageGenerateBuilder(RequestBuilder):
     根据 params 中的 'action' 字段选择不同的构建逻辑。
     """
 
+    def __init__(self, is_pro: bool = False):
+        self.is_pro = is_pro
+
     def build(self, params: Dict[str, Any], model_config: "ModelConfig", auth_mode: str, credentials: Dict[str, str]) -> RequestData:
         """构建 Gemini 图像请求
 
@@ -239,6 +242,10 @@ class GeminiImageGenerateBuilder(RequestBuilder):
         elif width >= 2048 or height >= 2048:
             image_size = "2K"
 
+        image_config = {}
+        if self.is_pro:
+            image_config["imageSize"] = image_size
+        image_config["aspectRatio"] = aspect_ratio
         payload = {
             "contents": [{"parts": parts}],
             "generationConfig": {
@@ -246,10 +253,7 @@ class GeminiImageGenerateBuilder(RequestBuilder):
                 "maxOutputTokens": 32768,
                 "candidateCount": 1,
                 "responseModalities": ["IMAGE"],
-                "imageConfig": {
-                    "imageSize": image_size,
-                    "aspectRatio": aspect_ratio,
-                },
+                "imageConfig": image_config,
             },
         }
         return payload

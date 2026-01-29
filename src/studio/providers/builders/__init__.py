@@ -5,6 +5,7 @@ from .seedream_builder import SeedreamImageGenerateBuilder
 
 # 自动注册所有构建器
 BuilderRegistry.register("GeminiImageGenerateBuilder", GeminiImageGenerateBuilder)
+BuilderRegistry.register("GeminiImageGenerateBuilderPro", lambda: GeminiImageGenerateBuilder(is_pro=True))
 BuilderRegistry.register("SeedreamImageGenerateBuilder", SeedreamImageGenerateBuilder)
 __all__ = [
     "RequestBuilder",

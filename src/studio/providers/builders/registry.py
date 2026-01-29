@@ -1,6 +1,6 @@
 import logging
 from bpy.app.translations import pgettext as _T
-from typing import Dict, Type
+from typing import Dict, Type, Union, Callable
 from .base import RequestBuilder
 try:
     from ....logger import logger
@@ -18,14 +18,15 @@ class BuilderRegistry:
     _instances: Dict[str, RequestBuilder] = {}
 
     @classmethod
-    def register(cls, name: str, builder_class: Type[RequestBuilder]) -> None:
+    def register(cls, name: str, builder_class: Union[Type[RequestBuilder], Callable[[], RequestBuilder]]) -> None:
         """注册一个构建器类
 
         Args:
             name: 构建器名称（与配置文件中的 request_builder 字段对应）
             builder_class: 构建器类（继承自 RequestBuilder）
         """
-
+        if not (callable(builder_class) or (isinstance(builder_class, type) and issubclass(builder_class, RequestBuilder))):
+            raise TypeError(f"{builder_class} must be a subclass of RequestBuilder or a callable factory")
         cls._builders[name] = builder_class
         logger.info(f"Registered builder: {name}")
 

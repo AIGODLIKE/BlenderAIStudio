@@ -94,6 +94,112 @@ models:
         multiline: false
         default: ""
 
+    request_builder: GeminiImageGenerateBuilderPro
+    response_parser: GeminiImageParser
+
+    actions:
+      generate:
+        display_name: Generate Image
+        description: Generate image from depth/render
+
+      edit:
+        display_name: Edit Image
+        description: Edit existing image with prompt/mask
+
+      transfer:
+        display_name: Style Transfer
+        description: Transfer style from reference image
+
+    default_action: generate
+
+  - modelId: gemini-2.5-flash-image
+    modelName: NanoBanana
+    provider: gemini
+    category: IMAGE_GENERATION
+    auth_modes: [api, account]
+
+    endpoints:
+      api:
+        help_url: https://ai.google.dev/gemini-api/docs/image-generation
+        base_url: https://generativelanguage.googleapis.com/v1beta
+        entry: "models/{model}:generateContent"
+        method: POST
+        headers:
+          x-goog-api-key: "{api_key}"
+          Content-Type: application/json
+        response_parser: GeminiImageParser
+
+      account:
+        help_url: https://shimo.im/docs/47kgMZ7nj4Sm963V
+        base_url: "{account_api_base_url}"
+        entry: service/cpick
+        method: POST
+        headers:
+          X-Auth-T: "{token}"
+          X-Model-ID: "{modelId}"
+          X-Image-Size: "{size}"
+          Content-Type: application/json
+
+        response_parser: GeminiImageParserAccount
+
+    input_processors:
+      - processor: RenderProcessor
+        group: main_image
+        input_mapping:
+          input_type: input_image_type
+        output_mapping:
+          image_path: main_image
+
+    parameters:
+      - name: input_image_type
+        display_name: Input Image
+        category: Input
+        type: ENUM
+        hide_title: false
+        options: [CameraRender, CameraDepth, FastRender, NoInput]
+        default: CameraRender
+
+      - name: prompt
+        display_name: Prompt
+        category: Input
+        type: STRING
+        hide_title: false
+        multiline: true
+        default: ""
+
+      - name: reference_images
+        display_name: Reference Images
+        category: Input
+        type: IMAGE_LIST
+        hide_title: false
+        limit: 12
+
+      - name: aspect_ratio
+        display_name: Size Config
+        category: Input
+        type: ENUM
+        hide_title: false
+        options:
+          - "Auto"
+          - "1:1"
+          - "9:16"
+          - "16:9"
+          - "3:4"
+          - "4:3"
+          - "3:2"
+          - "2:3"
+          - "5:4"
+          - "4:5"
+          - "21:9"
+
+      - name: api_key
+        display_name: API Key
+        category: Settings
+        type: STRING
+        hide_title: true
+        multiline: false
+        default: ""
+
     request_builder: GeminiImageGenerateBuilder
     response_parser: GeminiImageParser
 
