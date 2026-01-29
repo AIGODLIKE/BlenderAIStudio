@@ -112,16 +112,29 @@ class EditHistory(HistoryState, GeneralProperty, bpy.types.PropertyGroup):
                  icon="RIGHTARROW" if not self.expand_history else "DOWNARROW_HLT",
                  emboss=False,
                  )
+
+        if self.running_state == "failed":  # 错误图标
+            rr = row.row()
+            rr.alert = True
+            rr.label(text="", icon="ERROR")
+
         row.operator("bas.remove_history", icon="PANEL_CLOSE", text="", emboss=False).index = index
         row.operator("bas.restore_history", icon="FILE_PARENT", text="", emboss=False)
         if self.prompt:
             column.label(text=self.prompt)
+
         elif not self.expand_history:
             column.label(text="No Prompt")
             if oi := self.origin_image:
                 row = box.row()
                 row.context_pointer_set("image", oi)
                 row.template_icon(oi.preview.icon_id, scale=5)
+
+        if self.running_state == "failed":
+            rr = column.row()
+            rr.alert = True
+            rr.label(text=self.running_message)
+            # TODO 重试按钮
         if not self.expand_history:
             return
 
