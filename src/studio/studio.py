@@ -272,6 +272,7 @@ class StudioHistoryViewer:
         self._draw(item)
 
     def _draw(self, item: StudioHistoryItem):
+        item.update_elapsed_time()
         col_bg = Const.WINDOW_BG
         col_widget = Const.FRAME_BG
         flags = 0
