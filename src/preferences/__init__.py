@@ -102,6 +102,10 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey):
     def is_backup_mode(self):  # 是稳定模式
         return self.account_auth_mode == AuthMode.ACCOUNT.value
 
+    @property
+    def is_api_mode(self):
+        return self.account_auth_mode == AuthMode.API.value
+
     def set_ui_offset(self, value):
         self.ui_offset = value
         bpy.context.preferences.use_preferences_save = True
@@ -161,12 +165,18 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey):
     def draw_online_update(self, layout):
         UpdateService.draw_update_info(layout)
 
+    def draw_account(self, layout):
+        layout.prop(self, "account_auth_mode", text="Operating Mode")
+        column = layout.column()
+        if self.is_api_mode:
+            column.active = False
+        column.prop(self, "account_pricing_strategy", text="Pricing Strategy")
+
     def draw_service(self, layout):
         from ..studio.account import Account
 
         layout.label(text="Service")
-        layout.prop(self, "account_pricing_strategy", text="Pricing Strategy")
-        layout.prop(self, "account_auth_mode", text="Operating Mode")
+        self.draw_account(layout)
 
         # 环境配置
         box = layout.box()

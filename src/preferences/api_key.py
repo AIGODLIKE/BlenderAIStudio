@@ -40,9 +40,12 @@ class ApiKey:
         box.label(text="API Key")
 
         model = bpy.context.scene.blender_ai_studio_property.model
-        box.label(text=model)
-
         column = layout.column()
-        column.prop(self, "api_key")
-        if getattr(self, "api_key", "") == "":
+        column.prop(self, "api_key", text=model)
+        if self.api_key == "":
             column.label(text="Please input your API Key")
+
+    def have_input_api_key(self, context, layout):
+        """如果在api模式并且模型支持api模式"""
+        if self.api_key == "":
+            self.draw_api(layout)

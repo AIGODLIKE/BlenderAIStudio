@@ -175,10 +175,14 @@ class AIStudioImagePanel(bpy.types.Panel):
         ai = context.scene.blender_ai_studio_property
         model_register = ModelRegistry.get_instance()
         model = model_register.get_model(ai.model)
+        pref = get_pref()
+
+        pref.draw_account(layout)
 
         row = layout.row(align=True)
         row.label(text="", icon_value=get_custom_icon("aspect_ratio"))
         row.prop(ai, "model", text="")
+        pref.have_input_api_key(context, layout)
         layout.separator(type="LINE")
 
         for param in model.parameters:
