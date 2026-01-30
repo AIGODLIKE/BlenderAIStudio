@@ -207,3 +207,16 @@ class CustomWidgets:
             dl.add_text((text_x, text_y), col, label)
 
         return clicked
+
+    @staticmethod
+    def progress_bar_with_overlay(progress: float, size: tuple[float, float], overlay: str = ""):
+        imgui.progress_bar(progress, size, "")
+        pmin = imgui.get_item_rect_min()
+        dl = imgui.get_window_draw_list()
+        font = imgui.get_font()
+        font_size = imgui.get_font_size()
+        text_size = imgui.calc_text_size(overlay)
+        x = pmin[0] + (size[0] - text_size[0]) / 2
+        y = pmin[1] + (size[1] - text_size[1]) / 2
+        # 绘制文字
+        dl.add_text(font, font_size, (x, y), 0xFFFFFFFF, overlay)
