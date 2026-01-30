@@ -27,7 +27,6 @@ from ..logger import logger
 from ..preferences import AuthMode
 from ..utils import get_pref
 
-# TODO 导入耗时+300~ms
 try:
     from ...External.websockets.server import serve
     from ...External.websockets.exceptions import ConnectionClosedOK, ConnectionClosed

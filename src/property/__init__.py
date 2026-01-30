@@ -82,8 +82,6 @@ class EditHistory(HistoryState, GeneralProperty, bpy.types.PropertyGroup):
     def restore_history(self, context):
         """恢复历史,将历史项里面的全部复制回来"""
         oii = context.scene.blender_ai_studio_property
-        oii.origin_image = self.origin_image
-        oii.generated_image = self.generated_image
         oii.prompt = self.prompt
         oii.mask_index = self.mask_index
 

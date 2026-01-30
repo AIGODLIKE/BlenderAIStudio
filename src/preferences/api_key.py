@@ -41,5 +41,6 @@ class ApiKey:
 
     def have_input_api_key(self, context, layout):
         """如果在api模式并且模型支持api模式"""
-        if self.api_key == "":
-            self.draw_api(layout)
+        if self.is_api_mode:
+            if self.api_key == "":
+                self.draw_api(layout)
