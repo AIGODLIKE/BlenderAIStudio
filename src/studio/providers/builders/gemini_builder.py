@@ -15,6 +15,7 @@ from .prompt import (
     EDIT_WITH_REFERENCES,
     EDIT_BASE_PROMPT,
 )
+from .... import logger
 
 from ....utils import calc_appropriate_aspect_ratio
 
@@ -192,11 +193,9 @@ class GeminiImageGenerateBuilder(RequestBuilder):
                 # 替换认证凭证占位符
                 for cred_key, cred_value in credentials.items():
                     value = value.replace(f"{{{cred_key}}}", cred_value)
-
                 # 特殊占位符替换
                 if "{size}" in value:
                     value = value.replace("{size}", params.get("resolution", "1K"))
-
             headers[key] = value
 
         return headers
@@ -279,7 +278,7 @@ class GeminiImageGenerateBuilder(RequestBuilder):
                 image_base64 = base64.b64encode(f.read()).decode("utf-8")
             part = {"inline_data": {"mime_type": "image/png", "data": image_base64}}
             parts.append(part)
-            print("add_part", image_file_path)
+            logger.info(f"add_part {image_file_path}" )
 
         add_part(image_path)  # 添加主图
         # 遮罩默认在第一张参考图片位置

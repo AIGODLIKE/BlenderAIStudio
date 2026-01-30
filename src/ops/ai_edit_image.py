@@ -102,7 +102,9 @@ class ApplyAiEditImage(bpy.types.Operator):
                 aspect_ratio,
                 origin_image,
                 origin_image_file_path,
+                oii.reference_images,
                 reference_images_path,
+                oii.mask_images,
                 mask_image_path,
                 temp_folder,
                 generate_image_name,
@@ -122,7 +124,9 @@ class ApplyAiEditImage(bpy.types.Operator):
                    aspect_ratio,
                    origin_image,
                    origin_image_file_path,
+                   reference_images,
                    reference_images_path,
+                   mask_images,
                    mask_image_path,
                    temp_folder,
                    generate_image_name,
@@ -153,6 +157,12 @@ class ApplyAiEditImage(bpy.types.Operator):
         edit_history.mask_index = oii.mask_index
         edit_history.running_state = "running"
         edit_history.running_progress = 0.1
+        for mi in mask_images:
+            m = edit_history.mask_images.add()
+            m.image = mi.image
+        for ri in reference_images:
+            r = edit_history.reference_images.add()
+            r.image = ri.image
         refresh_image_preview(origin_image)
 
         logger.info(f"model_name: {model_name} model_id:{model_id} auth_mode: {account.auth_mode}")

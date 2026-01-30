@@ -144,8 +144,8 @@ class EditHistory(HistoryState, GeneralProperty, bpy.types.PropertyGroup):
                 row.label(text=f"{w}*{h} px(72dpi)", icon_value=get_custom_icon("image_info_resolution"))
         column.label(text=self.generation_model, icon_value=get_custom_icon("image_info_vendor"))
         column.label(text=self.generation_time, icon_value=get_custom_icon("image_info_timestamp"))
-        text = bpy.app.translations.pgettext("%s reference images") % len(self.mask_images)
-        column.label(text=text)
+        text = bpy.app.translations.pgettext("%s reference images") % len(self.reference_images)
+        column.label(text=text,icon_value=get_custom_icon("select_references_by_bl_image"))
 
         box.separator(factor=2)
         icon_size = 1
