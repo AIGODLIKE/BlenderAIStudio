@@ -145,7 +145,7 @@ class EditHistory(HistoryState, GeneralProperty, bpy.types.PropertyGroup):
         column.label(text=self.generation_model, icon_value=get_custom_icon("image_info_vendor"))
         column.label(text=self.generation_time, icon_value=get_custom_icon("image_info_timestamp"))
         text = bpy.app.translations.pgettext("%s reference images") % len(self.reference_images)
-        column.label(text=text,icon_value=get_custom_icon("select_references_by_bl_image"))
+        column.label(text=text, icon_value=get_custom_icon("select_references_by_bl_image"))
 
         box.separator(factor=2)
         icon_size = 1
@@ -251,14 +251,6 @@ class DynamicEnumeration:
                                        set=set_model_name)
 
     def get_resolution_items(self, context) -> list[(str, str, str),]:
-        """
-        [
-            ("AUTO", "Auto", "Keep original resolution"),
-            ("1K", "1k", "1k resolution"),
-            ("2K", "2k", "2k resolution"),
-            ("4K", "4k", "4k resolution"),
-        ]
-        """
         try:
             model = self._model_registry.get_model(self.model_name)
             if res := model.get_parameter("resolution"):
@@ -415,17 +407,13 @@ class SceneProperty(bpy.types.PropertyGroup, GeneralProperty, DynamicEnumeration
             box.label(text="Click top right ops to reference")
 
     def get_points_consumption(self, context):
-        """
-        获取消耗的价格
-        [{'modelId': 'gemini-3-pro-image-preview', 'price': {'1K': 36, '2K': 36, '4K': 63}}]
-        :return:
-        """
+        """获取消耗的价格"""
         pref = get_pref()
         if pref.is_backup_mode:
             registry = ModelRegistry.get_instance()
             strategy = Account.get_instance().pricing_strategy
-            resolution = self.resolution
-            price = registry.calc_price("NanoBananaPro", strategy, resolution)
+            resolution = "1K" if self.resolution == "None" else self.resolution  # 处理没有分辨率的时候
+            price = registry.calc_price(self.model_name, strategy, resolution)
             return price or 99999
         else:
             ...
