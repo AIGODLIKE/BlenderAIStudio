@@ -1,5 +1,9 @@
 def get_bl_property(self, key, default):
     """通用方法,获取Blender属性"""
+    try:
+        return self[key]
+    except Exception:
+        pass
     if value := getattr(self, key, None):
         return value
     try:
