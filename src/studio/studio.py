@@ -2115,7 +2115,7 @@ class AIStudio(AppHud):
                         imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
                     if imgui.button(_T(item.display_name), (aw, 0)):
                         self.state.auth_mode = item.value
-                        self.refresh_client() # 确保客户端刷新(设置项同步)
+                        self.refresh_client()  # 确保客户端刷新(设置项同步)
                         imgui.close_current_popup()
                     if is_selected:
                         imgui.pop_style_color()
