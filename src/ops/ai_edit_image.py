@@ -271,6 +271,8 @@ class ApplyAiEditImage(bpy.types.Operator):
                 logger.info(text)
 
                 try:
+                    edit_history.stop_running()
+                    edit_history.running_state = "completed"
                     edit_history.running_message = "Running completed"
 
                     if gi := bpy.data.images.load(str(save_file), check_existing=False):
@@ -289,7 +291,6 @@ class ApplyAiEditImage(bpy.types.Operator):
                         ut = bpy.app.translations.pgettext("Unable to load generated image!")
                         edit_history.running_message = ut + " " + str(save_file)
 
-                    edit_history.stop_running()
                 except Exception as e:
                     logger.error(str(e))
 
@@ -303,6 +304,8 @@ class ApplyAiEditImage(bpy.types.Operator):
                 _task: Task = event_data["task"]
                 result: TaskResult = event_data["result"]
                 try:
+                    edit_history.running_state = "failed"
+
                     if not result.success:
                         edit_history.running_message = str(result.error)
                         logger.info(edit_history.running_message)

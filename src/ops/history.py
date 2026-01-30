@@ -182,8 +182,19 @@ class ClearHistory(bpy.types.Operator):
                                                      message="Are you sure you want to clear all history?")
 
     def execute(self, context):
-        oii = context.scene.blender_ai_studio_property
-        oii.edit_history.clear()
-        if context.area:
-            context.area.tag_redraw()
-        return {"FINISHED"}
+        """
+        可能会无限循环
+        """
+        aoo = context.scene.blender_ai_studio_property
+        while True:
+            is_r = False
+            for index,i in  enumerate(aoo.edit_history):
+                if i.running_state != "running":
+                    aoo.edit_history.remove(index)
+                    is_r = True
+                    continue
+            if not is_r:
+                if context.area:
+                    context.area.tag_redraw()
+                return {"FINISHED"}
+

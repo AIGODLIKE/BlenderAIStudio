@@ -40,7 +40,7 @@ class GeneralProperty:
 
 class HistoryState:
     running_operator: bpy.props.StringProperty()
-    running_state: bpy.props.StringProperty(name="    running    completed    failed    failed")
+    running_state: bpy.props.StringProperty(name="running    completed    failed")
     running_message: bpy.props.StringProperty()
     running_progress: bpy.props.FloatProperty(name="进度", min=0, max=1.0)
 
