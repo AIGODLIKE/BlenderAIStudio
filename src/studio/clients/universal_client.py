@@ -66,7 +66,10 @@ class UniversalClient(StudioClient):
         # api_key_from_params = self.get_value("api_key")
         # if api_key_from_params:
         #     return api_key_from_params
-        return get_pref().get_api_key_by_model_name(self.model_name).strip()
+        api_key = get_pref().get_api_key_by_model_name(self.model_name)
+        if api_key:
+            return str(api_key).strip()
+        return ""
 
     @api_key.setter
     def api_key(self, value: str) -> None:
