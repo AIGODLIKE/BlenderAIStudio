@@ -344,7 +344,7 @@ class Account:
                     self.push_error(_T("Price fetch failed") + ": " + err_msg)
                     return
                 data: dict = resp_json.get("data", {})
-                self.price_table = data
+                self.price_table = deepcopy(data)
                 pricing_data = {}
                 for item in data:
                     model_name = item.pop("modelName", None)
