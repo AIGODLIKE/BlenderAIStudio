@@ -94,6 +94,7 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey):
         items=[
             ("SETTING", "Setting", ""),
             ("DEV", "Dev Environment", ""),
+            ("PRIVACY", "Privacy", ""),
             ("ONLINE_UPDATE", "Update Addon", ""),
         ],
         **translation_context,
