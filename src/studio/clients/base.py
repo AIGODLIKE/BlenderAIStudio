@@ -87,8 +87,29 @@ class StudioHistoryItem:
         else:
             self.status = self.STATUS_FAILED
 
+    def is_pending(self) -> bool:
+        return self.status == StudioHistoryItem.STATUS_PENDING
+
+    def is_preparing(self) -> bool:
+        return self.status == StudioHistoryItem.STATUS_PREPARING
+
+    def is_running(self) -> bool:
+        return self.status == StudioHistoryItem.STATUS_RUNNING
+
+    def is_processing(self) -> bool:
+        return self.status == StudioHistoryItem.STATUS_PROCESSING
+
     def is_success(self) -> bool:
         return self.status == StudioHistoryItem.STATUS_SUCCESS or bool(self.outputs)
+
+    def is_failed(self) -> bool:
+        return self.status == StudioHistoryItem.STATUS_FAILED
+
+    def is_cancelled(self) -> bool:
+        return self.status == StudioHistoryItem.STATUS_CANCELLED
+
+    def is_finished(self) -> bool:
+        return self.status in (StudioHistoryItem.STATUS_SUCCESS, StudioHistoryItem.STATUS_FAILED, StudioHistoryItem.STATUS_CANCELLED)
 
     def has_image(self) -> bool:
         return bool(self.get_output_file_image())
