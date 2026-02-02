@@ -143,6 +143,7 @@ studio_panel_translations = (
     ("Premium Mega Pack", "巨型豪华礼包", None),
     ("[ Ice Pops x %s ]", "[ 冰糕x%s ]", None),
     ("Waiting for login", "等待登录", None),
+    ("Batch Count", "生成数量", PROP_TCTX),
     ("(%s/use)", "(%s/次)", None),
     ("AI Edit", "AI编辑", None),
     ("Image Copied!", "图片已复制到剪贴板！", None),
