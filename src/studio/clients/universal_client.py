@@ -5,7 +5,7 @@ from traceback import print_exc
 from datetime import datetime
 from bpy.app.translations import pgettext_iface as _T
 from pathlib import Path
-from typing import Iterable, Dict, Any
+from typing import Iterable, Dict, Any, List
 
 from .base import StudioClient, StudioHistory, StudioHistoryItem
 from ..account import Account
@@ -48,6 +48,22 @@ class UniversalClient(StudioClient):
         self._model_config: ModelConfig = None
 
         self._meta_cache: Dict[str, Dict[str, Any]] = {}
+
+        # 额外参数(不会传递给模型,用于UI显示)
+        self._extra_params: List[Dict[str, Any]] = []
+        # 1. 批量渲染 任务数(整数, [1, 8])
+        self._extra_params.append(
+            {
+                "name": "batch_count",
+                "display_name": "Batch Count",
+                "type": "INT",
+                "hide_title": True,
+                "default": 1,
+                "min": 1,
+                "max": 8,
+                "step": 1,
+            }
+        )
 
         # 当前选择的模型 ID
         self._current_model_name = self.DEFAULT_MODEL_NAME
@@ -112,6 +128,10 @@ class UniversalClient(StudioClient):
             self._current_model_name = model_name
             self._update_model_config()
 
+    @property
+    def batch_count(self) -> int:
+        return self.get_value("batch_count") or 1
+
     def get_value(self, prop: str):
         if prop == "api_key":
             return self.api_key
@@ -135,7 +155,7 @@ class UniversalClient(StudioClient):
         params = {}
         if not self._model_config:
             return params
-        for pdef in self._model_config.parameters:
+        for pdef in self._model_config.parameters + self._extra_params:
             pname = pdef.get("name")
             if not pname:
                 continue
@@ -190,7 +210,7 @@ class UniversalClient(StudioClient):
             params = self._model_config.parameters
 
         # 从 ModelConfig 加载所有参数
-        for param in params:
+        for param in params + self._extra_params:
             param_name = param.get("name")
             if not param_name:
                 continue
@@ -212,6 +232,12 @@ class UniversalClient(StudioClient):
                 meta[param_name]["options"] = param["options"]
             if "limit" in param:
                 meta[param_name]["limit"] = param["limit"]
+            if "min" in param:
+                meta[param_name]["min"] = param["min"]
+            if "max" in param:
+                meta[param_name]["max"] = param["max"]
+            if "step" in param:
+                meta[param_name]["step"] = param["step"]
 
             # ✅ 新增：visible_when 和 processor 字段
             if "visible_when" in param:
@@ -255,7 +281,7 @@ class UniversalClient(StudioClient):
         resolution = self.get_value("resolution") or "1K"
         strategy = Account.get_instance().pricing_strategy
         price = self._model_registry.calc_price(self.model_name, strategy, resolution)
-        return price
+        return price * self.batch_count
 
     def add_task(self, account: "Account"):
         # 预校验
@@ -276,9 +302,12 @@ class UniversalClient(StudioClient):
                 "modelId": model_id,
                 "size": resolution,
             }
+        for _ in range(self.batch_count):
+            self._add_task_one(account, credentials, params)
 
+    def _add_task_one(self, account: "Account", credentials, params):
         task = UniversalModelTask(
-            model_id=model_id,
+            model_id=self.model_id,
             auth_mode=account.auth_mode,
             credentials=credentials,
             params=params,
