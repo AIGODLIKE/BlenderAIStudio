@@ -1,7 +1,9 @@
-import bpy
 import traceback
 from queue import Queue
 from typing import Any
+
+import bpy
+
 from .logger import logger
 
 
@@ -85,8 +87,15 @@ class Timer:
             ...
 
 
+def privacy():
+    from .preferences.privacy import collect_info, privacy_tips_popup
+    collect_info()
+    privacy_tips_popup()
+
+
 def register():
     Timer.reg()
+    bpy.app.timers.register(privacy, first_interval=0.5)  # 只在第一次启动时执行
 
 
 def unregister():

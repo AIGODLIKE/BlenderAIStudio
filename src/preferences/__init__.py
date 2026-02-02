@@ -9,6 +9,7 @@ from .online_update import OnlineUpdate
 from ..i18n import PROP_TCTX
 from ..online_update_addon import UpdateService
 from ... import __package__ as base_name
+from .privacy import Privacy
 
 translation_context = {}
 
@@ -60,7 +61,7 @@ class PricingStrategy(Enum):
         return [item.value for item in list(cls)]
 
 
-class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey):
+class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey, Privacy):
     bl_idname = base_name
     ui_pre_scale: bpy.props.FloatProperty(
         name="UI Pre Scale Factor",
