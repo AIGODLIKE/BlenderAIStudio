@@ -260,6 +260,12 @@ class StudioHistoryViewer:
     def __init__(self, app: "AIStudio", history: StudioHistory) -> None:
         self.history = history
         self.app = app
+        self.col_bg = Const.WINDOW_BG
+        self.col_widget = Const.FRAME_BG
+        self.flags = 0
+        self.flags |= imgui.ChildFlags.FRAME_STYLE
+        self.flags |= imgui.ChildFlags.AUTO_RESIZE_Y
+        self.flags |= imgui.ChildFlags.ALWAYS_AUTO_RESIZE
 
     def draw_all(self):
         for item in self.history.items:
@@ -273,253 +279,501 @@ class StudioHistoryViewer:
 
     def _draw(self, item: StudioHistoryItem):
         item.update_elapsed_time()
-        col_bg = Const.WINDOW_BG
-        col_widget = Const.FRAME_BG
-        flags = 0
-        flags |= imgui.ChildFlags.FRAME_STYLE
-        flags |= imgui.ChildFlags.AUTO_RESIZE_Y
-        flags |= imgui.ChildFlags.ALWAYS_AUTO_RESIZE
-        imgui.push_style_color(imgui.Col.FRAME_BG, col_bg)
+        imgui.push_style_color(imgui.Col.FRAME_BG, self.col_bg)
         imgui.push_style_var_y(imgui.StyleVar.CELL_PADDING, 0)
         imgui.push_style_var_y(imgui.StyleVar.ITEM_SPACING, Const.CHILD_P[1])
-        with with_child(f"##Item_{item.index}", (0, 0), child_flags=flags):
-            imgui.push_style_color(imgui.Col.FRAME_BG, col_widget)
-
-            # 标题栏
-            style = imgui.get_style()
-            imgui.push_style_var_y(imgui.StyleVar.FRAME_PADDING, imgui.get_style().frame_padding[1] * 0.5)
-            if imgui.begin_table("##Header", 5):
-                imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_FIXED, 0, 0)
-                imgui.table_setup_column("##Ele2", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 1)
-                imgui.table_setup_column("##Ele3", imgui.TableColumnFlags.WIDTH_FIXED, 0, 2)
-                imgui.table_setup_column("##Ele4", imgui.TableColumnFlags.WIDTH_FIXED, 0, 3)
-                imgui.table_setup_column("##Ele5", imgui.TableColumnFlags.WIDTH_FIXED, 0, 4)
-
-                self.app.font_manager.push_h1_font(24)
-                imgui.table_next_column()
-                imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
-                imgui.align_text_to_frame_padding()
-                imgui.text(f"#{item.index:03d}")
-                imgui.pop_style_color()
-                self.app.font_manager.pop_font()
-
-                imgui.table_next_column()
-                imgui.dummy((0, 0))
-
-                bh = imgui.get_frame_height()
-                bw = bh * 2
-                isize = bh - 12
-                fr = imgui.get_style().frame_rounding
-                imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, fr * 2)
-
-                # 复制按钮
-                imgui.table_next_column()
-                prompt = item.get_prompt()
-                if CustomWidgets.icon_label_button("prompt_copy", "", "CENTER", (bw, bh), isize=isize):
-                    if prompt:
-                        bpy.context.window_manager.clipboard = prompt
-                        self.app.push_info_message(_T("Prompt Copied!"))
-                    else:
-                        self.app.push_info_message(_T("No Prompt Found!"))
-                if imgui.is_item_hovered():
-                    title = _T("Copy Prompt")
-                    tip = _T("Click to copy the prompt to clipboard.")
-                    imgui.set_next_window_size((550, 0))
-                    AppHelperDraw.draw_tips_with_title(self.app, [tip], title)
-                # 详情按钮
-                imgui.table_next_column()
-                old_show_detail = item.show_detail
-                imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_SELECTED)
-                if old_show_detail:
-                    imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON_SELECTED)
-                if CustomWidgets.icon_label_button("image_detail", "", "CENTER", (bw, bh), isize=isize):
-                    item.show_detail = not item.show_detail
-                if imgui.is_item_hovered():
-                    title = _T("Details")
-                    tip = _T("View generated image details like prompt, generation time, etc.")
-                    imgui.set_next_window_size((550, 0))
-                    AppHelperDraw.draw_tips_with_title(self.app, [tip], title)
-                if old_show_detail:
-                    imgui.pop_style_color(1)
-                imgui.pop_style_color(1)
-
-                # 删除按钮
-                imgui.table_next_column()
-                if CustomWidgets.icon_label_button("delete", "", "CENTER", (bw, bh), isize=isize):
-                    self.remove_item(item)
-                if imgui.is_item_hovered():
-                    title = _T("Delete History")
-                    tip = _T("Click to delete the history in the queue, but leave the generated image.")
-                    imgui.set_next_window_size((550, 0))
-                    AppHelperDraw.draw_tips_with_title(self.app, [tip], title)
-                imgui.pop_style_var(1)
-
-                imgui.end_table()
-
-            imgui.pop_style_var(1)
-            imgui.dummy((0, 0))
-
-            # 图片
-            if imgui.begin_table("##Content", 2):
-                h1 = imgui.get_text_line_height() * 4
-                w1 = h1 * 207 / 126
-                imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_FIXED, w1, 0)
-                imgui.table_setup_column("##Ele2", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 1)
-
-                imgui.table_next_column()
-                imgui.push_style_color(imgui.Col.FRAME_BG, col_widget)
-                imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R)
-                with with_child("##Image", (w1, h1), child_flags=flags):
-                    imgui.push_style_color(imgui.Col.FRAME_BG, col_bg)
-                    imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
-                    imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
-                    imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
-                    bw, bh = imgui.get_content_region_avail()
-                    icon = TexturePool.get_tex_id(item.get_output_file_image())
-                    tex = TexturePool.get_tex(icon)
-                    tex_aspect_ratio = tex.width / tex.height
-                    btn_aspect_ratio = bw / bh
-                    uvmin = (0, 0)
-                    uvmax = (1, 1)
-                    if tex_aspect_ratio > btn_aspect_ratio:
-                        clip_uv_x = abs(tex.width - (tex.height / bh) * bw) / tex.width * 0.5
-                        uvmin = (clip_uv_x, 0)
-                        uvmax = (1 - clip_uv_x, 1)
-                    else:
-                        clip_uv_y = abs(tex.height - (tex.width / bw) * bh) / tex.height * 0.5
-                        uvmin = (0, clip_uv_y)
-                        uvmax = (1, 1 - clip_uv_y)
-                    if imgui.button("##FakeButton", (bw, bh)):
-                        self.copy_image(item.get_output_file_image())
-                        self.app.push_info_message(_T("Image Copied!"))
-                    pmin = imgui.get_item_rect_min()
-                    pmax = imgui.get_item_rect_max()
-                    dl = imgui.get_window_draw_list()
-                    dl.add_image_rounded(icon, pmin, pmax, uvmin, uvmax, 0xFFFFFFFF, 12)
-                    if imgui.is_item_hovered():
-                        imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.CHILD_R)
-                        imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, (12, 12))
-                        imgui.begin_tooltip()
-                        tex = TexturePool.get_tex(icon)
-                        file_name = Path(item.get_output_file_image()).stem
-                        imgui.text(f"{file_name} [{tex.width}x{tex.height}]")
-                        imgui.dummy((0, 0))
-                        canvas_tex_width = self.app.screen_scale * tex.width
-                        canvas_tex_height = self.app.screen_scale * tex.height
-                        canvas_width = self.app.screen_width * 0.7
-                        canvas_height = self.app.screen_height * 0.7
-                        if canvas_tex_width > canvas_width:
-                            canvas_tex_scale = canvas_width / canvas_tex_width
-                            canvas_tex_height *= canvas_tex_scale
-                            canvas_tex_width *= canvas_tex_scale
-                        if canvas_tex_height > canvas_height:
-                            canvas_tex_scale = canvas_height / canvas_tex_height
-                            canvas_tex_height *= canvas_tex_scale
-                            canvas_tex_width *= canvas_tex_scale
-                        aw = imgui.get_content_region_avail()[0]
-                        if canvas_tex_width < aw:
-                            canvas_tex_scale = aw / canvas_tex_width
-                            canvas_tex_height *= canvas_tex_scale
-                            canvas_tex_width *= canvas_tex_scale
-                        imgui.invisible_button("FakeButton", (canvas_tex_width, canvas_tex_height))
-                        pmin = imgui.get_item_rect_min()
-                        pmax = imgui.get_item_rect_max()
-                        dl = imgui.get_window_draw_list()
-                        dl.add_image_rounded(icon, pmin, pmax, (0, 0), (1, 1), 0xFFFFFFFF, Const.CHILD_R * 0.8)
-                        imgui.end_tooltip()
-                        imgui.pop_style_var(2)
-                    imgui.pop_style_color(4)
-                imgui.pop_style_var(1)
-                imgui.pop_style_color(1)
-
-                imgui.table_next_column()
-                imgui.push_style_color(imgui.Col.FRAME_BG, col_widget)
-                imgui.push_style_var(imgui.StyleVar.CELL_PADDING, Const.CELL_P)
-                imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R)
-                imgui.push_style_var(imgui.StyleVar.FRAME_PADDING, (Const.CELL_P[0] * 2, Const.CELL_P[1]))
-                with with_child("##Buttons", (0, h1), child_flags=flags):
-                    imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R / 2)
-                    imgui.push_style_color(imgui.Col.BUTTON, col_bg)
-                    if imgui.begin_table("##Buttons", 1):
-                        imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 0)
-                        # 编辑
-                        if True:
-                            style = imgui.get_style()
-                            bh = h1 / 2 - style.cell_padding[1] * 2 - style.frame_padding[1]
-                            imgui.table_next_column()
-                            if CustomWidgets.icon_label_button("image_edit", _T("Edit"), "LEFT", (0, bh)):
-                                image = item.get_output_file_image()
-                                meta = item.stringify()
-                                context = bpy.context.copy()
-                                Timer.put((edit_image_with_meta_and_context, image, meta, context))
-                            if imgui.is_item_hovered():
-                                title = _T("Edit Image")
-                                tip = _T("Open image editor and edit current image.")
-                                imgui.set_next_window_size((720, 0))
-                                AppHelperDraw.draw_tips_with_title(self.app, [tip], title)
-
-                        # 导出
-                        if True:
-                            style = imgui.get_style()
-                            bh = h1 / 2 - style.cell_padding[1] * 2 - style.frame_padding[1]
-                            imgui.table_next_column()
-                            if CustomWidgets.icon_label_button("image_export", _T("Save"), "LEFT", (0, bh)):
-                                self.export_image(item.get_output_file_image())
-                            if imgui.is_item_hovered():
-                                title = _T("Export Image")
-                                tip = _T("Click to export the image to disk.")
-                                imgui.set_next_window_size((720, 0))
-                                AppHelperDraw.draw_tips_with_title(self.app, [tip], title)
-                        imgui.end_table()
-                    imgui.pop_style_var(1)
-                    imgui.pop_style_color(1)
-                imgui.pop_style_var(3)
-                imgui.pop_style_color(1)
-
-                imgui.end_table()
-            if item.show_detail:
-                imgui.text(_T("Prompt"))
-                prompt = item.get_prompt() or "No prompt found"
-                h = imgui.get_text_line_height()
-
-                # 提示词
-                mlt_flags = imgui.InputTextFlags.WORD_WRAP
-                text_box_height = h * 5 + imgui.get_style().frame_padding[1] * 2
-                _, _ = imgui.input_text_multiline("##prompt", prompt, (-1, text_box_height), mlt_flags)
-                icon = TexturePool.get_tex_id(item.get_output_file_image())
-                tex = TexturePool.get_tex(icon)
-                tex_width = tex.width
-                tex_height = tex.height
-
-                # 图片信息
-                stem = Path(item.get_output_file_image()).stem
-                icon = TexturePool.get_tex_id("roster")
-                imgui.dummy((0, 0))
-                imgui.image(icon, (h, h))
-                imgui.same_line()
-                imgui.text(stem)
-
-                icon = TexturePool.get_tex_id("image_info_resolution")
-                imgui.dummy((0, 0))
-                imgui.image(icon, (h, h))
-                imgui.same_line()
-                imgui.text(f"{tex_width}*{tex_height} px (72dpi)")
-
-                icon = TexturePool.get_tex_id("image_info_vendor")
-                imgui.dummy((0, 0))
-                imgui.image(icon, (h, h))
-                imgui.same_line()
-                imgui.text(_T("Generated by %s") % item.model)
-
-                icon = TexturePool.get_tex_id("image_info_timestamp")
-                imgui.dummy((0, 0))
-                imgui.image(icon, (h, h))
-                imgui.same_line()
-                imgui.text(datetime.fromtimestamp(item.timestamp).strftime("%Y-%m-%d %H:%M:%S"))
-
+        with with_child(f"##Item_{item.index}", (0, 0), child_flags=self.flags):
+            imgui.push_style_color(imgui.Col.FRAME_BG, self.col_widget)
+            self._draw_header(item)
+            self._draw_content(item)
+            self._draw_detail(item)
             imgui.pop_style_color(1)
         imgui.pop_style_var(2)
         imgui.pop_style_color(1)
+
+    def _draw_header(self, item: StudioHistoryItem) -> None:
+        """绘制单项标题栏：索引号、复制提示词、详情切换、删除按钮。"""
+        imgui.push_style_var_y(imgui.StyleVar.FRAME_PADDING, imgui.get_style().frame_padding[1] * 0.5)
+        self.app.font_manager.push_h1_font(24)
+        if item.is_pending():
+            self._draw_header_pending(item)
+        elif item.is_preparing():
+            self._draw_header_preparing(item)
+        elif item.is_running():
+            self._draw_header_running(item)
+        elif item.is_processing():
+            self._draw_header_processing(item)
+        elif item.is_failed():
+            self._draw_header_failed(item)
+        elif item.is_success():
+            self._draw_header_success(item)
+        else:
+            self._draw_header_success(item)
+        self.app.font_manager.pop_font()
+        imgui.pop_style_var(1)
+
+    def _draw_header_pending(self, item: StudioHistoryItem) -> None:
+        if imgui.begin_table("##Header", 3):
+            imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_FIXED, 0, 0)
+            imgui.table_setup_column("##Ele2", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 1)
+            imgui.table_setup_column("##Ele3", imgui.TableColumnFlags.WIDTH_FIXED, 0, 2)
+
+            imgui.table_next_column()
+            imgui.push_style_color(imgui.Col.TEXT, Const.DISABLE)
+            imgui.align_text_to_frame_padding()
+            imgui.text(f"#{item.index:03d}")
+            imgui.pop_style_color()
+
+            imgui.table_next_column()
+            imgui.dummy((0, 0))
+
+            imgui.table_next_column()
+            label = _T("Pending") + f"{item.elapsed_time:.1f}s"
+            w = imgui.calc_text_size(label)[0] + imgui.get_style().cell_padding[0] * 2
+            imgui.push_item_width(w)
+            imgui.label_text("##Label", label)
+            imgui.pop_item_width()
+
+            imgui.end_table()
+
+    def _draw_header_preparing(self, item: StudioHistoryItem) -> None:
+        if imgui.begin_table("##Header", 3):
+            imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_FIXED, 0, 0)
+            imgui.table_setup_column("##Ele2", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 1)
+            imgui.table_setup_column("##Ele3", imgui.TableColumnFlags.WIDTH_FIXED, 0, 2)
+
+            imgui.table_next_column()
+            imgui.push_style_color(imgui.Col.TEXT, Const.DISABLE)
+            imgui.align_text_to_frame_padding()
+            imgui.text(f"#{item.index:03d}")
+            imgui.pop_style_color()
+
+            imgui.table_next_column()
+            imgui.dummy((0, 0))
+
+            imgui.table_next_column()
+            label = _T("Preparing") + f"{item.elapsed_time:.1f}s"
+            w = imgui.calc_text_size(label)[0] + imgui.get_style().cell_padding[0] * 2
+            imgui.push_item_width(w)
+            imgui.label_text("##Label", label)
+            imgui.pop_item_width()
+
+            imgui.end_table()
+
+    def _draw_header_running(self, item: StudioHistoryItem) -> None:
+        if imgui.begin_table("##Header", 3):
+            imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_FIXED, 0, 0)
+            imgui.table_setup_column("##Ele2", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 1)
+            imgui.table_setup_column("##Ele3", imgui.TableColumnFlags.WIDTH_FIXED, 0, 2)
+
+            imgui.table_next_column()
+            imgui.push_style_color(imgui.Col.TEXT, Const.DISABLE)
+            imgui.align_text_to_frame_padding()
+            imgui.text(f"#{item.index:03d}")
+            imgui.pop_style_color()
+
+            imgui.table_next_column()
+            imgui.dummy((0, 0))
+
+            imgui.table_next_column()
+            label = _T("Running") + f"{item.elapsed_time:.1f}s"
+            w = imgui.calc_text_size(label)[0] + imgui.get_style().cell_padding[0] * 2
+            imgui.push_item_width(w)
+            imgui.label_text("##Label", label)
+            imgui.pop_item_width()
+
+            imgui.end_table()
+
+    def _draw_header_processing(self, item: StudioHistoryItem) -> None:
+        if imgui.begin_table("##Header", 3):
+            imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_FIXED, 0, 0)
+            imgui.table_setup_column("##Ele2", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 1)
+            imgui.table_setup_column("##Ele3", imgui.TableColumnFlags.WIDTH_FIXED, 0, 2)
+
+            imgui.table_next_column()
+            imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
+            imgui.align_text_to_frame_padding()
+            imgui.text(f"#{item.index:03d}")
+            imgui.pop_style_color()
+
+            imgui.table_next_column()
+            imgui.dummy((0, 0))
+
+            imgui.table_next_column()
+            label = _T("Processing") + f"{item.elapsed_time:.1f}s"
+            w = imgui.calc_text_size(label)[0] + imgui.get_style().cell_padding[0] * 2
+            imgui.push_item_width(w)
+            imgui.label_text("##Label", label)
+            imgui.pop_item_width()
+
+            imgui.end_table()
+
+    def _draw_header_failed(self, item: StudioHistoryItem) -> None:
+        if imgui.begin_table("##Header", 5):
+            imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_FIXED, 0, 0)
+            imgui.table_setup_column("##Ele2", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 1)
+            imgui.table_setup_column("##Ele3", imgui.TableColumnFlags.WIDTH_FIXED, 0, 2)
+            imgui.table_setup_column("##Ele4", imgui.TableColumnFlags.WIDTH_FIXED, 0, 3)
+            imgui.table_setup_column("##Ele5", imgui.TableColumnFlags.WIDTH_FIXED, 0, 4)
+
+            imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.CLOSE_BUTTON_ACTIVE)
+
+            imgui.table_next_column()
+            imgui.push_style_color(imgui.Col.TEXT, Const.CLOSE_BUTTON_ACTIVE)
+            imgui.align_text_to_frame_padding()
+            imgui.text(f"#{item.index:03d}")
+            imgui.pop_style_color()
+
+            imgui.table_next_column()
+            imgui.dummy((0, 0))
+
+            bh = imgui.get_frame_height()
+            bw = bh * 2
+            isize = bh - 12
+            fr = imgui.get_style().frame_rounding
+            imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, fr * 2)
+
+            imgui.table_next_column()
+            prompt = item.get_prompt()
+            if CustomWidgets.icon_label_button("prompt_copy", "", "CENTER", (bw, bh), isize=isize):
+                if prompt:
+                    bpy.context.window_manager.clipboard = prompt
+                    self.app.push_info_message(_T("Prompt Copied!"))
+                else:
+                    self.app.push_info_message(_T("No Prompt Found!"))
+            if imgui.is_item_hovered():
+                imgui.set_next_window_size((550, 0))
+                tips = [_T("Click to copy the prompt to clipboard.")]
+                title = _T("Copy Prompt")
+                AppHelperDraw.draw_tips_with_title(self.app, tips, title)
+
+            imgui.table_next_column()
+            old_show_detail = item.show_detail
+            imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.CLOSE_BUTTON_ACTIVE)
+            if old_show_detail:
+                imgui.push_style_color(imgui.Col.BUTTON, Const.CLOSE_BUTTON_ACTIVE)
+            if CustomWidgets.icon_label_button("image_detail", "", "CENTER", (bw, bh), isize=isize):
+                item.show_detail = not item.show_detail
+            if imgui.is_item_hovered():
+                imgui.set_next_window_size((550, 0))
+                tips = [_T("View generated image details like prompt, generation time, etc.")]
+                title = _T("Details")
+                AppHelperDraw.draw_tips_with_title(self.app, tips, title)
+            if old_show_detail:
+                imgui.pop_style_color(1)
+            imgui.pop_style_color(1)
+
+            imgui.table_next_column()
+            if CustomWidgets.icon_label_button("delete", "", "CENTER", (bw, bh), isize=isize):
+                self.remove_item(item)
+            if imgui.is_item_hovered():
+                imgui.set_next_window_size((550, 0))
+                tips = [_T("Click to delete the history in the queue, but leave the generated image.")]
+                title = _T("Delete History")
+                AppHelperDraw.draw_tips_with_title(self.app, tips, title)
+            imgui.pop_style_var(1)
+            imgui.pop_style_color(1)
+            imgui.end_table()
+
+    def _draw_header_success(self, item: StudioHistoryItem) -> None:
+        if imgui.begin_table("##Header", 5):
+            imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_FIXED, 0, 0)
+            imgui.table_setup_column("##Ele2", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 1)
+            imgui.table_setup_column("##Ele3", imgui.TableColumnFlags.WIDTH_FIXED, 0, 2)
+            imgui.table_setup_column("##Ele4", imgui.TableColumnFlags.WIDTH_FIXED, 0, 3)
+            imgui.table_setup_column("##Ele5", imgui.TableColumnFlags.WIDTH_FIXED, 0, 4)
+
+            self.app.font_manager.push_h1_font(24)
+            imgui.table_next_column()
+            imgui.push_style_color(imgui.Col.TEXT, Const.BUTTON_SELECTED)
+            imgui.align_text_to_frame_padding()
+            imgui.text(f"#{item.index:03d}")
+            imgui.pop_style_color()
+            self.app.font_manager.pop_font()
+
+            imgui.table_next_column()
+            imgui.dummy((0, 0))
+
+            bh = imgui.get_frame_height()
+            bw = bh * 2
+            isize = bh - 12
+            fr = imgui.get_style().frame_rounding
+            imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, fr * 2)
+
+            imgui.table_next_column()
+            prompt = item.get_prompt()
+            if CustomWidgets.icon_label_button("prompt_copy", "", "CENTER", (bw, bh), isize=isize):
+                if prompt:
+                    bpy.context.window_manager.clipboard = prompt
+                    self.app.push_info_message(_T("Prompt Copied!"))
+                else:
+                    self.app.push_info_message(_T("No Prompt Found!"))
+            if imgui.is_item_hovered():
+                imgui.set_next_window_size((550, 0))
+                tips = [_T("Click to copy the prompt to clipboard.")]
+                title = _T("Copy Prompt")
+                AppHelperDraw.draw_tips_with_title(self.app, tips, title)
+
+            imgui.table_next_column()
+            old_show_detail = item.show_detail
+            imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_SELECTED)
+            if old_show_detail:
+                imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON_SELECTED)
+            if CustomWidgets.icon_label_button("image_detail", "", "CENTER", (bw, bh), isize=isize):
+                item.show_detail = not item.show_detail
+            if imgui.is_item_hovered():
+                imgui.set_next_window_size((550, 0))
+                tips = [_T("View generated image details like prompt, generation time, etc.")]
+                title = _T("Details")
+                AppHelperDraw.draw_tips_with_title(self.app, tips, title)
+            if old_show_detail:
+                imgui.pop_style_color(1)
+            imgui.pop_style_color(1)
+
+            imgui.table_next_column()
+            if CustomWidgets.icon_label_button("delete", "", "CENTER", (bw, bh), isize=isize):
+                self.remove_item(item)
+            if imgui.is_item_hovered():
+                imgui.set_next_window_size((550, 0))
+                tips = [_T("Click to delete the history in the queue, but leave the generated image.")]
+                title = _T("Delete History")
+                AppHelperDraw.draw_tips_with_title(self.app, tips, title)
+            imgui.pop_style_var(1)
+            imgui.end_table()
+
+    def _draw_content(self, item: StudioHistoryItem) -> None:
+        imgui.dummy((0, 0))
+        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
+
+        if item.is_pending():
+            self._draw_content_pending(item)
+        elif item.is_preparing():
+            self._draw_content_preparing(item)
+        elif item.is_running():
+            self._draw_content_running(item)
+        elif item.is_processing():
+            self._draw_content_processing(item)
+        elif item.is_failed():
+            self._draw_content_failed(item)
+        elif item.is_success():
+            self._draw_content_success(item)
+        else:
+            self._draw_content_success(item)
+        imgui.pop_style_color(1)
+
+    def _draw_content_pending(self, item: StudioHistoryItem) -> None:
+        if imgui.begin_table("##Content", 1):
+            h1 = imgui.get_text_line_height() * 4
+            w1 = imgui.get_content_region_avail()[0]
+            imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 0)
+            imgui.table_next_column()
+            progress = bpy.context.object.location.x if bpy.context.object else 0.0
+            progress = progress % 1.0
+            over_text = f"{progress * 100:.1f}%"
+            self.app.font_manager.push_h1_font(24 * 2)
+            imgui.push_style_color(imgui.Col.PLOT_HISTOGRAM, Const.BUTTON_SELECTED)
+            CustomWidgets.progress_bar_with_overlay(progress, (w1, h1), over_text)
+            imgui.pop_style_color(1)
+            self.app.font_manager.pop_font()
+            imgui.end_table()
+
+    def _draw_content_preparing(self, item: StudioHistoryItem) -> None:
+        self._draw_content_pending(item)
+
+    def _draw_content_running(self, item: StudioHistoryItem) -> None:
+        self._draw_content_pending(item)
+
+    def _draw_content_processing(self, item: StudioHistoryItem) -> None:
+        self._draw_content_pending(item)
+
+    def _draw_content_success(self, item: StudioHistoryItem) -> None:
+        if imgui.begin_table("##Content", 2):
+            h1 = imgui.get_text_line_height() * 4
+            w1 = h1 * 207 / 126
+            imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_FIXED, w1, 0)
+            imgui.table_setup_column("##Ele2", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 1)
+            imgui.table_next_column()
+            img = item.get_output_file_image()
+            self._draw_image_cell(img, w1, h1)
+            imgui.table_next_column()
+            self._draw_buttons_cell(item, h1)
+            imgui.end_table()
+
+    def _draw_content_failed(self, item: StudioHistoryItem) -> None:
+        # 如果item.error_messages不为空，则调用_draw_failed_content_with_error
+        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.CLOSE_BUTTON_ACTIVE)
+        if item.error_message:
+            self._draw_content_failed_with_error(item)
+        else:
+            # 响应解析时无错误, 但outputs中无内容
+            self._draw_content_failed_with_network_disconnect(item)
+        imgui.pop_style_color(1)
+
+    def _draw_content_failed_with_error(self, item: StudioHistoryItem) -> None:
+        if imgui.begin_table("##Content", 2):
+            h1 = imgui.get_text_line_height() * 4
+            w1 = h1 * 207 / 126
+            imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_FIXED, w1, 0)
+            imgui.table_setup_column("##Ele2", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 1)
+            imgui.table_next_column()
+            img = "generation_blocked"
+            self._draw_image_cell(img, w1, h1)
+            imgui.table_next_column()
+            self._draw_buttons_cell(item, h1)
+            imgui.end_table()
+
+    def _draw_content_failed_with_network_disconnect(self, item: StudioHistoryItem) -> None:
+        if imgui.begin_table("##Content", 2):
+            h1 = imgui.get_text_line_height() * 4
+            w1 = h1 * 207 / 126
+            imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_FIXED, w1, 0)
+            imgui.table_setup_column("##Ele2", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 1)
+            imgui.table_next_column()
+            img = "generation_network_error"
+            self._draw_image_cell(img, w1, h1)
+            imgui.table_next_column()
+            self._draw_buttons_cell(item, h1)
+            imgui.end_table()
+
+    def _draw_image_cell(self, img: str, w1: float, h1: float) -> None:
+        """绘制内容区左侧图片单元格（含按比例裁剪与悬停预览）。"""
+        imgui.push_style_color(imgui.Col.FRAME_BG, self.col_widget)
+        imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R)
+        with with_child("##Image", (w1, h1), child_flags=self.flags):
+            imgui.push_style_color(imgui.Col.FRAME_BG, self.col_bg)
+            imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
+            imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
+            bw, bh = imgui.get_content_region_avail()
+            icon = TexturePool.get_tex_id(img)
+            tex = TexturePool.get_tex(icon)
+            tex_aspect_ratio = tex.width / tex.height
+            btn_aspect_ratio = bw / bh
+            uvmin = (0, 0)
+            uvmax = (1, 1)
+            if tex_aspect_ratio > btn_aspect_ratio:
+                clip_uv_x = abs(tex.width - (tex.height / bh) * bw) / tex.width * 0.5
+                uvmin = (clip_uv_x, 0)
+                uvmax = (1 - clip_uv_x, 1)
+            else:
+                clip_uv_y = abs(tex.height - (tex.width / bw) * bh) / tex.height * 0.5
+                uvmin = (0, clip_uv_y)
+                uvmax = (1, 1 - clip_uv_y)
+            if imgui.button("##FakeButton", (bw, bh)) and Path(img).exists():
+                self.copy_image(img)
+                self.app.push_info_message(_T("Image Copied!"))
+            pmin = imgui.get_item_rect_min()
+            pmax = imgui.get_item_rect_max()
+            dl = imgui.get_window_draw_list()
+            dl.add_image_rounded(icon, pmin, pmax, uvmin, uvmax, 0xFFFFFFFF, 12)
+            if imgui.is_item_hovered():
+                self._draw_image_tooltip(img, icon)
+            imgui.pop_style_color(3)
+        imgui.pop_style_var(1)
+        imgui.pop_style_color(1)
+
+    def _draw_image_tooltip(self, img: str, icon) -> None:
+        """绘制图片悬停时的工具提示（文件名、尺寸与预览图）。"""
+        imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.CHILD_R)
+        imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, (12, 12))
+        imgui.begin_tooltip()
+        tex = TexturePool.get_tex(icon)
+        file_name = Path(img).stem
+        imgui.text(f"{file_name} [{tex.width}x{tex.height}]")
+        imgui.dummy((0, 0))
+        canvas_tex_width = self.app.screen_scale * tex.width
+        canvas_tex_height = self.app.screen_scale * tex.height
+        canvas_width = self.app.screen_width * 0.7
+        canvas_height = self.app.screen_height * 0.7
+        if canvas_tex_width > canvas_width:
+            canvas_tex_scale = canvas_width / canvas_tex_width
+            canvas_tex_height *= canvas_tex_scale
+            canvas_tex_width *= canvas_tex_scale
+        if canvas_tex_height > canvas_height:
+            canvas_tex_scale = canvas_height / canvas_tex_height
+            canvas_tex_height *= canvas_tex_scale
+            canvas_tex_width *= canvas_tex_scale
+        aw = imgui.get_content_region_avail()[0]
+        if canvas_tex_width < aw:
+            canvas_tex_scale = aw / canvas_tex_width
+            canvas_tex_height *= canvas_tex_scale
+            canvas_tex_width *= canvas_tex_scale
+        imgui.invisible_button("FakeButton", (canvas_tex_width, canvas_tex_height))
+        pmin = imgui.get_item_rect_min()
+        pmax = imgui.get_item_rect_max()
+        dl = imgui.get_window_draw_list()
+        dl.add_image_rounded(icon, pmin, pmax, (0, 0), (1, 1), 0xFFFFFFFF, Const.CHILD_R * 0.8)
+        imgui.end_tooltip()
+        imgui.pop_style_var(2)
+
+    def _draw_buttons_cell(self, item: StudioHistoryItem, h1: float) -> None:
+        """绘制内容区右侧操作按钮单元格（编辑、导出）。"""
+        imgui.push_style_color(imgui.Col.FRAME_BG, self.col_widget)
+        imgui.push_style_var(imgui.StyleVar.CELL_PADDING, Const.CELL_P)
+        imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R)
+        imgui.push_style_var(imgui.StyleVar.FRAME_PADDING, (Const.CELL_P[0] * 2, Const.CELL_P[1]))
+        with with_child("##Buttons", (0, h1), child_flags=self.flags):
+            imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R / 2)
+            imgui.push_style_color(imgui.Col.BUTTON, self.col_bg)
+            if imgui.begin_table("##Buttons", 1):
+                imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 0)
+                style = imgui.get_style()
+                bh = h1 / 2 - style.cell_padding[1] * 2 - style.frame_padding[1]
+                imgui.table_next_column()
+                if CustomWidgets.icon_label_button("image_edit", _T("Edit"), "LEFT", (0, bh)):
+                    image = item.get_output_file_image()
+                    meta = item.stringify()
+                    context = bpy.context.copy()
+                    Timer.put((edit_image_with_meta_and_context, image, meta, context))
+                if imgui.is_item_hovered():
+                    imgui.set_next_window_size((720, 0))
+                    AppHelperDraw.draw_tips_with_title(self.app, [_T("Open image editor and edit current image.")], _T("Edit Image"))
+                imgui.table_next_column()
+                if CustomWidgets.icon_label_button("image_export", _T("Save"), "LEFT", (0, bh)):
+                    self.export_image(item.get_output_file_image())
+                if imgui.is_item_hovered():
+                    imgui.set_next_window_size((720, 0))
+                    AppHelperDraw.draw_tips_with_title(self.app, [_T("Click to export the image to disk.")], _T("Export Image"))
+                imgui.end_table()
+            imgui.pop_style_var(1)
+            imgui.pop_style_color(1)
+        imgui.pop_style_var(3)
+        imgui.pop_style_color(1)
+
+    def _draw_detail(self, item: StudioHistoryItem) -> None:
+        """绘制详情展开区域：提示词文本框与图片元信息。"""
+        if not item.show_detail:
+            return
+        imgui.text(_T("Prompt"))
+        prompt = item.get_prompt() or "No prompt found"
+        h = imgui.get_text_line_height()
+        mlt_flags = imgui.InputTextFlags.WORD_WRAP
+        text_box_height = h * 5 + imgui.get_style().frame_padding[1] * 2
+        _, _ = imgui.input_text_multiline("##prompt", prompt, (-1, text_box_height), mlt_flags)
+        icon = TexturePool.get_tex_id(item.get_output_file_image())
+        tex = TexturePool.get_tex(icon)
+        tex_width = tex.width
+        tex_height = tex.height
+        stem = Path(item.get_output_file_image()).stem
+        icon = TexturePool.get_tex_id("roster")
+        imgui.dummy((0, 0))
+        imgui.image(icon, (h, h))
+        imgui.same_line()
+        imgui.text(stem)
+        icon = TexturePool.get_tex_id("image_info_resolution")
+        imgui.dummy((0, 0))
+        imgui.image(icon, (h, h))
+        imgui.same_line()
+        imgui.text(f"{tex_width}*{tex_height} px (72dpi)")
+        icon = TexturePool.get_tex_id("image_info_vendor")
+        imgui.dummy((0, 0))
+        imgui.image(icon, (h, h))
+        imgui.same_line()
+        imgui.text(_T("Generated by %s") % item.model)
+        icon = TexturePool.get_tex_id("image_info_timestamp")
+        imgui.dummy((0, 0))
+        imgui.image(icon, (h, h))
+        imgui.same_line()
+        imgui.text(datetime.fromtimestamp(item.timestamp).strftime("%Y-%m-%d %H:%M:%S"))
 
     def remove_item(self, item: StudioHistoryItem):
         self.history.remove(item)
@@ -1822,8 +2076,7 @@ class AIStudio(AppHud):
                 imgui.end_combo()
             if imgui.is_item_hovered():
                 title = _T("Please Select Generation Engine")
-                tip = _T(
-                    "Select Engine and Fill API, You can use AI in Blender seamlessly. Note: This tool only has the function of connecting to the service. The generated content & fees are subject to the provider.")
+                tip = _T("Select Engine and Fill API, You can use AI in Blender seamlessly. Note: This tool only has the function of connecting to the service. The generated content & fees are subject to the provider.")
                 imgui.set_next_window_size((759, 0))
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             imgui.pop_style_color(2)
