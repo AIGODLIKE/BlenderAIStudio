@@ -33,7 +33,7 @@ class RenderProcessor(InputProcessor):
                 - input_type: str - 渲染类型
                     - "CameraRender": 渲染彩色图像
                     - "CameraDepth": 渲染深度图
-                    - "FastRender": 快速渲染（未实现）
+                    - "FastRender": 快速渲染
                     - "NoInput": 不渲染
                 - camera: 相机名称
                 - render_samples: int - 采样数（可选）

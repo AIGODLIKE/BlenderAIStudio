@@ -52,11 +52,26 @@ def silent_rendering():
             setattr(bpy.context.preferences.view, "render_display_type", last_display_type)
 
 
-# def render_scene_viewport_opengl_to_png(scene: bpy.types.Scene, image_path: str, view_context: bool):
-#     check_scene_camera_with_exception(scene)
-#     with with_scene_render_output_settings(scene, image_path):
-#         bpy.ops.render.opengl(write_still=True, view_context=view_context)
-#
+def render_scene_viewport_opengl_to_png(context: dict, image_path: str):
+    scene: bpy.types.Scene = context["scene"]
+    space_data: bpy.types.SpaceView3D = context["space_data"]
+    check_scene_camera_with_exception(scene)
+    with bpy.context.temp_override(**context):
+        with with_scene_render_output_settings(scene, image_path):
+            old_engine = scene.render.engine
+            old_show_overlays = space_data.overlay.show_overlays
+            for engine in ["BLENDER_EEVEE_NEXT", "BLENDER_EEVEE", "EEVEE"]:
+                try:
+                    scene.render.engine = engine
+                    break
+                except Exception:
+                    continue
+            space_data.overlay.show_overlays = False
+            bpy.ops.render.opengl(write_still=True, view_context=True)
+            scene.render.engine = old_engine
+            space_data.overlay.show_overlays = old_show_overlays
+    return image_path
+
 
 def render_scene_to_png(scene: bpy.types.Scene, image_path: str):
     check_scene_camera_with_exception(scene)
@@ -273,7 +288,6 @@ class BlenderRenderHelper:
         Raises:
             ValueError: 场景没有相机
             RuntimeError: 渲染失败
-            NotImplementedError: FastRender 未实现
         """
         if itype == "NoInput":
             return ""
@@ -290,7 +304,8 @@ class BlenderRenderHelper:
             self._wait_for_rendering()
             self._render_depth(image_path, context)
         elif itype == "FastRender":
-            raise NotImplementedError("FastRender not implemented yet")
+            self._wait_for_rendering()
+            self._render_opengl_viewport(image_path, context)
         else:
             raise ValueError(f"Unknown input image type: {itype}")
 
@@ -365,6 +380,20 @@ class BlenderRenderHelper:
         while self.is_rendering:
             time.sleep(0.1)
 
+        # 检查是否取消
+        if self.render_cancel:
+            self.render_cancel = False
+            raise RuntimeError("Render Canceled")
+
+    def _render_opengl_viewport(self, output_path: str, context: dict):
+        """渲染 OpenGL 视图"""
+        scene: bpy.types.Scene = context["scene"]
+
+        if not scene.camera:
+            raise ValueError("Scene Camera Not Found")
+
+        Timer.wait_run(render_scene_viewport_opengl_to_png)(context, output_path)
+        time.sleep(1)  # 给用户反应时间
         # 检查是否取消
         if self.render_cancel:
             self.render_cancel = False
