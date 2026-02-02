@@ -102,6 +102,28 @@ class AppHelperDraw:
 class StudioImagesDescriptor(WidgetDescriptor):
     ptype = "IMAGE_LIST"
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._stable_content_x = None
+
+    def _get_stable_cell_size(self):
+        """返回不随滚动条显隐变化的内容宽度，避免滚动条出现时布局抖动。"""
+        avail_x = imgui.get_content_region_avail()[0]
+        scrollbar_reserve = Const.CHILD_SB_S + Const.CHILD_SB_P
+        cached = self._stable_content_x
+        if cached is None:
+            self._stable_content_x = avail_x
+            return avail_x
+        # 滚动条出现时 avail 会减少，取较小值并缓存，避免下一帧又变大导致抖动
+        if avail_x < cached:
+            self._stable_content_x = avail_x
+            return avail_x
+        # 窗口变宽或滚动条消失时，允许使用更大宽度
+        if avail_x > cached + scrollbar_reserve:
+            self._stable_content_x = avail_x
+            return avail_x
+        return self._stable_content_x
+
     def display(self, wrapper, app):
         imgui.push_style_color(imgui.Col.FRAME_BG, self.col_bg)
         with with_child("##Image", (0, 0), child_flags=self.flags):
@@ -135,7 +157,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
         imgui.pop_style_color(1)
 
     def display_upload_image(self):
-        bw = bh = imgui.get_content_region_avail()[0]
+        bw = bh = self._get_stable_cell_size()
         icon = TexturePool.get_tex_id("image_new")
         tex = TexturePool.get_tex(icon)
         fbw = tex.width / max(tex.width, tex.height) if tex else 1
@@ -163,7 +185,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
     def display_image_with_close(self, app, img_path: str = "", index=-1):
         if not img_path:
             return
-        bw = bh = imgui.get_content_region_avail()[0]
+        bw = bh = self._get_stable_cell_size()
         icon = TexturePool.get_tex_id(img_path)
         tex = TexturePool.get_tex(icon)
         fbw = tex.width / max(tex.width, tex.height) if tex else 1
