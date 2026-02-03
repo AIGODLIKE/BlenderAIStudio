@@ -1,35 +1,41 @@
 import bpy
 
 from .. import logger
-from ..utils import get_pref, get_addon_version_str, get_addon_version
+from ..utils import get_pref, get_addon_version_str
 from ..utils.async_request import PostRequestThread
+from ..utils.device_info import get_all_devices
+from ..utils.memory_info import format_memory_info
 
 
 def collect_info():
     pref = get_pref()
     if pref.init_privacy and pref.collect_version_data:
         from ..studio.account import Account
-        account = Account.get_instance()
-        url = f"{account.service_url}/sys/report"
+        try:
+            account = Account.get_instance()
+            url = f"{account.service_url}/sys/report"
 
-        headers = {
-            "X-Auth-T": account.token,
-            "Content-Type": "application/json",
-        }
+            headers = {
+                "X-Auth-T": account.token,
+                "Content-Type": "application/json",
+            }
 
-        payload = {
-            "blenderVersion": bpy.app.version_string,
-            "addonVersion": get_addon_version(),
-            "addonVersionString": get_addon_version_str(),
-        }
+            payload = {
+                "blenderVersion": bpy.app.version_string,
+                "addonVersionString": get_addon_version_str(),
+                **get_all_devices(),
+                "memory": format_memory_info(),
+            }
 
-        def on_request_finished(result, error):
-            if result:
-                logger.info("send collect_info finished")
-            if error:
-                logger.error("send collect_info error: %s", error)
+            def on_request_finished(result, error):
+                if result:
+                    logger.info("send collect_info finished")
+                if error:
+                    logger.error("send collect_info error: %s", error)
 
-        PostRequestThread(url, on_request_finished, headers, payload).start()
+            PostRequestThread(url, on_request_finished, headers, payload).start()
+        except Exception as e:
+            logger.error("send collect_info error: %s", e)
 
 
 def privacy_tips_popup():
@@ -45,7 +51,7 @@ class Privacy:
     collect_version_data: bpy.props.BoolProperty(
         default=False, name="Version Data",
         update=lambda self, context: collect_info(),
-        description="By checking this box, we will collect your plugin version and Blender version information")
+        description="Check this box and we will collect your plugin version, Blender version, and hardware information")
     save_generated_images_to_cloud: bpy.props.BoolProperty(
         default=True,
         name="Save images generated in stable mode to the cloud",
@@ -55,7 +61,8 @@ class Privacy:
         column = layout.column()
 
         column.prop(self, "collect_version_data")
-        column.label(text="By checking this box, we will collect your plugin version and Blender version information")
+        column.label(
+            text="Check this box and we will collect your plugin version, Blender version, and hardware information")
         column.label(text="to better serve you")
         column.separator(type="LINE")
         column.prop(self, "save_generated_images_to_cloud")
