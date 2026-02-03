@@ -5,11 +5,12 @@ import time
 import traceback
 from pathlib import Path
 from threading import Thread
-from typing import Optional, Self
+from typing import Optional
 from ..account import Account
 from ..tasks import TaskManager, TaskState, Task, TaskResult
 from ..wrapper import BaseAdapter
 from ... import logger
+from ...preferences import AuthMode
 from ...i18n import PROP_TCTX
 
 
@@ -21,6 +22,7 @@ class StudioHistoryItem:
     STATUS_SUCCESS = "success"
     STATUS_FAILED = "failed"
     STATUS_CANCELLED = "cancelled"
+    STATUS_UNKNOWN = "unknown"  # 网络异常，需要查询后端确认真实状态
 
     def __init__(self) -> None:
         self.result: dict = {}
@@ -114,6 +116,9 @@ class StudioHistoryItem:
     def is_finished(self) -> bool:
         return self.status in (StudioHistoryItem.STATUS_SUCCESS, StudioHistoryItem.STATUS_FAILED, StudioHistoryItem.STATUS_CANCELLED)
 
+    def needs_status_sync(self) -> bool:
+        return self.status == StudioHistoryItem.STATUS_UNKNOWN
+
     def has_image(self) -> bool:
         return bool(self.get_output_file_image())
 
@@ -199,6 +204,9 @@ class StudioHistory:
             if item.task_id == task_id:
                 return item
         return None
+
+    def find_all_needs_status_sync_items(self) -> list[StudioHistoryItem]:
+        return [item for item in self.items if item.needs_status_sync()]
 
     def update_item(self, item: "StudioHistoryItem"):
         self.save_history()
@@ -342,16 +350,34 @@ class StudioClient(BaseAdapter):
     def _on_task_failed(self, event_data):
         task: Task = event_data["task"]
         result: TaskResult = event_data["result"]
-        if not result.success:
-            self.push_error(result.error or result.error_message)
-            logger.error(result.error_message)
-            logger.critical(f"任务失败: {task.task_id}")
+
         item = self.history.find_by_task_id(task.task_id)
-        if item:
+        if not item:
+            return
+
+        # 判断是否为网络异常 + 账号模式
+        is_network_error = bool(result.error)
+
+        account = Account.get_instance()
+        is_account_mode = account.auth_mode == AuthMode.ACCOUNT.value
+
+        if is_network_error and is_account_mode:
+            # 网络异常且为账号模式，标记为待确认状态
+            item.status = StudioHistoryItem.STATUS_UNKNOWN
+            item.error_message = "Network error, syncing task status in background..."
+            logger.warning(f"Task {task.task_id} network error, marked as unknown status")
+        else:
+            # 真正的失败
             item.status = StudioHistoryItem.STATUS_FAILED
             item.error_message = result.error_message or str(result.error or "")
-            item.finished_at = time.time()
-            self.history.update_item(item)
+            logger.error(result.error_message)
+            logger.critical(f"Task failed: {task.task_id}")
+
+            if not result.success:
+                self.push_error(result.error or result.error_message)
+
+        item.finished_at = time.time()
+        self.history.update_item(item)
         Account.get_instance().fetch_credits()
 
     def cancel_generate_task(self):
