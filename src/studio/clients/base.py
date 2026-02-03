@@ -173,6 +173,7 @@ class StudioHistory:
         history_item.timestamp = time.time()
         history_item.task_id = ""
         self.add(history_item)
+        return history_item
 
     @classmethod
     def get_instance(cls) -> "StudioHistory":
