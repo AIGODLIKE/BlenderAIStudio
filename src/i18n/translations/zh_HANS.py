@@ -149,6 +149,8 @@ studio_panel_translations = (
     ("Image Copied!", "图片已复制到剪贴板！", None),
     ("Prompt Copied!", "提示词已复制到剪贴板！", None),
     ("No Prompt Found!", "未找到提示词！", None),
+    ("Refresh Task", "刷新任务", None),
+    ("Click to refresh the task.", "点击刷新任务", None),
 )
 
 task_translations = (
