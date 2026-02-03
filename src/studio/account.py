@@ -1,5 +1,6 @@
 import asyncio
 import json
+import requests
 import tempfile
 import traceback
 import webbrowser
@@ -7,6 +8,8 @@ from copy import deepcopy
 from pathlib import Path
 from threading import Thread
 from typing import Self
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
 
 import bpy
 from bpy.app.translations import pgettext as _T
@@ -40,6 +43,29 @@ try:
     AUTH_PATH.parent.mkdir(parents=True, exist_ok=True)
 except Exception as e:
     print("mkdir file error", e.args)
+
+# 重试策略
+RETRY_TOTAL = 5
+RETRY_STATUS_FORCELIST = [429, 500, 502, 503, 504]
+RETRY_ALLOWED_METHODS = ["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE"]
+RETRY_BACKOFF_FACTOR = 0.5
+
+RETRY_STRATEGY = Retry(
+    total=RETRY_TOTAL,
+    status_forcelist=RETRY_STATUS_FORCELIST,
+    allowed_methods=RETRY_ALLOWED_METHODS,
+    backoff_factor=RETRY_BACKOFF_FACTOR,
+)
+
+# 适配器
+ADAPTER = HTTPAdapter(max_retries=RETRY_STRATEGY)
+
+
+def get_session() -> requests.Session:
+    session = requests.Session()
+    session.mount("https://", ADAPTER)
+    session.mount("http://", ADAPTER)
+    return session
 
 
 class Account:
@@ -197,9 +223,8 @@ class Account:
 
         def job():
             try:
-                import requests
-
-                resp = requests.get(url, headers=headers, timeout=2)
+                session = get_session()
+                resp = session.get(url, headers=headers, timeout=2)
                 self.services_connected = resp.status_code == 200
             except Exception:
                 self.services_connected = False
@@ -271,9 +296,8 @@ class Account:
             "code": code,
         }
         try:
-            import requests
-
-            resp = requests.post(url, headers=headers, json=payload)
+            session = get_session()
+            resp = session.request(method="POST", url=url, headers=headers, json=payload)
         except ConnectionError:
             self.push_error(_T("Network connection failed"))
             return 0
@@ -323,9 +347,8 @@ class Account:
                 "Content-Type": "application/json",
             }
             try:
-                import requests
-
-                resp = requests.get(url, headers=headers)
+                session = get_session()
+                resp = session.get(url, headers=headers)
             except ConnectionError:
                 self.push_error(_T("Network connection failed"))
                 return
@@ -372,9 +395,8 @@ class Account:
                 "Content-Type": "application/json",
             }
             try:
-                import requests
-
-                resp = requests.get(url, headers=headers)
+                session = get_session()
+                resp = session.get(url, headers=headers)
             except ConnectionError:
                 self.push_error(_T("Network connection failed"))
                 return
