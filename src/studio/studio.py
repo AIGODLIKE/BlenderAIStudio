@@ -323,6 +323,8 @@ class StudioHistoryViewer:
             self._draw_header_preparing(item)
         elif item.is_running():
             self._draw_header_running(item)
+        elif item.is_generating():
+            self._draw_header_generating(item)
         elif item.is_processing():
             self._draw_header_processing(item)
         elif item.is_failed():
@@ -404,6 +406,48 @@ class StudioHistoryViewer:
             imgui.label_text("##Label", label)
             imgui.pop_item_width()
 
+            imgui.end_table()
+
+    def _draw_header_generating(self, item: StudioHistoryItem) -> None:
+        if imgui.begin_table("##Header", 4):
+            imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_FIXED, 0, 0)
+            imgui.table_setup_column("##Ele2", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 1)
+            imgui.table_setup_column("##Ele3", imgui.TableColumnFlags.WIDTH_FIXED, 0, 2)
+            imgui.table_setup_column("##Ele4", imgui.TableColumnFlags.WIDTH_FIXED, 0, 3)
+
+            imgui.table_next_column()
+            imgui.push_style_color(imgui.Col.TEXT, Const.DISABLE)
+            imgui.align_text_to_frame_padding()
+            imgui.text(f"#{item.index:03d}")
+            imgui.pop_style_color()
+
+            imgui.table_next_column()
+            imgui.dummy((0, 0))
+
+            imgui.table_next_column()
+            label = _T("Generating") + f"{item.elapsed_time:.1f}s"
+            w = imgui.calc_text_size(label)[0] + imgui.get_style().cell_padding[0] * 2
+            imgui.push_item_width(w)
+            imgui.label_text("##Label", label)
+            imgui.pop_item_width()
+
+            # 刷新按钮
+            imgui.table_next_column()
+            bh = imgui.get_frame_height()
+            bw = bh * 2
+            isize = bh - 12
+            fr = imgui.get_style().frame_rounding
+            imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, fr * 2)
+            imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.SLIDER_NORMAL)
+            if CustomWidgets.icon_label_button("refresh", "", "CENTER", (bw, bh), isize=isize):
+                self.app.refresh_task(item.task_id)
+            if imgui.is_item_hovered():
+                imgui.set_next_window_size((350, 0))
+                tips = [_T("Click to refresh the task.")]
+                title = _T("Refresh Task")
+                AppHelperDraw.draw_tips_with_title(self.app, tips, title)
+            imgui.pop_style_var(1)
+            imgui.pop_style_color(1)
             imgui.end_table()
 
     def _draw_header_processing(self, item: StudioHistoryItem) -> None:
@@ -573,6 +617,8 @@ class StudioHistoryViewer:
             self._draw_content_preparing(item)
         elif item.is_running():
             self._draw_content_running(item)
+        elif item.is_generating():
+            self._draw_content_generating(item)
         elif item.is_processing():
             self._draw_content_processing(item)
         elif item.is_failed():
@@ -604,6 +650,20 @@ class StudioHistoryViewer:
 
     def _draw_content_running(self, item: StudioHistoryItem) -> None:
         self._draw_content_pending(item)
+
+    def _draw_content_generating(self, item: StudioHistoryItem) -> None:
+        if imgui.begin_table("##Content", 1):
+            h1 = imgui.get_text_line_height() * 3
+            w1 = imgui.get_content_region_avail()[0]
+            imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 0)
+            imgui.table_next_column()
+            over_text = _T("Connecting") + "." * round(imgui.get_time() // 0.5 % 4)
+            self.app.font_manager.push_h1_font(24 * 2)
+            imgui.push_style_color(imgui.Col.PLOT_HISTOGRAM, Const.SLIDER_NORMAL)
+            CustomWidgets.progress_bar_with_overlay(1, (w1, h1), over_text)
+            imgui.pop_style_color(1)
+            self.app.font_manager.pop_font()
+            imgui.end_table()
 
     def _draw_content_processing(self, item: StudioHistoryItem) -> None:
         self._draw_content_pending(item)
@@ -1721,6 +1781,9 @@ class AIStudio(AppHud):
     def push_info_message(self, message: str):
         translated_msg = pgettext(message)
         self.bubble_logger.push_info_message(translated_msg)
+
+    def refresh_task(self, task_id: str):
+        logger.info(f"刷新任务: {task_id}")
 
     def handler_draw(self, _area: bpy.types.Area):
         self.draw_studio_panel()
