@@ -85,6 +85,7 @@ class Account:
         self._token = ""  # 内部 token 存储
         self.price_table = {}
         self.provider_count_map = {}
+        self.task_status_map = {}
         self.redeem_to_credits_table = {
             6: 600,
             30: 3300,
@@ -425,6 +426,32 @@ class Account:
                 self.push_error(_T("Credits fetch failed") + ": " + resp.text)
 
         Thread(target=_fetch_credits, daemon=True).start()
+
+    def fetch_task_status_threaded(self, task_ids: list[str]):
+        Thread(target=self.fetch_task_status, args=(task_ids,), daemon=True).start()
+
+    def fetch_task_status(self, task_ids: list[str]) -> dict:
+        url = f"{self.service_url}/task/query-status"  # 替换为实际的状态查询接口
+
+        headers = {
+            "X-Auth-T": self.token,
+            "Content-Type": "application/json",
+        }
+
+        payload = {
+            "reqIds": task_ids,
+        }
+
+        try:
+            session = get_session()
+            resp = session.post(url, headers=headers, json=payload, timeout=10)
+            resp.raise_for_status()
+            resp_json = resp.json()
+            self.task_status_map = resp_json.get("data", {})
+            return resp_json
+        except requests.RequestException as e:
+            logger.error(f"Failed to fetch task status: {e}")
+            raise
 
 
 class WebSocketClient:
