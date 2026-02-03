@@ -35,19 +35,20 @@ class StatusManager:
     def get_instance(cls) -> "StatusManager":
         return cls()
 
+    def ensure_sync_service(self):
+        if self.sync_service:
+            return
+        account = Account.get_instance()
+        history = StudioHistory.get_instance()
+        self.sync_service = TaskStatusSyncService(account, history)
+
     def start(self, interval: float = 10.0):
         if self.poller and self.poller.running:
             logger.warning("Task status poller is already running")
             return
 
-        account = Account.get_instance()
-        history = StudioHistory.get_instance()
-
-        # 创建同步服务
-        self.sync_service = TaskStatusSyncService(account, history)
-
-        # 创建并启动轮询器
-        self.poller = TaskStatusPoller(account, history, interval)
+        self.ensure_sync_service()
+        self.poller = TaskStatusPoller(self.sync_service, interval)
         self.poller.start()
 
         logger.info("Task status manager started")
@@ -61,11 +62,7 @@ class StatusManager:
         logger.info("Task status manager stopped")
 
     def refresh_task(self, task_id: str) -> bool:
-        if not self.sync_service:
-            # 如果轮询器未启动，临时创建同步服务
-            account = Account.get_instance()
-            history = StudioHistory.get_instance()
-            self.sync_service = TaskStatusSyncService(account, history)
+        self.ensure_sync_service()
 
         try:
             return self.sync_service.sync_single_task(task_id)
@@ -74,10 +71,7 @@ class StatusManager:
             return False
 
     def refresh_all_unknown_tasks(self) -> int:
-        if not self.sync_service:
-            account = Account.get_instance()
-            history = StudioHistory.get_instance()
-            self.sync_service = TaskStatusSyncService(account, history)
+        self.ensure_sync_service()
 
         # 找出所有待同步的任务
         history = StudioHistory.get_instance()
