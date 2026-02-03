@@ -93,9 +93,15 @@ def privacy():
     privacy_tips_popup()
 
 
+def check_update():
+    from .online_update_addon import OnlineUpdateAddon
+    OnlineUpdateAddon.update_addon_version_info(True)  # 启动自检更新,如果有测提示更新
+
+
 def register():
     Timer.reg()
     bpy.app.timers.register(privacy, first_interval=0.5)  # 只在第一次启动时执行
+    bpy.app.timers.register(check_update, first_interval=1)  # 只在第一次启动时执行
 
 
 def unregister():

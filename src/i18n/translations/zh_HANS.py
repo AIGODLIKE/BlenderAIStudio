@@ -314,6 +314,7 @@ translations = (
     ("Dev API Base URL", "开发API", PROP_TCTX),
     ("Dev Login URL", "登录URL", PROP_TCTX),
     ("Dev Token", "Token", PROP_TCTX),
+    ("BLenderAiStudio Update Tips", "BLenderAiStudio 更新提示", "Operator"),
     *error_translations,
     *studio_panel_translations,
     *task_translations,
