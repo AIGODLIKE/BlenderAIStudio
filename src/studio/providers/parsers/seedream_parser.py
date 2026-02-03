@@ -5,13 +5,8 @@ import requests
 
 from typing import List, Tuple, Any, Optional
 from .base import ResponseParser
-from ...exception import (
-    StudioException,
-    InsufficientBalanceException,
-    APIRequestException,
-    AuthFailedException,
-    ToeknExpiredException,
-)
+from .utils import _check_response_account_mode
+from ...exception import StudioException
 
 try:
     from ....logger import logger
@@ -44,19 +39,7 @@ class SeedreamImageParser(ResponseParser):
         return res
 
     def _check_response_custom(self, resp: dict):
-        # 账号端点常见：{'responseId': ..., 'code': -4, 'errCode': -4000, 'errMsg': '请先登录!'}
-        if not isinstance(resp, dict):
-            return
-        err_msg = resp.get("errMsg", "")
-        if not err_msg:
-            return
-        err_type_map = {
-            "余额不足": InsufficientBalanceException("Insufficient balance!"),
-            "API请求错误!": APIRequestException("API Request Error!"),
-            "鉴权错误": AuthFailedException("Authentication failed!"),
-            "Token过期": ToeknExpiredException("Token expired!"),
-        }
-        raise err_type_map.get(err_msg, SeedreamAPIError(err_msg))
+        _check_response_account_mode(resp)
 
     def _process_resp_json(self, resp) -> dict:
         if self.is_account_mode:
