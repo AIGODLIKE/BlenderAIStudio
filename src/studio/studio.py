@@ -14,7 +14,7 @@ from shutil import copyfile
 from traceback import print_exc
 
 from .account import Account
-from .clients import StudioHistoryItem, StudioHistory
+from .clients import StudioHistoryItem, StudioHistory, StatusManager
 from .clients.universal_client import UniversalClient
 from .config.model_registry import ModelRegistry
 from .gui.app.animation import AnimationSystem, Easing, Tween, Sequence
@@ -1726,6 +1726,7 @@ class AIStudio(AppHud):
         super().__init__(*args, **kwargs)
         self.active_panel = AIStudioPanelType.GENERATION
         self.state = Account.get_instance()
+        self.status_manager = StatusManager.get_instance()
         self.client = UniversalClient()
         self.store_panel = StorePanel(self)
         self.client_wrapper = StudioWrapper()
@@ -1783,7 +1784,7 @@ class AIStudio(AppHud):
         self.bubble_logger.push_info_message(translated_msg)
 
     def refresh_task(self, task_id: str):
-        logger.info(f"刷新任务: {task_id}")
+        self.status_manager.refresh_task(task_id)
 
     def handler_draw(self, _area: bpy.types.Area):
         self.draw_studio_panel()
