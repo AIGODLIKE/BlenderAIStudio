@@ -15,7 +15,7 @@ class PrivacyTips(bpy.types.Operator):
     def execute(self, context):
         print(self.bl_idname, "exec")
         pref = get_pref()
-        # pref.init_privacy = True
+        pref.init_privacy = True
         from ..preferences.privacy import collect_info
         collect_info()
         return {"FINISHED"}
