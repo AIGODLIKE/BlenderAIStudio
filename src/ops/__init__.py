@@ -25,6 +25,7 @@ from .references_image import (
     SelectReferenceImageByImage,
 )
 from .privacy_tips import PrivacyTips
+from .update_tips import UpdateTips
 
 class_list = [
     ApplyAiEditImage,
@@ -53,6 +54,8 @@ class_list = [
     LogoutAccountAuth,
 
     PrivacyTips,
+
+    UpdateTips,
 ]
 
 register_class, unregister_class = bpy.utils.register_classes_factory(class_list)

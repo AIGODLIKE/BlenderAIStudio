@@ -1,12 +1,35 @@
 import bpy
 
-from ..utils import get_pref
+from .. import logger
+from ..utils import get_pref, get_addon_version_str, get_addon_version
+from ..utils.async_request import PostRequestThread
 
 
 def collect_info():
     pref = get_pref()
     if pref.init_privacy and pref.collect_version_data:
-        print("collect_info")
+        from ..studio.account import Account
+        account = Account.get_instance()
+        url = f"{account.service_url}/sys/report"
+
+        headers = {
+            "X-Auth-T": account.token,
+            "Content-Type": "application/json",
+        }
+
+        payload = {
+            "blenderVersion": bpy.app.version_string,
+            "addonVersion": get_addon_version(),
+            "addonVersionString": get_addon_version_str(),
+        }
+
+        def on_request_finished(result, error):
+            if result:
+                logger.info("send collect_info finished")
+            if error:
+                logger.error("send collect_info error: %s", error)
+
+        PostRequestThread(url, on_request_finished, headers, payload).start()
 
 
 def privacy_tips_popup():
@@ -17,12 +40,16 @@ def privacy_tips_popup():
 
 
 class Privacy:
-    init_privacy: bpy.props.BoolProperty(default=False, )
-    collect_version_data: bpy.props.BoolProperty(default=False, name="Version Data",
-                                                 description="By checking this box, we will collect your plugin version and Blender version information")
-    save_generated_images_to_cloud: bpy.props.BoolProperty(default=True,
-                                                           name="Save images generated in stable mode to the cloud",
-                                                           description="we will retain a copy of the generated image in the cloud to prevent image file loss")
+    init_privacy: bpy.props.BoolProperty(default=False, update=lambda self, context: collect_info(),
+                                         name="Privacy settings have been initialized")
+    collect_version_data: bpy.props.BoolProperty(
+        default=False, name="Version Data",
+        update=lambda self, context: collect_info(),
+        description="By checking this box, we will collect your plugin version and Blender version information")
+    save_generated_images_to_cloud: bpy.props.BoolProperty(
+        default=True,
+        name="Save images generated in stable mode to the cloud",
+        description="we will retain a copy of the generated image in the cloud to prevent image file loss")
 
     def draw_privacy(self, layout):
         column = layout.column()

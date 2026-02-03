@@ -159,11 +159,12 @@ task_translations = (
 )
 privacy_translations = (
     ("Version Data", "版本数据", ""),
-    ("Privacy", "隐私", ""),
+    ("Privacy", "隐私", PROP_TCTX),
     ("BLenderAiStudio Privacy Tips", "BLenderAiStudio 隐私提示", "Operator"),
     ("By checking this box, we will collect your plugin version and Blender version information",
      "勾选后我们将会收集您的插件版本及Blender版本信息", ""),
     ("to better serve you", "用于更好的提供服务", ""),
+    ("Privacy settings have been initialized", "已初始化隐私设置", ""),
     ("When using Stable Mode to generate images", "勾选后在使用稳定模式生成图片时", ""),
     ("Save images generated in stable mode to the cloud", "保留稳定模式生成的图片到云端", ""),
     ("we will retain a copy of the generated image in the cloud to prevent image file loss",

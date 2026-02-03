@@ -31,7 +31,7 @@ class UpdateService:
     is_refreshing = False  # 正在刷新中
 
     @staticmethod
-    def update_addon_version_info() -> None:
+    def update_addon_version_info(is_start=False) -> None:
         """更新插件版本信息"""
         cls = UpdateService
 
@@ -39,6 +39,8 @@ class UpdateService:
             if error:
                 logger.error(f"获取插件版本信息失败 {type(error).__name__}: {error}")
                 cls.is_refreshing = False
+                if cls.is_update_available():
+                    bpy.ops.bas.update_tips("INVOKE_DEFAULT")
             else:
                 # 存储版本信息
                 try:
@@ -51,7 +53,7 @@ class UpdateService:
                 finally:
                     cls.is_refreshing = False
 
-        if cls.is_refreshing:
+        if cls.is_refreshing and not is_start:
             return
         cls.is_refreshing = True
         GetRequestThread(VERSION_URL, on_request_finished).start()
@@ -67,7 +69,7 @@ class UpdateService:
                 # logger.info(f"获取到 {len(versions)} 个版本数据")
                 return versions[0]
         except Exception as e:
-            logger.error(f"获取插件版本信息失败: {e}")
+            logger.error(f"获取最新一个插件版本信息失败: {e}")
         return None
 
     @staticmethod
@@ -453,7 +455,7 @@ register_class, unregister_class = bpy.utils.register_classes_factory(class_list
 
 
 def register():
-    OnlineUpdateAddon.update_addon_version_info()  # 启动自检更新,如果有测提示更新
+    OnlineUpdateAddon.update_addon_version_info(True)  # 启动自检更新,如果有测提示更新
     register_class()
 
 
