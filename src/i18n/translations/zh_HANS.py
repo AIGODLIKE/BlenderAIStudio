@@ -151,6 +151,7 @@ studio_panel_translations = (
     ("No Prompt Found!", "未找到提示词！", None),
     ("Refresh Task", "刷新任务", None),
     ("Click to refresh the task.", "点击刷新任务", None),
+    ("Connecting", "重连中", None),
 )
 
 task_translations = (
