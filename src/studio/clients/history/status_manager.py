@@ -48,7 +48,8 @@ class StatusManager:
             return
 
         self.ensure_sync_service()
-        self.poller = TaskStatusPoller(self.sync_service, interval)
+        history = StudioHistory.get_instance()
+        self.poller = TaskStatusPoller(self.sync_service, history)
         self.poller.start()
 
         logger.info("Task status manager started")
