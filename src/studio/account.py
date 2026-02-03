@@ -313,7 +313,7 @@ class Account:
             resp_json: dict = resp.json()
             data: dict = resp_json.get("data", {"amount": 0})
             code = resp_json.get("code")
-            err_code = resp_json.get("errCode")
+            _ = resp_json.get("errCode")
             err_msg = resp_json.get("errMsg", "")
             if err_msg:
                 err_type_map = {
