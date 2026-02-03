@@ -1,7 +1,10 @@
+import bpy
+
 from .status_sync import TaskStatusPoller, TaskStatusSyncService
 from ..base import StudioHistory
 from ...account import Account
 from ....logger import logger
+from ....utils import get_pref
 
 
 class StatusManager:
@@ -88,7 +91,9 @@ class StatusManager:
         return self.sync_service.sync_tasks(task_ids)
 
 
-def register():
+def start():
+    if not get_pref():
+        return 1
     # 启动任务状态轮询器
     try:
         status_manager = StatusManager.get_instance()
@@ -98,11 +103,18 @@ def register():
         logger.error(f"Failed to start task status poller: {e}")
 
 
-def unregister():
-    # 停止任务状态轮询器
+def stop():
     try:
         status_manager = StatusManager.get_instance()
         status_manager.stop()
         logger.info("Task status poller stopped")
     except Exception as e:
         logger.error(f"Failed to stop task status poller: {e}")
+
+
+def register():
+    bpy.app.timers.register(start, first_interval=1)
+
+
+def unregister():
+    stop()
