@@ -1,20 +1,18 @@
 import bpy
 import time
-import mimetypes
 from traceback import print_exc
-from datetime import datetime
 from bpy.app.translations import pgettext_iface as _T
 from pathlib import Path
 from typing import Iterable, Dict, Any, List
 
-from .base import StudioClient, StudioHistory, StudioHistoryItem
+from .base import StudioClient, StudioHistoryItem
+from ..utils import save_mime_typed_datas_to_temp_files, load_images_into_blender
 from ..account import Account
 from ..config.model_registry import ModelConfig, ModelRegistry
 from ..tasks import UniversalModelTask, Task, TaskResult
 from ...preferences import AuthMode
 from ...logger import logger
-from ...utils import get_pref, get_temp_folder
-from ...timer import Timer
+from ...utils import get_pref
 
 
 class UniversalClient(StudioClient):
@@ -351,41 +349,11 @@ class UniversalClient(StudioClient):
         Returns:
             保存的文件路径列表
         """
-        temp_folder = get_temp_folder(prefix="generate")
-        timestamp = time.time()
-        time_str = datetime.fromtimestamp(timestamp).strftime("%Y%m%d%H%M%S")
-        saved_files = []
-
-        for idx, (mime_type, data) in enumerate(parsed_data):
-            ext = mimetypes.guess_extension(mime_type) or ""
-            # 使用索引避免多个文件名冲突
-            if len(parsed_data) > 1:
-                save_file = Path(temp_folder, f"Gen_{time_str}_{idx}{ext}")
-            else:
-                save_file = Path(temp_folder, f"Gen_{time_str}{ext}")
-
-            if isinstance(data, bytes):
-                save_file.write_bytes(data)
-            elif isinstance(data, str):
-                save_file.write_text(data, encoding="utf-8")
-
-            logger.info(f"结果已保存到: {save_file.as_posix()}")
-            saved_files.append((mime_type, save_file.as_posix()))
-
-        return saved_files
+        return save_mime_typed_datas_to_temp_files(parsed_data)
 
     @staticmethod
     def _load_into_blender(outputs: list[tuple[str, str]]):
-        for mime_type, file_path in outputs:
-            if mime_type.startswith("image/"):
-
-                def load_image_into_blender(file_path: str):
-                    try:
-                        bpy.data.images.load(file_path)
-                    except Exception:
-                        print_exc()
-
-                Timer.put((load_image_into_blender, file_path))
+        load_images_into_blender(outputs)
 
     def _update_history_item_on_complete(
         self,
