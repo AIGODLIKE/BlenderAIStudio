@@ -293,7 +293,6 @@ class UniversalClient(StudioClient):
         task_ids = []
         for item in self.history.find_all_needs_status_sync_items():
             task_ids.append(item.task_id)
-        print(task_ids)
         if not task_ids:
             return
         Account.get_instance().add_task_ids_to_fetch_status_threaded(task_ids)
