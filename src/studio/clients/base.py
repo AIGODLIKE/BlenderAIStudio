@@ -256,14 +256,20 @@ class StudioHistory:
 
 
 class StudioClient(BaseAdapter):
+    _instance: dict = {}
+
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self._instance[self] = self
         self.task_manager = TaskManager.get_instance()
         self.task_id: str = ""
         self.is_task_submitting = False
         self.history = StudioHistory.get_instance()
         self.use_internal_prompt: bool = True
         self.error_messages: list = []
+
+    def __del__(self):
+        self._instance.pop(self)
 
     def take_errors(self) -> list:
         errors = self.error_messages[:]
