@@ -15,7 +15,6 @@ from traceback import print_exc
 
 from .account import Account
 from .clients.base import StudioHistoryItem
-from .clients.history.status_manager import StudioHistory, StatusManager
 from .clients.universal_client import UniversalClient
 from .config.model_registry import ModelRegistry
 from .gui.app.animation import AnimationSystem, Easing, Tween, Sequence
@@ -1785,7 +1784,7 @@ class AIStudio(AppHud):
         self.bubble_logger.push_info_message(translated_msg)
 
     def refresh_task(self, task_id: str):
-        self.status_manager.refresh_task(task_id)
+        self.state.add_task_ids_to_fetch_status_now([task_id])
 
     def handler_draw(self, _area: bpy.types.Area):
         self.draw_studio_panel()

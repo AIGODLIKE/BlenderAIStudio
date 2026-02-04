@@ -1,9 +1,7 @@
 import bpy
 
 
-modules = [
-    "history",
-]
+modules = []
 
 reg, unreg = bpy.utils.register_submodule_factory(__package__, modules)
 
