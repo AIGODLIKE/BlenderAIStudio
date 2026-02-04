@@ -11,7 +11,7 @@ import requests
 from bpy.app.translations import pgettext as _T
 
 from .network import get_session
-from .task_history import AccountTaskHistory
+from .task_history import AccountTaskHistory, TaskHistoryData
 from .task_sync import TaskSyncService, TaskStatusPoller
 from .websocket import WebSocketClient
 from ..config.model_registry import ModelRegistry
@@ -499,5 +499,5 @@ class Account:
             logger.error(f"Failed to fetch task status: {e}")
             raise
 
-    def fetch_task_history(self, task_ids: list[str]) -> dict:
+    def fetch_task_history(self, task_ids: list[str]) -> dict[str, TaskHistoryData]:
         return self.task_history.fetch_task_history(task_ids)
