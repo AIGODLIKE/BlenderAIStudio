@@ -218,7 +218,7 @@ class SeedreamImageGenerateBuilder(RequestBuilder):
             return base_prompt
 
         if has_mask and has_reference:  # 有遮罩和参考图片
-            base_prompt = EDIT_WITH_MASK_AND_REFERENCES % user_prompt
+            base_prompt = EDIT_WITH_MASK_AND_REFERENCES
             return base_prompt
         elif has_mask:  # 有遮罩
             base_prompt = EDIT_WITH_MASK

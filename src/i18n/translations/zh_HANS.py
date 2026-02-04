@@ -203,6 +203,7 @@ translations = (
     ("Input Size", "输入大小", None),
     ("Image size", "图像尺寸", None),
     ("Icon Scale", "图标尺寸", None),
+    ("%s Item is currently being generated", "%s 项正在生成中", None),
     ("Select Reference", "选择参考", "Opterator"),
     ("Select References By Bl Image", "选择参考从Blender图像", OPS_TCTX),
     ("Select References By File", "选择参考从文件", OPS_TCTX),

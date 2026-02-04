@@ -1,4 +1,5 @@
 import bpy
+from bpy.app.translations import pgettext_iface as iface
 
 from ..i18n import PANEL_TCTX
 from ..online_update_addon import UpdateService
@@ -248,6 +249,11 @@ class AIStudioHistoryPanel(bpy.types.Panel):
     def draw(self, context):
         oii = context.scene.blender_ai_studio_property
         layout = self.layout
+
+        rl = list(oii.running_task_list)
+        if rl:
+            text = iface(f"%s Item is currently being generated")
+            layout.label(text=text % len(rl))
         items = oii.edit_history[:]
         il = len(items)
         for index, h in enumerate(reversed(items)):
