@@ -1,6 +1,4 @@
-import asyncio
 import json
-import requests
 import tempfile
 import traceback
 import webbrowser
@@ -8,15 +6,15 @@ from copy import deepcopy
 from pathlib import Path
 from threading import Thread
 from typing import Self
-from urllib3.util.retry import Retry
-from requests.adapters import HTTPAdapter
 
-import bpy
+import requests
 from bpy.app.translations import pgettext as _T
 
-from .config.model_registry import ModelRegistry
-from .config.url_config import URLConfigManager
-from .exception import (
+from .network import get_session
+from .websocket import WebSocketClient
+from ..config.model_registry import ModelRegistry
+from ..config.url_config import URLConfigManager
+from ..exception import (
     APIRequestException,
     AuthFailedException,
     ParameterValidationException,
@@ -26,49 +24,30 @@ from .exception import (
     DatabaseUpdateException,
     ToeknExpiredException,
 )
-from ..logger import logger
-from ..preferences import AuthMode
-from ..utils import get_pref
+from ...logger import logger
+from ...preferences import AuthMode
+from ...utils import get_pref
 
-try:
-    from ...External.websockets.server import serve
-    from ...External.websockets.exceptions import ConnectionClosedOK, ConnectionClosed
-except Exception:
-    from websockets.server import serve
-    from websockets import WebSocketServerProtocol
-    from websockets.exceptions import ConnectionClosedOK, ConnectionClosed
 
+# 认证文件路径
 AUTH_PATH = Path(tempfile.gettempdir(), "aistudio/auth.json")
 try:
     AUTH_PATH.parent.mkdir(parents=True, exist_ok=True)
 except Exception as e:
     print("mkdir file error", e.args)
 
-# 重试策略
-RETRY_TOTAL = 5
-RETRY_STATUS_FORCELIST = [429, 500, 502, 503, 504]
-RETRY_ALLOWED_METHODS = ["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE"]
-RETRY_BACKOFF_FACTOR = 0.5
-
-RETRY_STRATEGY = Retry(
-    total=RETRY_TOTAL,
-    status_forcelist=RETRY_STATUS_FORCELIST,
-    allowed_methods=RETRY_ALLOWED_METHODS,
-    backoff_factor=RETRY_BACKOFF_FACTOR,
-)
-
-# 适配器
-ADAPTER = HTTPAdapter(max_retries=RETRY_STRATEGY)
-
-
-def get_session() -> requests.Session:
-    session = requests.Session()
-    session.mount("https://", ADAPTER)
-    session.mount("http://", ADAPTER)
-    return session
-
 
 class Account:
+    """账户管理类（单例）
+
+    职责：
+    - 用户认证（登录、登出）
+    - 积分管理（查询、兑换）
+    - 价格表管理
+    - 任务状态查询（网络层）
+    - 错误队列管理
+    """
+
     _INSTANCE = None
     _AUTH_PATH = AUTH_PATH
 
@@ -78,26 +57,46 @@ class Account:
         return cls._INSTANCE
 
     def __init__(self) -> None:
+        # 避免重复初始化
+        if hasattr(self, "_initialized") and self._initialized:
+            return
+
+        # 用户信息
         self.nickname = ""
         self.logged_in = False
         self.services_connected = False
         self.credits = 0
         self._token = ""  # 内部 token 存储
+
+        # 价格表
         self.price_table = {}
         self.provider_count_map = {}
-        self.task_status_map = {}
+
+        # 兑换积分表
         self.redeem_to_credits_table = {
             6: 600,
             30: 3300,
             60: 7200,
             100: 13000,
         }
+
+        # 状态标志
         self.initialized = False
         self.error_messages: list = []
         self.waiting_for_login = False
+
+        # URL 管理器
         self._url_manager = URLConfigManager.get_instance()
+
+        # 加载本地账户信息
         self.load_account_info_from_local()
+
+        # 检测服务连接状态
         self.ping_once()
+
+        self._initialized = True
+
+    # ==================== 属性 ====================
 
     @property
     def auth_mode(self) -> str:
@@ -121,17 +120,14 @@ class Account:
 
     @property
     def service_url(self) -> str:
-        """获取服务 URL（动态，支持环境切换）"""
         return self._url_manager.get_service_url()
 
     @property
     def login_url(self) -> str:
-        """获取登录 URL（动态，支持环境切换）"""
         return self._url_manager.get_login_url()
 
     @property
     def token(self) -> str:
-        """获取 token（支持测试环境 token）"""
         # 如果使用测试环境且设置了测试 token，优先使用
         dev_token = self._url_manager.get_dev_token()
         if dev_token:
@@ -140,8 +136,24 @@ class Account:
 
     @token.setter
     def token(self, value: str):
-        """设置 token"""
         self._token = value
+
+    # ==================== 单例和初始化 ====================
+
+    @classmethod
+    def get_instance(cls) -> Self:
+        if cls._INSTANCE is None:
+            cls._INSTANCE = cls()
+        return cls._INSTANCE
+
+    def init(self):
+        if self.initialized:
+            return
+        logger.debug("初始化账户")
+        self.initialized = True
+        self.fetch_credits_price()
+
+    # ==================== 错误管理 ====================
 
     def take_errors(self) -> list:
         errors = self.error_messages[:]
@@ -151,18 +163,7 @@ class Account:
     def push_error(self, error):
         self.error_messages.append(error)
 
-    def init(self):
-        if self.initialized:
-            return
-        logger.debug("初始化账户")
-        self.initialized = True
-        self.fetch_credits_price()
-
-    @classmethod
-    def get_instance(cls) -> Self:
-        if cls._INSTANCE is None:
-            cls._INSTANCE = cls()
-        return cls._INSTANCE
+    # ==================== 登录状态 ====================
 
     def is_logged_in(self) -> bool:
         return self.logged_in
@@ -171,29 +172,32 @@ class Account:
         return self.waiting_for_login
 
     def refresh_login_status(self):
-        pass
+        pass  # 预留方法
+
+    # ==================== 登录/登出 ====================
 
     def login(self):
         if self.waiting_for_login:
             return
+
         self.waiting_for_login = True
         webbrowser.open(self.login_url)
 
-        async def login_callback(server: WebSocketClient, websocket: "WebSocketServerProtocol", event: dict):
+        async def login_callback(server: WebSocketClient, websocket, event: dict):
             try:
                 data: dict = event.get("data", {})
                 self.load_account_info(data)
                 self.save_account_info(data)
-                event = {
+                response = {
                     "type": "send_token_return",
                     "data": {
                         "status": "ok",
                         "host": "Blender",
                     },
                 }
-                await websocket.send(json.dumps(event))
+                await websocket.send(json.dumps(response))
                 server.stop_event.set()
-            except ConnectionClosedOK:
+            except Exception:
                 pass
 
         def run(port_range):
@@ -216,21 +220,19 @@ class Account:
         job = Thread(target=run, args=((55441, 55451),), daemon=True)
         job.start()
 
-    def ping_once(self):
-        url = f"{self.service_url}/billing/model-price"
-        headers = {
-            "Content-Type": "application/json",
-        }
+    def logout(self):
+        self.logged_in = False
+        self.nickname = "Not Login"
+        self.credits = 0
+        self._token = ""
+        if not self._AUTH_PATH.exists():
+            return
+        try:
+            self._AUTH_PATH.unlink()
+        except Exception:
+            pass
 
-        def job():
-            try:
-                session = get_session()
-                resp = session.get(url, headers=headers, timeout=2)
-                self.services_connected = resp.status_code == 200
-            except Exception:
-                self.services_connected = False
-
-        Thread(target=job, daemon=True).start()
+    # ==================== 账户信息加载/保存 ====================
 
     def load_account_info_from_local(self):
         if not self._AUTH_PATH.exists():
@@ -244,14 +246,6 @@ class Account:
             self.push_error(_T("Can't load auth file"))
 
     def load_account_info(self, data: dict):
-        """{
-            "id": 0,
-            "email": "test@on.ink",
-            "nickname": "TEST",
-            "avatar": "xxx",
-            "coin": 1564,
-            "token": "xxx",
-        }"""
         if not isinstance(data, dict):
             print(data)
             self.push_error(_T("Invalid auth data"))
@@ -274,19 +268,26 @@ class Account:
             traceback.print_exc()
             self.push_error(_T("Can't save auth file"))
 
-    def logout(self):
-        self.logged_in = False
-        self.nickname = "Not Login"
-        self.credits = 0
-        self._token = ""
-        if not self._AUTH_PATH.exists():
-            return
-        try:
-            self._AUTH_PATH.unlink()
-        except Exception:
-            pass
+    # ==================== 服务连接检测 ====================
 
-    # 兑换积分
+    def ping_once(self):
+        url = f"{self.service_url}/billing/model-price"
+        headers = {
+            "Content-Type": "application/json",
+        }
+
+        def job():
+            try:
+                session = get_session()
+                resp = session.get(url, headers=headers, timeout=2)
+                self.services_connected = resp.status_code == 200
+            except Exception:
+                self.services_connected = False
+
+        Thread(target=job, daemon=True).start()
+
+    # ==================== 积分管理 ====================
+
     def redeem_credits(self, code: str) -> int:
         url = f"{self.service_url}/billing/redeem-code"
         headers = {
@@ -302,19 +303,22 @@ class Account:
         except ConnectionError:
             self.push_error(_T("Network connection failed"))
             return 0
+
         if resp.status_code == 404:
             self.push_error(_T("Redeem failed"))
             return 0
         if resp.status_code == 502:
             self.push_error(_T("Server Error: Bad Gateway"))
             return 0
+
         resp.raise_for_status()
+
         if resp.status_code == 200:
             resp_json: dict = resp.json()
             data: dict = resp_json.get("data", {"amount": 0})
             code = resp_json.get("code")
-            _ = resp_json.get("errCode")
             err_msg = resp_json.get("errMsg", "")
+
             if err_msg:
                 err_type_map = {
                     "参数校验错误": ParameterValidationException("Parameter validation failed!"),
@@ -328,6 +332,7 @@ class Account:
                 }
                 err = err_type_map.get(err_msg, Exception(err_msg))
                 self.push_error(err)
+
             if code != 0:
                 print("兑换失败:", err_msg)
             else:
@@ -338,53 +343,6 @@ class Account:
         else:
             print("兑换失败:", resp.status_code, resp.text)
         return 0
-
-    def fetch_credits_price(self):
-        def _fetch_credits_price():
-            if self.price_table:
-                return
-            url = f"{self.service_url}/billing/model-price"
-            headers = {
-                "Content-Type": "application/json",
-            }
-            try:
-                session = get_session()
-                resp = session.get(url, headers=headers)
-            except ConnectionError:
-                self.push_error(_T("Network connection failed"))
-                return
-            if resp.status_code == 404:
-                self.push_error(_T("Price fetch failed"))
-                return
-            if resp.status_code == 502:
-                self.push_error(_T("Server Error: Bad Gateway"))
-                return
-            resp.raise_for_status()
-            if resp.status_code == 200:
-                resp_json: dict = resp.json()
-                code = resp_json.get("code")
-                err_msg = resp_json.get("errMsg")
-                if code != 0:
-                    self.push_error(_T("Price fetch failed") + ": " + err_msg)
-                    return
-                data: dict = resp_json.get("data", {})
-                self.price_table = deepcopy(data)
-                pricing_data = {}
-                for item in data:
-                    model_name = item.pop("modelName", None)
-                    self.provider_count_map[model_name] = item.pop("providerCount", 0)
-                    pricing_data[model_name] = deepcopy(item)
-                ModelRegistry.get_instance().update_pricing_from_backend(pricing_data)
-                id_map = {}
-                for model_name, model_data in pricing_data.items():
-                    for value in model_data.values():
-                        if isinstance(value, dict) and "modelId" in value:
-                            id_map[value["modelId"]] = model_name
-                ModelRegistry.get_instance().update_id_to_name(AuthMode.ACCOUNT.value, id_map)
-            else:
-                self.push_error(_T("Price fetch failed") + ": " + resp.text)
-
-        Thread(target=_fetch_credits_price, daemon=True).start()
 
     def fetch_credits(self):
         def _fetch_credits():
@@ -401,23 +359,28 @@ class Account:
             except ConnectionError:
                 self.push_error(_T("Network connection failed"))
                 return
+
             if resp.status_code == 404:
                 self.push_error(_T("Credits fetch failed"))
                 return
             if resp.status_code == 502:
                 self.push_error(_T("Server Error: Bad Gateway"))
                 return
+
             resp.raise_for_status()
+
             if resp.status_code == 200:
                 resp_json: dict = resp.json()
                 code = resp_json.get("code")
                 err_code = resp_json.get("errCode")
                 err_msg = resp_json.get("errMsg", "")
+
                 match code, err_code:
                     case (-4, -4000):
                         self.push_error(AuthFailedException("Authentication failed!"))
                     case (-4, -4001):
                         self.push_error(ToeknExpiredException("Token expired!"))
+
                 if code != 0:
                     self.push_error(_T("Credits fetch failed") + ": " + err_msg)
                     return
@@ -427,11 +390,66 @@ class Account:
 
         Thread(target=_fetch_credits, daemon=True).start()
 
-    def fetch_task_status_threaded(self, task_ids: list[str]):
-        Thread(target=self.fetch_task_status, args=(task_ids,), daemon=True).start()
+    # ==================== 价格表管理 ====================
 
-    def fetch_task_status(self, task_ids: list[str]) -> dict:
-        url = f"{self.service_url}/task/query-status"  # 替换为实际的状态查询接口
+    def fetch_credits_price(self):
+        def _fetch_credits_price():
+            if self.price_table:
+                return
+            url = f"{self.service_url}/billing/model-price"
+            headers = {
+                "Content-Type": "application/json",
+            }
+            try:
+                session = get_session()
+                resp = session.get(url, headers=headers)
+            except ConnectionError:
+                self.push_error(_T("Network connection failed"))
+                return
+
+            if resp.status_code == 404:
+                self.push_error(_T("Price fetch failed"))
+                return
+            if resp.status_code == 502:
+                self.push_error(_T("Server Error: Bad Gateway"))
+                return
+
+            resp.raise_for_status()
+
+            if resp.status_code == 200:
+                resp_json: dict = resp.json()
+                code = resp_json.get("code")
+                err_msg = resp_json.get("errMsg")
+
+                if code != 0:
+                    self.push_error(_T("Price fetch failed") + ": " + err_msg)
+                    return
+
+                data: dict = resp_json.get("data", {})
+                self.price_table = deepcopy(data)
+                pricing_data = {}
+
+                for item in data:
+                    model_name = item.pop("modelName", None)
+                    self.provider_count_map[model_name] = item.pop("providerCount", 0)
+                    pricing_data[model_name] = deepcopy(item)
+
+                ModelRegistry.get_instance().update_pricing_from_backend(pricing_data)
+
+                id_map = {}
+                for model_name, model_data in pricing_data.items():
+                    for value in model_data.values():
+                        if isinstance(value, dict) and "modelId" in value:
+                            id_map[value["modelId"]] = model_name
+
+                ModelRegistry.get_instance().update_id_to_name(AuthMode.ACCOUNT.value, id_map)
+            else:
+                self.push_error(_T("Price fetch failed") + ": " + resp.text)
+
+        Thread(target=_fetch_credits_price, daemon=True).start()
+
+    def _fetch_task_status(self, task_ids: list[str]) -> dict:
+        url = f"{self.service_url}/task/query-status"
 
         headers = {
             "X-Auth-T": self.token,
@@ -447,108 +465,10 @@ class Account:
             resp = session.post(url, headers=headers, json=payload, timeout=10)
             resp.raise_for_status()
             resp_json = resp.json()
-            self.task_status_map = resp_json.get("data", {})
             return resp_json
         except requests.RequestException as e:
             logger.error(f"Failed to fetch task status: {e}")
             raise
 
-
-class WebSocketClient:
-    _host = "127.0.0.1"
-
-    def __init__(self, port):
-        self.host = self._host
-        self.port = port
-        self.logger = logger
-        self._handlers = {}
-        self.stop_event = asyncio.Event()
-
-        self.reg_handler("_default", self._default)
-        self.reg_handler("query_status", self._query_status)
-
-    def reg_handler(self, etype, handler):
-        self._handlers[etype] = handler
-
-    def unreg_handler(self, etype):
-        del self._handlers[etype]
-
-    async def call_handler(self, websocket: "WebSocketServerProtocol", message):
-        try:
-            event: dict = json.loads(message)
-        except json.JSONDecodeError:
-            return
-        if not isinstance(event, dict):
-            event = {}
-        etype = event.get("type", "_default")
-        handler = self._handlers.get(etype, self._default)
-        try:
-            await handler(self, websocket, event)
-        except Exception as e:
-            self.logger.error(f"Error in handler {handler.__name__}: {e}")
-            self.logger.error(traceback.format_exc())
-
-    @staticmethod
-    async def _default(server: "WebSocketClient", websocket: "WebSocketServerProtocol", event: dict):
-        try:
-            server.logger.warning(f"默认消息: {event}")
-            event = {
-                "type": "default",
-                "data": event,
-            }
-            await websocket.send(json.dumps(event))
-        except ConnectionClosedOK:
-            pass
-
-    @staticmethod
-    async def _query_status(server: "WebSocketClient", websocket: "WebSocketServerProtocol", event: dict):
-        try:
-            server.logger.warning(f"查询状态: {event}")
-            event = {
-                "type": "query_status_return",
-                "data": {
-                    "status": "ok",
-                    "host": "Blender",
-                },
-            }
-            await websocket.send(json.dumps(event))
-        except ConnectionClosedOK:
-            pass
-
-    async def handle(self, websocket: "WebSocketServerProtocol", path: str):
-        try:
-            self.logger.debug(f"Client Connected: {websocket}")
-            async for message in websocket:
-                await self.call_handler(websocket, message)
-        except ConnectionClosed as e:
-            self.logger.debug(f"客户端断开: {e.code} (code={e.code}, reason='{e.reason}')")
-        except Exception as e:
-            self.logger.critical(f"客户端异常: {e}")
-
-    async def main(self):
-        async with serve(self.handle, self.host, self.port, max_size=None):
-            self.logger.warning(f"Server running on port {self.port}")
-            await self.stop_event.wait()  # 阻塞直到设置 stop
-
-    def run(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-        self.loop.run_until_complete(self.main())
-
-
-def init_account():
-    def init():
-        account = Account.get_instance()
-        account.init()
-
-    Thread(target=init, daemon=True).start()
-    return 1
-
-
-def register():
-    bpy.app.timers.register(init_account, first_interval=1, persistent=True)
-
-
-def unregister():
-    if bpy.app.timers.is_registered(init_account):
-        bpy.app.timers.unregister(init_account)
+    def fetch_task_history(self, task_ids: list[str]) -> dict:
+        return {}
