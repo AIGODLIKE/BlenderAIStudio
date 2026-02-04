@@ -2,7 +2,7 @@ import bpy
 
 from ..i18n import PANEL_TCTX
 from ..online_update_addon import UpdateService
-from ..studio.account import AuthMode
+from ..preferences import AuthMode
 from ..studio.config.model_registry import ModelRegistry
 from ..utils import get_custom_icon, get_addon_version_str, get_pref
 
