@@ -159,13 +159,13 @@ class TaskSyncService:
 
     def _update_single_task(self, task_history: TaskHistoryData, status: TaskStatusData) -> bool:
         try:
-            if status.is_success():
+            if status.state.is_success():
                 self._handle_completed_task(task_history, status)
-            elif status.is_running():
+            elif status.state.is_running():
                 self._handle_processing_task(task_history, status)
-            elif status.is_failed():
+            elif status.state.is_failed():
                 self._handle_failed_task(task_history, status)
-            elif status.is_unknown():
+            elif status.state.is_unknown():
                 self._handle_not_found_task(task_history, status)
             return True
         except Exception as e:

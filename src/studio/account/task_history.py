@@ -12,6 +12,21 @@ class TaskStatus(Enum):
     UNKNOWN = "UNKNOWN"
     ERROR = "ERROR"
 
+    def is_success(self) -> bool:
+        return self == self.SUCCESS
+
+    def is_running(self) -> bool:
+        return self == self.RUNNING
+
+    def is_failed(self) -> bool:
+        return self == self.FAILED
+
+    def is_unknown(self) -> bool:
+        return self == self.UNKNOWN
+
+    def is_error(self) -> bool:
+        return self == self.ERROR
+
 
 @dataclass
 class TaskStatusData:
@@ -25,21 +40,6 @@ class TaskStatusData:
     urls: Optional[list[str]] = None  # 结果下载地址
     progress: float = 0.0
     error_message: str = ""
-
-    def is_success(self) -> bool:
-        return self.state == TaskStatus.SUCCESS
-
-    def is_running(self) -> bool:
-        return self.state == TaskStatus.RUNNING
-
-    def is_failed(self) -> bool:
-        return self.state == TaskStatus.FAILED
-
-    def is_unknown(self) -> bool:
-        return self.state == TaskStatus.UNKNOWN
-
-    def is_error(self) -> bool:
-        return self.state == TaskStatus.ERROR
 
 
 @dataclass
