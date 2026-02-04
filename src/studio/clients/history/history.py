@@ -22,10 +22,6 @@ class StudioHistoryItem:
     STATUS_UNKNOWN = "unknown"  # 网络异常，需要查询后端确认真实状态
 
     def __init__(self) -> None:
-        from ...tasks import TaskManager  # 避免循环导入
-
-        self.task_manager: TaskManager = TaskManager.get_instance()
-
         self.result: dict = {}
         self.outputs: list[tuple[str, str]] = []
         self.metadata: dict = {}
@@ -122,13 +118,19 @@ class StudioHistoryItem:
     def has_image(self) -> bool:
         return bool(self.get_output_file_image())
 
+    def need_update_elapsed_time(self) -> bool:
+        return self.status not in (
+            self.STATUS_SUCCESS,
+            self.STATUS_FAILED,
+            self.STATUS_CANCELLED,
+        )
+
     def update_elapsed_time(self):
-        if self.status not in (self.STATUS_RUNNING, self.STATUS_PROCESSING):
+        if not self.need_update_elapsed_time():
             return
         if not self.task_id:
             return
-        task = self.task_manager.get_task(self.task_id)
-        self.elapsed_time = task.get_elapsed_time() if task else self.elapsed_time
+        self.elapsed_time = time.time() - self.started_at
 
     def get_prompt(self):
         # 尝试从不同位置获取提示词
@@ -176,6 +178,7 @@ class StudioHistory:
         history_item.metadata = {"prompt": "这是一个测试"}
         history_item.model = "gemini-3-pro-image-preview"
         history_item.timestamp = time.time()
+        history_item.started_at = time.time()
         history_item.task_id = str(uuid4())
         self.add(history_item)
         return history_item
