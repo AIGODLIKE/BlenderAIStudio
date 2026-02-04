@@ -14,7 +14,8 @@ from shutil import copyfile
 from traceback import print_exc
 
 from .account import Account
-from .clients import StudioHistoryItem, StudioHistory, StatusManager
+from .clients.base import StudioHistoryItem
+from .clients.history.status_manager import StudioHistory, StatusManager
 from .clients.universal_client import UniversalClient
 from .config.model_registry import ModelRegistry
 from .gui.app.animation import AnimationSystem, Easing, Tween, Sequence
