@@ -26,7 +26,7 @@ from .gui.widgets import CustomWidgets, with_child
 from .tasks import TaskState
 from .wrapper import BaseAdapter, WidgetDescriptor, DescriptorFactory
 from ..i18n import STUDIO_TCTX
-from ..preferences import AuthMode
+from ..preferences import AuthMode, PricingStrategy
 from ..logger import logger
 from ..timer import Timer
 from ..utils import get_addon_version, get_pref
@@ -2154,6 +2154,51 @@ class AIStudio(AppHud):
             imgui.pop_item_width()
         imgui.pop_style_color(1)
 
+    def draw_pricing_strategy(self):
+        if self.state.auth_mode != AuthMode.ACCOUNT.value:
+            return
+        flags = 0
+        flags |= imgui.ChildFlags.FRAME_STYLE
+        flags |= imgui.ChildFlags.AUTO_RESIZE_Y
+        flags |= imgui.ChildFlags.ALWAYS_AUTO_RESIZE
+        imgui.push_style_color(imgui.Col.FRAME_BG, Const.WINDOW_BG)
+        with with_child("##PricingStrategy", (0, 0), child_flags=flags):
+            imgui.push_item_width(-1)
+            imgui.push_style_var_x(imgui.StyleVar.FRAME_PADDING, Const.RP_FRAME_P[0])
+            imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.RP_FRAME_INNER_R)
+            imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, Const.RP_CHILD_IS)
+            imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0)
+            imgui.push_style_color(imgui.Col.FRAME_BG, Const.FRAME_BG)
+            imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+
+            items = list(PricingStrategy)
+
+            # 计算最大宽度
+            max_item_width = 0
+            for item in items:
+                max_item_width = max(max_item_width, imgui.calc_text_size(item.display_name)[0])
+            max_item_width += 2 * imgui.get_style().frame_padding[0]
+            aw = imgui.get_content_region_avail()[0]
+            max_item_width = max(aw, max_item_width)
+
+            # 绘制下拉框
+            current_strategy = PricingStrategy(self.state.pricing_strategy)
+            if imgui.begin_combo("##Item", _T(current_strategy.display_name)):
+                for item in items:
+                    is_selected = self.state.pricing_strategy == item.value
+                    if is_selected:
+                        imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
+                    if imgui.button(_T(item.display_name), (max_item_width, 0)):
+                        self.state.pricing_strategy = item.value
+                        imgui.close_current_popup()
+                    if is_selected:
+                        imgui.pop_style_color()
+                imgui.end_combo()
+            imgui.pop_style_color(2)
+            imgui.pop_style_var(4)
+            imgui.pop_item_width()
+        imgui.pop_style_color(1)
+
     def draw_history_panel(self):
         if self.active_panel != AIStudioPanelType.HISTORY:
             return
@@ -2309,6 +2354,7 @@ class AIStudio(AppHud):
             imgui.push_style_color(imgui.Col.HEADER_ACTIVE, Const.BUTTON_ACTIVE)
             imgui.push_style_color(imgui.Col.HEADER_HOVERED, Const.BUTTON_HOVERED)
             self.draw_auth()
+            self.draw_pricing_strategy()
             self.draw_account_panel()
             self.draw_api_panel()
 
