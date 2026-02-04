@@ -174,6 +174,7 @@ class ApplyAiEditImage(bpy.types.Operator):
             credentials = {"api_key": pref.api_key.strip()}
         else:
             model_id = submit_model_id = model_registry.resolve_submit_id(model_name, account.pricing_strategy)
+            logger.info(f"submit_model_id:{submit_model_id}")
             credentials = {
                 "token": account.token,
                 "modelId": submit_model_id,
@@ -195,7 +196,6 @@ class ApplyAiEditImage(bpy.types.Operator):
         #     ww.pop("token")
         # logger.info(f"credentials {json.dumps(ww, indent=4)}")
         # logger.info(f"params {json.dumps(params, indent=4)}")
-
         task = UniversalModelTask(
             model_id=model_id,
             auth_mode=account.auth_mode,
