@@ -31,6 +31,7 @@ class Const:
     GRAB_R = 10  # Grab Rounding
 
     # COLORS
+    GRAY = (128 / 255, 128 / 255, 128 / 255, 1)
     WINDOW_BG = (40 / 255, 40 / 255, 40 / 255, 1)
     MODAL_WINDOW_DIM_BG = (0, 0, 0, 0.7)
     FRAME_BG = (56 / 255, 56 / 255, 56 / 255, 1)
