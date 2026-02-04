@@ -3,6 +3,7 @@ import base64
 from bpy.app.translations import pgettext as _T
 from typing import Dict, Any, TYPE_CHECKING
 from copy import deepcopy
+from pathlib import Path
 from .base import RequestBuilder, RequestData
 from .prompt import (
     GENERATE_RENDER_WITH_REFERENCE,
@@ -209,6 +210,16 @@ class GeminiImageGenerateBuilder(RequestBuilder):
         width = params.get("width", 1024)
         height = params.get("height", 1024)
         aspect_ratio = params.get("aspect_ratio", "1:1")
+
+        # 20MB
+        total_image_size_limit = 20 * 1024 * 1024
+        total_image_size = 0
+        all_image_paths = ref_images_path + ([image_path] if image_path else [])
+        for image_path in all_image_paths:
+            total_image_size += Path(image_path).stat().st_size
+        if total_image_size > total_image_size_limit:
+            raise ValueError("Total image size exceeds the limit of 20MB.")
+
         # 构建完整提示词
         full_prompt = self._build_generate_prompt(
             user_prompt,
@@ -265,6 +276,15 @@ class GeminiImageGenerateBuilder(RequestBuilder):
         mask_image_path = ref_images_path[0] if ref_images_path else ""
         image_size = params.get("resolution", "1K")
         aspect_ratio = params.get("aspect_ratio", "1:1")
+
+        # 20MB
+        total_image_size_limit = 20 * 1024 * 1024
+        total_image_size = 0
+        all_image_paths = ref_images_path + ([image_path] if image_path else [])
+        for image_path in all_image_paths:
+            total_image_size += Path(image_path).stat().st_size
+        if total_image_size > total_image_size_limit:
+            raise ValueError("Total image size exceeds the limit of 20MB.")
 
         prompt = self._build_edit_prompt(
             user_prompt,
