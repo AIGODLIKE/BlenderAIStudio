@@ -324,12 +324,12 @@ class StudioHistoryViewer:
             self._draw_header_preparing(item)
         elif item.is_running():
             self._draw_header_running(item)
-        elif item.is_generating():
-            self._draw_header_generating(item)
         elif item.is_processing():
             self._draw_header_processing(item)
         elif item.is_failed():
             self._draw_header_failed(item)
+        elif item.is_generating():
+            self._draw_header_generating(item)
         elif item.is_success():
             self._draw_header_success(item)
         else:
@@ -618,12 +618,12 @@ class StudioHistoryViewer:
             self._draw_content_preparing(item)
         elif item.is_running():
             self._draw_content_running(item)
-        elif item.is_generating():
-            self._draw_content_generating(item)
         elif item.is_processing():
             self._draw_content_processing(item)
         elif item.is_failed():
             self._draw_content_failed(item)
+        elif item.is_generating():
+            self._draw_content_generating(item)
         elif item.is_success():
             self._draw_content_success(item)
         else:

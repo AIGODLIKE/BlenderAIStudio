@@ -100,7 +100,7 @@ class StudioHistoryItem:
         return self.status == StudioHistoryItem.STATUS_RUNNING
 
     def is_generating(self) -> bool:
-        return True
+        return self.status == StudioHistoryItem.STATUS_UNKNOWN
 
     def is_processing(self) -> bool:
         return self.status == StudioHistoryItem.STATUS_PROCESSING
