@@ -320,6 +320,7 @@ translations = (
     ("Dev Login URL", "登录URL", PROP_TCTX),
     ("Dev Token", "Token", PROP_TCTX),
     ("BLenderAiStudio Update Tips", "BLenderAiStudio 更新提示", "Operator"),
+    ("Total image size exceeds the limit of 20MB.", "总图像大小超过20MB限制。", ""),
     *error_translations,
     *studio_panel_translations,
     *task_translations,
