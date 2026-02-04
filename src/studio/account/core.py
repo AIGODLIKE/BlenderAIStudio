@@ -77,7 +77,7 @@ class Account:
         # 任务历史和同步服务
         self.task_history = AccountTaskHistory()
         self.sync_service = TaskSyncService(self, self.task_history)
-        self.task_poller = TaskStatusPoller(self, self.sync_service)
+        self.task_poller = TaskStatusPoller(self, self.sync_service, interval=15)
 
         # 兑换积分表
         self.redeem_to_credits_table = {
