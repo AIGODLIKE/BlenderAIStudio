@@ -7,6 +7,8 @@ from pathlib import Path
 from threading import Thread
 from typing import Optional
 from uuid import uuid4
+from ...account import Account
+from ...account.task_history import TaskHistoryData
 
 from .... import logger
 
@@ -211,6 +213,33 @@ class StudioHistory:
     def find_all_needs_status_sync_items(self) -> list[StudioHistoryItem]:
         return [item for item in self.items if item.needs_status_sync()]
 
+    def load_from_task_history(self, task_history: "TaskHistoryData"):
+        item = self.find_by_task_id(task_history.task_id)
+        if not item:
+            return
+        if task_history.state.is_success():
+            item.status = StudioHistoryItem.STATUS_SUCCESS
+            item.finished_at = task_history.finished_at
+            item.elapsed_time = item.finished_at - item.started_at
+            item.progress = 100.0
+            item.error_message = ""
+            item.outputs = task_history.outputs
+            item.result = task_history.result
+        elif task_history.state.is_running():
+            item.status = StudioHistoryItem.STATUS_RUNNING
+            item.elapsed_time = time.time() - item.started_at
+            item.progress = task_history.progress
+        elif task_history.state.is_failed():
+            item.status = StudioHistoryItem.STATUS_FAILED
+            item.finished_at = task_history.finished_at
+            item.elapsed_time = item.finished_at - item.started_at
+            item.progress = 0.0
+            item.error_message = task_history.error_message
+        elif task_history.state.is_unknown():
+            item.status = StudioHistoryItem.STATUS_FAILED
+            item.error_message = task_history.error_message
+        self.save_history()
+
     def update_item(self, item: "StudioHistoryItem"):
         self.save_history()
 
@@ -255,3 +284,17 @@ class StudioHistory:
             cls.get_instance().restore_history()
 
         Thread(target=load, daemon=True).start()
+
+
+def sync_history_timer():
+    try:
+        history = StudioHistory.get_instance()
+        items = history.find_all_needs_status_sync_items()
+        account = Account.get_instance()
+        task_history_map = account.fetch_task_history([item.task_id for item in items])
+        for task_history in task_history_map.values():
+            history.load_from_task_history(task_history)
+    except Exception as e:
+        logger.error(f"Failed to sync history: {e}")
+        traceback.print_exc()
+    return 1
