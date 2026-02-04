@@ -380,8 +380,8 @@ class StudioClient(BaseAdapter):
             logger.error(result.error_message)
             logger.critical(f"Task failed: {task.task_id}")
 
-            if not result.success:
-                self.push_error(result.error or result.error_message)
+        if not result.success:
+            self.push_error(result.error or result.error_message)
 
         item.finished_at = time.time()
         self.history.update_item(item)
