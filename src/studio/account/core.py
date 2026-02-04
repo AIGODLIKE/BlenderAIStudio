@@ -11,6 +11,8 @@ import requests
 from bpy.app.translations import pgettext as _T
 
 from .network import get_session
+from .task_history import AccountTaskHistory
+from .task_sync import TaskSyncService, TaskStatusPoller
 from .websocket import WebSocketClient
 from ..config.model_registry import ModelRegistry
 from ..config.url_config import URLConfigManager
@@ -71,6 +73,11 @@ class Account:
         # 价格表
         self.price_table = {}
         self.provider_count_map = {}
+
+        # 任务历史和同步服务
+        self.task_history = AccountTaskHistory()
+        self.sync_service = TaskSyncService(self, self.task_history)
+        self.task_poller = TaskStatusPoller(self, self.sync_service)
 
         # 兑换积分表
         self.redeem_to_credits_table = {
@@ -448,6 +455,17 @@ class Account:
 
         Thread(target=_fetch_credits_price, daemon=True).start()
 
+    # ==================== 任务状态查询 ====================
+
+    def add_task_ids_to_fetch_status_threaded(self, task_ids: list[str]):
+        self.task_poller.add_pending_task_ids(task_ids)
+
+    def add_task_ids_to_fetch_status_now(self, task_ids: list[str]):
+        def _job(task_ids: list[str]):
+            self.sync_service.sync_tasks(task_ids)
+
+        Thread(target=_job, args=(task_ids,), daemon=True).start()
+
     def _fetch_task_status(self, task_ids: list[str]) -> dict:
         url = f"{self.service_url}/task/query-status"
 
@@ -471,4 +489,4 @@ class Account:
             raise
 
     def fetch_task_history(self, task_ids: list[str]) -> dict:
-        return {}
+        return self.task_history.fetch_task_history(task_ids)
