@@ -310,7 +310,10 @@ class Account:
         except ConnectionError:
             self.push_error(_T("Network connection failed"))
             return 0
-
+        except Exception:
+            traceback.print_exc()
+            self.push_error(_T("Network connection failed"))
+            return 0
         if resp.status_code == 404:
             self.push_error(_T("Redeem failed"))
             return 0
@@ -366,6 +369,10 @@ class Account:
             except ConnectionError:
                 self.push_error(_T("Network connection failed"))
                 return
+            except Exception:
+                traceback.print_exc()
+                self.push_error(_T("Network connection failed"))
+                return
 
             if resp.status_code == 404:
                 self.push_error(_T("Credits fetch failed"))
@@ -411,6 +418,10 @@ class Account:
                 session = get_session()
                 resp = session.get(url, headers=headers)
             except ConnectionError:
+                self.push_error(_T("Network connection failed"))
+                return
+            except Exception:
+                traceback.print_exc()
                 self.push_error(_T("Network connection failed"))
                 return
 
