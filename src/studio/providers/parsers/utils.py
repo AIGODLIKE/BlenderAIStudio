@@ -6,7 +6,7 @@ from ...exception import (
 )
 
 
-def _check_response_account_mode(self, resp: dict):
+def _check_response_account_mode(resp: dict):
     """
     {
         'responseId': ...,
