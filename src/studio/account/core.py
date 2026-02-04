@@ -467,7 +467,7 @@ class Account:
         Thread(target=_job, args=(task_ids,), daemon=True).start()
 
     def _fetch_task_status(self, task_ids: list[str]) -> dict:
-        url = f"{self.service_url}/task/query-status"
+        url = f"{self.service_url}/service/history"
 
         headers = {
             "X-Auth-T": self.token,
