@@ -684,39 +684,20 @@ class StudioHistoryViewer:
 
     def _draw_content_failed(self, item: StudioHistoryItem) -> None:
         # 如果item.error_messages不为空，则调用_draw_failed_content_with_error
-        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.CLOSE_BUTTON_ACTIVE)
-        if item.error_message:
-            self._draw_content_failed_with_error(item)
-        else:
-            # 响应解析时无错误, 但outputs中无内容
-            self._draw_content_failed_with_network_disconnect(item)
+        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.GRAY)
+        if imgui.begin_table("##Content", 1):
+            h1 = imgui.get_text_line_height() * 3
+            w1 = imgui.get_content_region_avail()[0]
+            imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 0)
+            imgui.table_next_column()
+            over_text = _T("Credits Refunded")
+            self.app.font_manager.push_h1_font(24 * 2)
+            imgui.push_style_color(imgui.Col.PLOT_HISTOGRAM, Const.GRAY)
+            CustomWidgets.progress_bar_with_overlay(1, (w1, h1), over_text)
+            imgui.pop_style_color(1)
+            self.app.font_manager.pop_font()
+            imgui.end_table()
         imgui.pop_style_color(1)
-
-    def _draw_content_failed_with_error(self, item: StudioHistoryItem) -> None:
-        if imgui.begin_table("##Content", 2):
-            h1 = imgui.get_text_line_height() * 4
-            w1 = h1 * 207 / 126
-            imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_FIXED, w1, 0)
-            imgui.table_setup_column("##Ele2", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 1)
-            imgui.table_next_column()
-            img = "generation_blocked"
-            self._draw_image_cell(img, w1, h1)
-            imgui.table_next_column()
-            self._draw_buttons_cell(item, h1)
-            imgui.end_table()
-
-    def _draw_content_failed_with_network_disconnect(self, item: StudioHistoryItem) -> None:
-        if imgui.begin_table("##Content", 2):
-            h1 = imgui.get_text_line_height() * 4
-            w1 = h1 * 207 / 126
-            imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_FIXED, w1, 0)
-            imgui.table_setup_column("##Ele2", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 1)
-            imgui.table_next_column()
-            img = "generation_network_error"
-            self._draw_image_cell(img, w1, h1)
-            imgui.table_next_column()
-            self._draw_buttons_cell(item, h1)
-            imgui.end_table()
 
     def _draw_image_cell(self, img: str, w1: float, h1: float) -> None:
         """绘制内容区左侧图片单元格（含按比例裁剪与悬停预览）。"""
