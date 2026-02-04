@@ -480,7 +480,7 @@ class Account:
 
         try:
             session = get_session()
-            resp = session.post(url, headers=headers, json=payload, timeout=10)
+            resp = session.get(url, headers=headers, json=payload, timeout=10)
             resp.raise_for_status()
             resp_json = resp.json()
             return resp_json
