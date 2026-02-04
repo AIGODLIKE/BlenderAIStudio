@@ -36,12 +36,6 @@ class StatusResponseParser:
 
     def parse_batch_response(self, response_json: dict) -> dict[str, TaskStatusData]:
         result = {}
-
-        code = response_json.get("code")
-        if code != 1000:
-            logger.warning(f"Status query returned non-success code: {code}")
-            return result
-
         data = response_json.get("data", {})
 
         for task_id, task_info in data.items():
