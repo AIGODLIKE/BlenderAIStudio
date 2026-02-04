@@ -192,7 +192,7 @@ class AIStudioImagePanel(bpy.types.Panel):
                 name = param.get("name", None)
                 if draw_func := getattr(AIStudioImagePanel, f"draw_{name}", None):
                     draw_func(ai, column)
-        except ValueError as e:
+        except ValueError:
             ...
 
     @staticmethod
@@ -252,7 +252,7 @@ class AIStudioHistoryPanel(bpy.types.Panel):
 
         rl = list(oii.running_task_list)
         if rl:
-            text = iface(f"%s Item is currently being generated")
+            text = iface("%s Item is currently being generated")
             layout.label(text=text % len(rl))
         items = oii.edit_history[:]
         il = len(items)

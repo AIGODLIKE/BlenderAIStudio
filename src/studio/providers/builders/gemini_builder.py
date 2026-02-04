@@ -278,7 +278,7 @@ class GeminiImageGenerateBuilder(RequestBuilder):
                 image_base64 = base64.b64encode(f.read()).decode("utf-8")
             part = {"inline_data": {"mime_type": "image/png", "data": image_base64}}
             parts.append(part)
-            logger.info(f"add_part {image_file_path}" )
+            logger.info(f"add_part {image_file_path}")
 
         add_part(image_path)  # 添加主图
         # 遮罩默认在第一张参考图片位置
