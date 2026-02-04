@@ -73,6 +73,9 @@ class UniversalClient(StudioClient):
         # 生成 meta（用于 UI）
         self._meta_cache[self.model_name] = self._generate_meta()
 
+        self._last_fetch_task_timestamp = 0
+        self._fetch_task_interval = 10
+
     @property
     def api_key(self) -> str:
         # TODO 特殊变量
@@ -280,6 +283,21 @@ class UniversalClient(StudioClient):
         strategy = Account.get_instance().pricing_strategy
         price = self._model_registry.calc_price(self.model_name, strategy, resolution)
         return price * self.batch_count
+
+    def _should_fetch_task_status(self) -> bool:
+        return time.time() - self._last_fetch_task_timestamp > self._fetch_task_interval
+
+    def fetch_task_status(self):
+        if not self._should_fetch_task_status():
+            return
+        task_ids = []
+        for item in self.history.find_all_needs_status_sync_items():
+            task_ids.append(item.task_id)
+        print(task_ids)
+        if not task_ids:
+            return
+        Account.get_instance().add_task_ids_to_fetch_status_threaded(task_ids)
+        self._last_fetch_task_timestamp = time.time()
 
     def add_task(self, account: "Account"):
         # 预校验

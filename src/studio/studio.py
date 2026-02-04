@@ -290,6 +290,7 @@ class StudioHistoryViewer:
         self.flags |= imgui.ChildFlags.ALWAYS_AUTO_RESIZE
 
     def draw_all(self):
+        self.app.refresh_task_all()
         for item in self.history.items:
             self._draw(item)
 
@@ -1781,6 +1782,9 @@ class AIStudio(AppHud):
     def push_info_message(self, message: str):
         translated_msg = pgettext(message)
         self.bubble_logger.push_info_message(translated_msg)
+
+    def refresh_task_all(self):
+        self.client.fetch_task_status()
 
     def refresh_task(self, task_id: str):
         self.state.add_task_ids_to_fetch_status_now([task_id])
