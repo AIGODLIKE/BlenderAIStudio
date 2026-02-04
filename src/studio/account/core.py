@@ -71,7 +71,7 @@ class Account:
         self._token = ""  # 内部 token 存储
 
         # 价格表
-        self.price_table = {}
+        self.price_table = []
         self.provider_count_map = {}
 
         # 任务历史和同步服务
@@ -120,6 +120,12 @@ class Account:
     @pricing_strategy.setter
     def pricing_strategy(self, strategy: str):
         get_pref().set_account_pricing_strategy(strategy)
+
+    def provider_count(self, model_name: str) -> int:
+        for price_data in self.price_table:
+            if price_data.get("modelName") == model_name:
+                return price_data.get("providerCount", 0)
+        return 0
 
     @property
     def help_url(self) -> str:
