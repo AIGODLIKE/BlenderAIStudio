@@ -2154,51 +2154,6 @@ class AIStudio(AppHud):
             imgui.pop_item_width()
         imgui.pop_style_color(1)
 
-    def draw_pricing_strategy(self):
-        if self.state.auth_mode != AuthMode.ACCOUNT.value:
-            return
-        flags = 0
-        flags |= imgui.ChildFlags.FRAME_STYLE
-        flags |= imgui.ChildFlags.AUTO_RESIZE_Y
-        flags |= imgui.ChildFlags.ALWAYS_AUTO_RESIZE
-        imgui.push_style_color(imgui.Col.FRAME_BG, Const.WINDOW_BG)
-        with with_child("##PricingStrategy", (0, 0), child_flags=flags):
-            imgui.push_item_width(-1)
-            imgui.push_style_var_x(imgui.StyleVar.FRAME_PADDING, Const.RP_FRAME_P[0])
-            imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.RP_FRAME_INNER_R)
-            imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, Const.RP_CHILD_IS)
-            imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0)
-            imgui.push_style_color(imgui.Col.FRAME_BG, Const.FRAME_BG)
-            imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
-
-            items = list(PricingStrategy)
-
-            # 计算最大宽度
-            max_item_width = 0
-            for item in items:
-                max_item_width = max(max_item_width, imgui.calc_text_size(item.display_name)[0])
-            max_item_width += 2 * imgui.get_style().frame_padding[0]
-            aw = imgui.get_content_region_avail()[0]
-            max_item_width = max(aw, max_item_width)
-
-            # 绘制下拉框
-            current_strategy = PricingStrategy(self.state.pricing_strategy)
-            if imgui.begin_combo("##Item", _T(current_strategy.display_name)):
-                for item in items:
-                    is_selected = self.state.pricing_strategy == item.value
-                    if is_selected:
-                        imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
-                    if imgui.button(_T(item.display_name), (max_item_width, 0)):
-                        self.state.pricing_strategy = item.value
-                        imgui.close_current_popup()
-                    if is_selected:
-                        imgui.pop_style_color()
-                imgui.end_combo()
-            imgui.pop_style_color(2)
-            imgui.pop_style_var(4)
-            imgui.pop_item_width()
-        imgui.pop_style_color(1)
-
     def draw_history_panel(self):
         if self.active_panel != AIStudioPanelType.HISTORY:
             return
@@ -2354,9 +2309,9 @@ class AIStudio(AppHud):
             imgui.push_style_color(imgui.Col.HEADER_ACTIVE, Const.BUTTON_ACTIVE)
             imgui.push_style_color(imgui.Col.HEADER_HOVERED, Const.BUTTON_HOVERED)
             self.draw_auth()
-            self.draw_pricing_strategy()
             self.draw_account_panel()
             self.draw_api_panel()
+            self.draw_provider_strategy()
 
             imgui.pop_style_var(6)
             imgui.pop_style_color(5)
@@ -2565,6 +2520,155 @@ class AIStudio(AppHud):
                 # 恢复当前激活模型，避免影响其它逻辑（如生成面板）
                 if original_model_name:
                     self.client.current_model_name = original_model_name
+
+    def draw_provider_strategy(self):
+        if self.state.auth_mode != AuthMode.ACCOUNT.value:
+            return
+        self.draw_provider_strategy_header()
+        self.draw_pricing_strategy()
+        self.draw_provider_strategy_info()
+
+    def draw_provider_strategy_header(self):
+        if imgui.begin_table("##Header", 3):
+            imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_FIXED, 0, 0)
+            imgui.table_setup_column("##Ele2", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 1)
+            imgui.table_setup_column("##Ele3", imgui.TableColumnFlags.WIDTH_FIXED, 0, 2)
+
+            imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
+            self.font_manager.push_h3_font()
+            imgui.text(_T("Provider Strategy"))
+            self.font_manager.pop_font()
+
+            imgui.table_next_column()
+            imgui.dummy((0, 0))
+
+            imgui.table_next_column()
+            bh = imgui.get_frame_height()
+            imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)
+            imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.WINDOW_R)
+            CustomWidgets.icon_label_button("info", "", "CENTER", (bh, bh), bh * 0.6)
+            if imgui.is_item_hovered():
+                imgui.set_next_window_size((450, 0))
+                title = _T("Provider Strategy")
+                tips = [
+                    _T("Select provider by strategy."),
+                    _T("Best Speed: faster provider first."),
+                    _T("Best Balance: more stable provider first."),
+                ]
+                AppHelperDraw.draw_tips_with_title(self, tips, title)
+            imgui.pop_style_var(1)
+            imgui.pop_style_color(1)
+
+            imgui.end_table()
+
+    def draw_pricing_strategy(self):
+        if self.state.auth_mode != AuthMode.ACCOUNT.value:
+            return
+        flags = 0
+        flags |= imgui.ChildFlags.FRAME_STYLE
+        flags |= imgui.ChildFlags.AUTO_RESIZE_Y
+        flags |= imgui.ChildFlags.ALWAYS_AUTO_RESIZE
+        imgui.push_style_color(imgui.Col.FRAME_BG, Const.WINDOW_BG)
+        with with_child("##PricingStrategy", (0, 0), child_flags=flags):
+            imgui.push_item_width(-1)
+            imgui.push_style_var_x(imgui.StyleVar.FRAME_PADDING, Const.RP_FRAME_P[0])
+            imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.RP_FRAME_INNER_R)
+            imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, Const.RP_CHILD_IS)
+            imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0)
+            imgui.push_style_color(imgui.Col.FRAME_BG, Const.FRAME_BG)
+            imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+
+            items = list(PricingStrategy)
+
+            # 计算最大宽度
+            max_item_width = 0
+            for item in items:
+                max_item_width = max(max_item_width, imgui.calc_text_size(item.display_name)[0])
+            max_item_width += 2 * imgui.get_style().frame_padding[0]
+            aw = imgui.get_content_region_avail()[0]
+            max_item_width = max(aw, max_item_width)
+
+            # 绘制下拉框
+            current_strategy = PricingStrategy(self.state.pricing_strategy)
+            if imgui.begin_combo("##Item", _T(current_strategy.display_name)):
+                for item in items:
+                    is_selected = self.state.pricing_strategy == item.value
+                    if is_selected:
+                        imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
+                    if imgui.button(_T(item.display_name), (max_item_width, 0)):
+                        self.state.pricing_strategy = item.value
+                        imgui.close_current_popup()
+                    if is_selected:
+                        imgui.pop_style_color()
+                imgui.end_combo()
+            imgui.pop_style_color(2)
+            imgui.pop_style_var(4)
+            imgui.pop_item_width()
+        imgui.pop_style_color(1)
+
+    def draw_provider_strategy_info(self):
+        imgui.push_style_color(imgui.Col.BUTTON, Const.WINDOW_BG)
+        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.WINDOW_BG)
+        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.WINDOW_BG)
+        if True:
+            text1 = _T("将从")
+            text2 = str(self.state.provider_count(self.client.current_model_name))
+            text3 = _T("家供应商选择最稳定方案")
+            icon = "check_ok"
+            # 1. 基础尺寸与位置计算
+            width = imgui.get_content_region_avail()[0]
+            height = 54
+            screen_pos = imgui.get_cursor_screen_pos()
+
+            imgui.button("##btn_provider_strategy_info", (width, height))
+
+            dl = imgui.get_window_draw_list()
+            tex_id = TexturePool.get_tex_id(icon)
+
+            icon_w = imgui.get_text_line_height()
+            gap = icon_w * 0.25
+
+            text_size1 = imgui.calc_text_size(text1)
+            imgui.push_font(self.font_manager.heavy_font, imgui.get_font_size())
+            text_size2 = imgui.calc_text_size(text2)
+            imgui.pop_font()
+            text_size3 = imgui.calc_text_size(text3)
+
+            # 整体居中: ..[Icon + Text]..
+            content_w = icon_w + gap + text_size1[0] + text_size2[0] + text_size3[0]
+            start_x = screen_pos[0] + (width - content_w) / 2
+            icon_x = start_x
+            text_x = start_x + icon_w + gap
+
+            height = imgui.get_item_rect_size()[1]
+            icon_y = screen_pos[1] + (height - icon_w) / 2
+            dl.add_image(tex_id, (icon_x, icon_y), (icon_x + icon_w, icon_y + icon_w))
+
+            # 文字1
+            if True:
+                text_y = screen_pos[1] + (height - text_size1[1]) / 2
+                tex_col = imgui.get_style_color_vec4(imgui.Col.TEXT)
+                col = imgui.get_color_u32(tex_col)
+                dl.add_text((text_x, text_y), col, text1)
+
+            text_x += text_size1[0]
+
+            # 文字2
+            if True:
+                text_y = screen_pos[1] + (height - text_size2[1]) / 2
+                col = imgui.get_color_u32(Const.BUTTON_SELECTED)
+                dl.add_text(self.font_manager.heavy_font, imgui.get_font_size(), (text_x, text_y), col, text2)
+
+            text_x += text_size2[0]
+
+            # 文字3
+            if True:
+                text_y = screen_pos[1] + (height - text_size3[1]) / 2
+                tex_col = imgui.get_style_color_vec4(imgui.Col.TEXT)
+                col = imgui.get_color_u32(tex_col)
+                dl.add_text((text_x, text_y), col, text3)
+        imgui.pop_style_color(3)
 
     def draw_panel_close_button(self):
         # 关闭按钮
