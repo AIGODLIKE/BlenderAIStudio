@@ -632,7 +632,7 @@ class StudioHistoryViewer:
 
     def _draw_content_pending(self, item: StudioHistoryItem) -> None:
         if imgui.begin_table("##Content", 1):
-            h1 = imgui.get_text_line_height() * 4
+            h1 = imgui.get_text_line_height() * 3
             w1 = imgui.get_content_region_avail()[0]
             imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 0)
             imgui.table_next_column()
