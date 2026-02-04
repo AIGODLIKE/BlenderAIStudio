@@ -49,7 +49,7 @@ class Privacy:
     init_privacy: bpy.props.BoolProperty(default=False, update=lambda self, context: collect_info(),
                                          name="Privacy settings have been initialized")
     collect_version_data: bpy.props.BoolProperty(
-        default=False, name="Version Data",
+        default=True, name="Version Data",
         update=lambda self, context: collect_info(),
         description="Check this box and we will collect your plugin version, Blender version, and hardware information")
     save_generated_images_to_cloud: bpy.props.BoolProperty(
@@ -65,8 +65,8 @@ class Privacy:
             text="Check this box and we will collect your plugin version, Blender version, and hardware information")
         column.label(text="to better serve you")
         column.separator(type="LINE")
-        column.prop(self, "save_generated_images_to_cloud")
-        column.label(text="When using Stable Mode to generate images")
-        column.label(text="we will retain a copy of the generated image in the cloud to prevent image file loss")
+        # column.prop(self, "save_generated_images_to_cloud")
+        # column.label(text="When using Stable Mode to generate images")
+        # column.label(text="we will retain a copy of the generated image in the cloud to prevent image file loss")
         column.separator()
         column.label(text="You can also change this setting later in Preferences")

@@ -181,8 +181,7 @@ class AIStudioImagePanel(bpy.types.Panel):
         pref.draw_account(column)
 
         row = column.row(align=True)
-        row.label(text="", icon_value=get_custom_icon("aspect_ratio"))
-        row.prop(ai, "model_name", text="")
+        row.prop(ai, "model_name")
         pref.have_input_api_key(context, column)
         column.separator(type="LINE")
 
