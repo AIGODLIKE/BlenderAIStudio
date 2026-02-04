@@ -6,6 +6,7 @@ import traceback
 from pathlib import Path
 from threading import Thread
 from typing import Optional
+from uuid import uuid4
 from ..account import Account
 from ..tasks import TaskManager, TaskState, Task, TaskResult
 from ..wrapper import BaseAdapter
@@ -176,7 +177,7 @@ class StudioHistory:
         history_item.metadata = {"prompt": "这是一个测试"}
         history_item.model = "gemini-3-pro-image-preview"
         history_item.timestamp = time.time()
-        history_item.task_id = ""
+        history_item.task_id = str(uuid4())
         self.add(history_item)
         return history_item
 
