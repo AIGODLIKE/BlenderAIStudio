@@ -6,6 +6,7 @@ from bpy.app.translations import pgettext_iface as iface
 
 from .api_key import ApiKey
 from .online_update import OnlineUpdate
+from .privacy import Privacy
 from ..i18n import PROP_TCTX
 from ..online_update_addon import UpdateService
 from ... import __package__ as base_name
@@ -60,7 +61,7 @@ class PricingStrategy(Enum):
         return [item.value for item in list(cls)]
 
 
-class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey):
+class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey, Privacy):
     bl_idname = base_name
     ui_pre_scale: bpy.props.FloatProperty(
         name="UI Pre Scale Factor",
@@ -94,6 +95,7 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey):
         items=[
             ("SETTING", "Setting", ""),
             ("DEV", "Dev Environment", ""),
+            ("PRIVACY", "Privacy", ""),
             ("ONLINE_UPDATE", "Update Addon", ""),
         ],
         **translation_context,
@@ -173,14 +175,15 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey):
 
     def draw_dev(self, layout):
         # 环境配置
-        box = layout.box()
-        box.label(text="Environment Settings")
-        box.prop(self, "use_dev_environment")
+        column = layout.column()
+        column.label(text="Environment Settings")
+        column.prop(self, "use_dev_environment")
 
         if self.use_dev_environment:
-            box.prop(self, "dev_api_base_url")
-            box.prop(self, "dev_login_url")
-            box.prop(self, "dev_token")
+            column.prop(self, "init_privacy")
+            column.prop(self, "dev_api_base_url")
+            column.prop(self, "dev_login_url")
+            column.prop(self, "dev_token")
 
     def draw_service(self, layout):
         from ..studio.account import Account

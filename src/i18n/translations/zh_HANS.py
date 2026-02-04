@@ -161,6 +161,20 @@ task_translations = (
     ("Task cancelled during preparation", "任务在准备过程中被取消", None),
     ("Task cancelled during execution", "任务在执行过程中被取消", None),
 )
+privacy_translations = (
+    ("Version Data", "版本数据", ""),
+    ("Privacy", "隐私", PROP_TCTX),
+    ("BLenderAiStudio Privacy Tips", "BLenderAiStudio 隐私提示", "Operator"),
+    ("Check this box and we will collect your plugin version, Blender version, and hardware information",
+     "勾选后，我们将收集您的插件版本和Blender版本及硬件信息", ""),
+    ("to better serve you", "用于更好的提供服务", ""),
+    ("Privacy settings have been initialized", "已初始化隐私设置", ""),
+    ("When using Stable Mode to generate images", "勾选后在使用稳定模式生成图片时", ""),
+    ("Save images generated in stable mode to the cloud", "保留稳定模式生成的图片到云端", ""),
+    ("we will retain a copy of the generated image in the cloud to prevent image file loss",
+     "我们将会保留一份生成的图片在云端，避免图片文件丢失", ""),
+    ("You can also change this setting later in Preferences", "稍后您也可以在偏好设置中更改", ""),
+)
 
 translations = (
     ("AI Studio Entry", "AI Studio 入口", OPS_TCTX),
@@ -304,7 +318,9 @@ translations = (
     ("Dev API Base URL", "开发API", PROP_TCTX),
     ("Dev Login URL", "登录URL", PROP_TCTX),
     ("Dev Token", "Token", PROP_TCTX),
+    ("BLenderAiStudio Update Tips", "BLenderAiStudio 更新提示", "Operator"),
     *error_translations,
     *studio_panel_translations,
     *task_translations,
+    *privacy_translations,
 )
