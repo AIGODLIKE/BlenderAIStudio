@@ -14,7 +14,7 @@ from shutil import copyfile
 from traceback import print_exc
 
 from .account import Account
-from .clients.base import StudioHistoryItem
+from .clients.base import StudioHistoryItem, StudioHistory
 from .clients.universal_client import UniversalClient
 from .config.model_registry import ModelRegistry
 from .gui.app.animation import AnimationSystem, Easing, Tween, Sequence
@@ -279,7 +279,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
 
 
 class StudioHistoryViewer:
-    def __init__(self, app: "AIStudio", history: StudioHistory) -> None:
+    def __init__(self, app: "AIStudio", history: "StudioHistory") -> None:
         self.history = history
         self.app = app
         self.col_bg = Const.WINDOW_BG
@@ -1726,7 +1726,6 @@ class AIStudio(AppHud):
         super().__init__(*args, **kwargs)
         self.active_panel = AIStudioPanelType.GENERATION
         self.state = Account.get_instance()
-        self.status_manager = StatusManager.get_instance()
         self.client = UniversalClient()
         self.store_panel = StorePanel(self)
         self.client_wrapper = StudioWrapper()
