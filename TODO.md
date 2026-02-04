@@ -5,3 +5,5 @@
 3.超大图片输入时会出现
 [BlenderAIStudio-INF]: on_failed {'task': <BlenderAIStudio.src.studio.tasks.gemini_tasks.AccountGeminiImageEditTask object at 0x000001A74F45D0D0>, 'result': TaskResult(success=False, data=None, error=GeminiAPIError('Bad request (400),Please check the network and proxy'), error_message='图片编辑失败: Bad request (400),Please check the network and proxy', metadata={})}
 [BlenderAIStudio-INF]: Bad request (400),Please check the network and proxy
+4.一些请求失败，提示: 可能由于版本太低导致,请检查并升级到最新版本
+5.每个模型的auto分辨率及模型选择

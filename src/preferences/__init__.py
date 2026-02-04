@@ -4,7 +4,9 @@ from enum import Enum
 import bpy
 from bpy.app.translations import pgettext_iface as iface
 
+from .api_key import ApiKey
 from .online_update import OnlineUpdate
+from .privacy import Privacy
 from ..i18n import PROP_TCTX
 from ..online_update_addon import UpdateService
 from ... import __package__ as base_name
@@ -16,11 +18,50 @@ if bpy.app.version >= (4, 0, 0):
 
 
 class AuthMode(Enum):
-    ACCOUNT = "Backup Mode"
-    API = "API Key Mode"
+    """认证模式枚举
+
+    value: 配置文件中使用的值（小写）
+    display_name: UI 显示名称（支持翻译）
+    """
+
+    API = "api"
+    ACCOUNT = "account"
+
+    @property
+    def display_name(self) -> str:
+        """获取可翻译的显示名称"""
+        if self == AuthMode.API:
+            return "API Key Mode"
+        elif self == AuthMode.ACCOUNT:
+            return "Backup Mode"
+        return self.value
+
+    @classmethod
+    def values(cls) -> list[str]:
+        """获取所有值的元组"""
+        return [item.value for item in list(cls)]
 
 
-class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate):
+class PricingStrategy(Enum):
+    BEST_SPEED = "bestSpeed"
+    BEST_BALANCE = "bestPrice"
+
+    @property
+    def display_name(self) -> str:
+        """获取可翻译的显示名称"""
+        if self == PricingStrategy.BEST_SPEED:
+            return "Best Speed"
+        elif self == PricingStrategy.BEST_BALANCE:
+            return "Best Balance"
+        return self.value
+
+    @classmethod
+    def values(cls) -> list[str]:
+        """获取所有值的元组"""
+        return [item.value for item in list(cls)]
+
+
+class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey, Privacy):
     bl_idname = base_name
     ui_pre_scale: bpy.props.FloatProperty(
         name="UI Pre Scale Factor",
@@ -46,17 +87,15 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate):
     )
     account_auth_mode: bpy.props.EnumProperty(
         name="Account Auth Mode",
-        items=[(item.value, item.value, "") for item in AuthMode],
+        items=[(item.value, item.display_name, "") for item in AuthMode],
         **translation_context,
-    )
-    nano_banana_api: bpy.props.StringProperty(
-        name="Nano Banana API Key",
-        subtype="PASSWORD",
     )
     page_type: bpy.props.EnumProperty(
         name="Page Type",
         items=[
             ("SETTING", "Setting", ""),
+            ("DEV", "Dev Environment", ""),
+            ("PRIVACY", "Privacy", ""),
             ("ONLINE_UPDATE", "Update Addon", ""),
         ],
         **translation_context,
@@ -64,7 +103,11 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate):
 
     @property
     def is_backup_mode(self):  # 是稳定模式
-        return self.account_auth_mode == "Backup Mode"
+        return self.account_auth_mode == AuthMode.ACCOUNT.value
+
+    @property
+    def is_api_mode(self):
+        return self.account_auth_mode == AuthMode.API.value
 
     def set_ui_offset(self, value):
         self.ui_offset = value
@@ -73,6 +116,41 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate):
     def set_account_auth_mode(self, value):
         self.account_auth_mode = value
         bpy.context.preferences.use_preferences_save = True
+
+    account_pricing_strategy: bpy.props.EnumProperty(
+        name="Account Pricing Strategy",
+        items=[(item.value, item.display_name, "") for item in PricingStrategy],
+        **translation_context,
+    )
+
+    def set_account_pricing_strategy(self, value):
+        self.account_pricing_strategy = value
+        bpy.context.preferences.use_preferences_save = True
+
+    # 环境配置
+    use_dev_environment: bpy.props.BoolProperty(
+        name="Use Development Environment",
+        default=False,
+        **translation_context,
+    )
+
+    dev_api_base_url: bpy.props.StringProperty(
+        name="Dev API Base URL",
+        default="",
+        **translation_context,
+    )
+
+    dev_login_url: bpy.props.StringProperty(
+        name="Dev Login URL",
+        default="",
+        **translation_context,
+    )
+
+    dev_token: bpy.props.StringProperty(
+        name="Dev Token",
+        default="",
+        **translation_context,
+    )
 
     def draw(self, context):
         layout = self.layout
@@ -85,15 +163,34 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate):
         layout.prop(self, "ui_pre_scale")
         layout.prop(self, "ui_offset")
         layout.prop(self, "output_cache_dir")
-        self.draw_api(layout.box())
+        self.draw_service(layout.box())
 
     def draw_online_update(self, layout):
         UpdateService.draw_update_info(layout)
 
-    def draw_api(self, layout):
+    def draw_account(self, layout):
+        layout.prop(self, "account_auth_mode", text="Operating Mode")
+        if not self.is_api_mode:
+            layout.prop(self, "account_pricing_strategy", text="Pricing Strategy")
+
+    def draw_dev(self, layout):
+        # 环境配置
+        column = layout.column()
+        column.label(text="Environment Settings")
+        column.prop(self, "use_dev_environment")
+
+        if self.use_dev_environment:
+            column.prop(self, "init_privacy")
+            column.prop(self, "dev_api_base_url")
+            column.prop(self, "dev_login_url")
+            column.prop(self, "dev_token")
+
+    def draw_service(self, layout):
         from ..studio.account import Account
+
         layout.label(text="Service")
-        layout.prop(self, "account_auth_mode", text="Operating Mode", )
+        self.draw_account(layout)
+
         if self.is_backup_mode:
             account = Account.get_instance()
             if account.is_logged_in():
@@ -106,9 +203,7 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate):
                 layout.label(text="Not logged in")
                 layout.operator("bas.login_account_auth")
         else:
-            layout.prop(self, "nano_banana_api")
-            if self.nano_banana_api == "":
-                layout.label(text="Please input your API Key")
+            self.draw_api(layout)
 
 
 def register():

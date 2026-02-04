@@ -46,8 +46,20 @@ def clear_icons():
     previews_icons = None
 
 
+def check_icons_is_ready():
+    global previews_icons
+    if previews_icons:
+        try:
+            for key, icon in previews_icons.items():
+                icon.reload()
+        except Exception as e:
+            print("尝试重载图标错误")
+            print(e.args)
+
+
 def register():
     load_icons()
+    bpy.app.timers.register(check_icons_is_ready, first_interval=2)
 
 
 def unregister():

@@ -1,10 +1,11 @@
+import mimetypes
 from pathlib import Path
 
 import bpy
 
 from .. import logger
 from ..i18n.translations.zh_HANS import OPS_TCTX
-from ..utils import png_name_suffix, get_pref, get_temp_folder, save_image_to_temp_folder
+from ..utils import png_name_suffix, get_pref, get_temp_folder, save_image_to_temp_folder, refresh_image_preview
 
 
 class ApplyAiEditImage(bpy.types.Operator):
@@ -15,26 +16,30 @@ class ApplyAiEditImage(bpy.types.Operator):
     bl_options = {"REGISTER"}
     running_operator: bpy.props.StringProperty(default=bl_label, options={"HIDDEN", "SKIP_SAVE"})
 
-    task = None
+    _timer = None
 
     def invoke(self, context, event):
+        print()
         self.execute(context)
-        self._timer = context.window_manager.event_timer_add(1 / 60, window=context.window)
-        context.window_manager.modal_handler_add(self)
-        oii = context.scene.blender_ai_studio_property
-        oii.start_running()
-        return {"RUNNING_MODAL", "PASS_THROUGH"}
+
+        if self.__class__._timer is None:
+            self.__class__._timer = context.window_manager.event_timer_add(1 / 60, window=context.window)
+            context.window_manager.modal_handler_add(self)
+            return {"RUNNING_MODAL", "PASS_THROUGH"}
+        return {"FINISHED"}
+
+    def exit(self, context):
+        if self.__class__._timer:
+            context.window_manager.event_timer_remove(self.__class__._timer)
+        if context.area:
+            context.area.tag_redraw()
 
     def modal(self, context, event):
         oii = context.scene.blender_ai_studio_property
         if context.area:
             context.area.tag_redraw()
 
-        if oii.running_state in (
-                "completed",
-                "failed",
-                "cancelled",
-        ):
+        if len(oii.running_task_list) == 0:  # 所有的任务都没了,不刷新界面了
             return {"FINISHED"}
         return {"PASS_THROUGH"}
 
@@ -43,10 +48,10 @@ class ApplyAiEditImage(bpy.types.Operator):
         pref = get_pref()
         oii = context.scene.blender_ai_studio_property
         space_data = context.space_data
-        image = space_data.image
-        aspect_ratio = oii.get_out_aspect_ratio(context)
-        resolution = oii.get_out_resolution(context)
-        if not image:
+        origin_image = space_data.image
+        aspect_ratio = oii.aspect_ratio
+        resolution = oii.resolution
+        if not origin_image:
             self.report({"ERROR"}, "No image")
             return {"CANCELLED"}
 
@@ -57,19 +62,18 @@ class ApplyAiEditImage(bpy.types.Operator):
         if pref.is_backup_mode:
             ...
         else:
-            if not pref.nano_banana_api:
+            if not pref.api_key:
                 self.report({"ERROR"}, "NANO API key not set, Enter it in addon preferences")
                 return {"CANCELLED"}
 
-        oii.running_operator = self.running_operator
-        generate_image_name = png_name_suffix(image.name, f"_{self.running_operator}")
+        generate_image_name = png_name_suffix(origin_image.name, f"_{self.running_operator}")
 
         # 将blender图片保存到临时文件夹
         temp_folder = get_temp_folder(prefix="edit")
 
-        origin_image_file_path = save_image_to_temp_folder(image, temp_folder)
+        origin_image_file_path = save_image_to_temp_folder(origin_image, temp_folder)
         reference_images_path = []
-        mask_image_path = None
+        mask_image_path = ""
 
         if not origin_image_file_path:
             self.report({"ERROR"}, "Can't save image")
@@ -92,34 +96,115 @@ class ApplyAiEditImage(bpy.types.Operator):
                 return {"CANCELLED"}
 
         print("temp", temp_folder)
-        print("reference_images_path", reference_images_path)
-        print("mask_image_path", mask_image_path)
-        print("aspect_ratio", aspect_ratio)
-        print("resolution", resolution)
+        try:
+            self.task_start(
+                context, resolution,
+                aspect_ratio,
+                origin_image,
+                origin_image_file_path,
+                oii.reference_images,
+                reference_images_path,
+                oii.mask_images,
+                mask_image_path,
+                temp_folder,
+                generate_image_name,
+            )
+        except Exception as e:
+            self.cancel(context)
+            logger.error(str(e))
+            self.report({"ERROR"}, str(e))
+        return {"FINISHED"}
+
+    def cancel(self, context):
+        self.exit(context)
+
+    def task_start(self,
+                   context,
+                   resolution,
+                   aspect_ratio,
+                   origin_image,
+                   origin_image_file_path,
+                   reference_images,
+                   reference_images_path,
+                   mask_images,
+                   mask_image_path,
+                   temp_folder,
+                   generate_image_name,
+                   ):
+
+        from ..studio.tasks import UniversalModelTask, TaskManager, TaskResult, TaskState, Task
         from ..studio.account import Account
-        from ..studio.tasks import GeminiImageEditTask, AccountGeminiImageEditTask, Task, TaskState, TaskResult, \
-            TaskManager
+        from ..studio.config.model_registry import ModelRegistry
+
         from ..preferences import AuthMode
 
-        task_type_map = {
-            AuthMode.ACCOUNT.value: AccountGeminiImageEditTask,
-            AuthMode.API.value: GeminiImageEditTask,
-        }
-        account = Account.get_instance()
-        TaskType = task_type_map[account.auth_mode]
-        api_key = pref.nano_banana_api if account.auth_mode == AuthMode.API.value else account.token
+        space_data = context.space_data
+        pref = get_pref()
+        oii = context.scene.blender_ai_studio_property
 
-        task = TaskType(
-            api_key=api_key,
-            image_path=origin_image_file_path,
-            edit_prompt=oii.prompt,
-            mask_path=mask_image_path,
-            reference_images_path=reference_images_path,
-            aspect_ratio=aspect_ratio,
-            resolution=resolution,
-            max_retries=1,
+        account = Account.get_instance()
+        model_registry = ModelRegistry.get_instance()
+        model_name = oii.model_name  # NanoBananaPro
+        model = model_registry.get_model(model_name)  # ModelConfig
+        model_id = model.model_id  # "gemini-3-pro-image-preview"
+
+        # 创建历史记录 ,在这个时候就需要保存信息了
+        edit_history = oii.edit_history.add()  # 添加历史记录,将当前任务加入历史记录，历史记录当做一个任务进行显示
+        edit_history.start_running(model_name)
+        edit_history.running_operator = self.running_operator
+        edit_history.prompt = oii.prompt
+        edit_history.origin_image = origin_image
+        edit_history.mask_index = oii.mask_index
+        edit_history.running_state = "running"
+        edit_history.running_progress = 0.1
+        for mi in mask_images:
+            m = edit_history.mask_images.add()
+            m.image = mi.image
+        for ri in reference_images:
+            r = edit_history.reference_images.add()
+            r.image = ri.image
+        refresh_image_preview(origin_image)
+
+        logger.info(f"model_name: {model_name} model_id:{model_id} auth_mode: {account.auth_mode}")
+
+        if resolution == "None":
+            resolution = "1K"
+
+        if account.auth_mode == AuthMode.API.value:
+            credentials = {"api_key": pref.api_key.strip()}
+        else:
+            model_id = submit_model_id = model_registry.resolve_submit_id(model_name, account.pricing_strategy)
+            credentials = {
+                "token": account.token,
+                "modelId": submit_model_id,
+                "size": resolution,
+            }
+        reference_images = [mask_image_path, *reference_images_path]  # 优先传递mask图片(即使为空)
+        params = {
+            "main_image": origin_image_file_path,
+            "prompt": oii.prompt,
+            "reference_images": reference_images,
+            "resolution": resolution,
+            "aspect_ratio": aspect_ratio,
+            "__use_internal_prompt": False,
+            "__action": "edit",
+        }
+
+        # ww = credentials.copy()
+        # if "token" in ww:
+        #     ww.pop("token")
+        # logger.info(f"credentials {json.dumps(ww, indent=4)}")
+        # logger.info(f"params {json.dumps(params, indent=4)}")
+
+        task = UniversalModelTask(
+            model_id=model_id,
+            auth_mode=account.auth_mode,
+            credentials=credentials,
+            params=params,
+            context=bpy.context.copy(),
         )
-        oii.running_message = "Start..."
+
+        edit_history.running_message = "Start..."
 
         # 2. 注册回调
         def on_state_changed(event_data):
@@ -128,9 +213,12 @@ class ApplyAiEditImage(bpy.types.Operator):
                 old_state: TaskState = event_data["old_state"]
                 new_state: TaskState = event_data["new_state"]
                 text = f"状态改变: {old_state.value} -> {new_state.value}"
-                ai_oii = bpy.context.scene.blender_ai_studio_property
-                ai_oii.running_state = new_state.value
                 logger.info(text)
+                try:
+                    edit_history.running_state = new_state.value
+                except Exception as e:
+                    logger.error(str(e))
+
             bpy.app.timers.register(f, first_interval=0.1)
 
         def on_progress(event_data):
@@ -149,9 +237,13 @@ class ApplyAiEditImage(bpy.types.Operator):
                 p = bpy.app.translations.pgettext("Progress")
                 text = f"{p}: {percent * 100}% - {message}"
 
-                ai_oii = bpy.context.scene.blender_ai_studio_property
-                ai_oii.running_message = text
+                try:
+                    edit_history.running_progress = percent
+                    edit_history.running_message = text
+                except Exception as e:
+                    logger.error(str(e))
                 logger.info(text)
+
             bpy.app.timers.register(f, first_interval=0.1)
 
         def on_completed(event_data):
@@ -163,35 +255,45 @@ class ApplyAiEditImage(bpy.types.Operator):
                 #     "height": 1024,
                 # }
 
-                ai_oii = bpy.context.scene.blender_ai_studio_property
-                ai_oii.origin_image = image
                 _task: Task = event_data["task"]
                 result: TaskResult = event_data["result"]
-                result_data: dict = result.data
+                results: list[tuple[str, str | bytes]] = result.data
+                if not results:
+                    logger.warning("No results")
+                    return
+
                 # 存储结果
-                save_file = Path(temp_folder).joinpath(f"{generate_image_name}_Output.png")
-                save_file.write_bytes(result_data["image_data"])
+                result_data = results[0]
+                ext = mimetypes.guess_extension(result_data[0])
+                save_file = Path(temp_folder).joinpath(f"{generate_image_name}_Output{ext}")
+                save_file.write_bytes(result_data[1])
                 text = f"任务完成: {_task.task_id} {save_file}"
-                ai_oii.running_message = "Running completed"
-
-                if gi := bpy.data.images.load(str(save_file), check_existing=False):
-                    oii.generated_image = gi
-                    gi.preview_ensure()
-                    gi.name = generate_image_name
-                    try:
-                        space_data.image = gi
-                    except Exception as e:
-                        print("error", e)
-                        import traceback
-
-                        traceback.print_exc()
-                        traceback.print_stack()
-                else:
-                    ut = bpy.app.translations.pgettext("Unable to load generated image!")
-                    ai_oii.running_message = ut + " " + str(save_file)
-                ai_oii.stop_running()
-                ai_oii.save_to_history()
                 logger.info(text)
+
+                try:
+                    edit_history.stop_running()
+                    edit_history.running_state = "completed"
+                    edit_history.running_message = "Running completed"
+
+                    if gi := bpy.data.images.load(str(save_file), check_existing=False):
+                        try:
+                            gi.preview_ensure()
+                            gi.name = generate_image_name
+                            space_data.image = gi
+                            gih = edit_history.generated_images.add()
+                            gih.image = gi
+                        except Exception as e:
+                            print("生成完成设置生成图像到活动项错误 error", e)
+                            import traceback
+                            traceback.print_exc()
+                            traceback.print_stack()
+                    else:
+                        ut = bpy.app.translations.pgettext("Unable to load generated image!")
+                        edit_history.running_message = ut + " " + str(save_file)
+
+                except Exception as e:
+                    logger.error(str(e))
+
             bpy.app.timers.register(f, first_interval=0.1)
 
         def on_failed(event_data):
@@ -199,16 +301,20 @@ class ApplyAiEditImage(bpy.types.Operator):
                 text = f"on_failed {event_data}"
                 logger.info(text)
 
-                ai_oii = bpy.context.scene.blender_ai_studio_property
-
                 _task: Task = event_data["task"]
                 result: TaskResult = event_data["result"]
-                if not result.success:
-                    ai_oii.running_message = str(result.error)
-                    logger.info(ai_oii.running_message)
-                else:
-                    ai_oii.running_message = "Unknown error" + " " + str(result.data)
-                ai_oii.stop_running()
+                try:
+                    edit_history.running_state = "failed"
+
+                    if not result.success:
+                        edit_history.running_message = str(result.error)
+                        logger.info(edit_history.running_message)
+                    else:
+                        edit_history.running_message = "Unknown error" + " " + str(result.data)
+                    edit_history.stop_running()
+                except Exception as e:
+                    logger.error(str(e))
+
             bpy.app.timers.register(f, first_interval=0.1)
 
         task.register_callback("state_changed", on_state_changed)
@@ -217,13 +323,6 @@ class ApplyAiEditImage(bpy.types.Operator):
         task.register_callback("failed", on_failed)
         TaskManager.get_instance().submit_task(task)
         logger.info(f"任务提交: {task.task_id}")
-        self.task = task
-        return {"FINISHED"}
-
-    def cancel(self, context):
-        logger.info("task cancel")
-        if self.task:
-            self.task.cancel()
 
 
 class SmartFixImage(bpy.types.Operator):
@@ -263,10 +362,10 @@ class ReRenderImage(bpy.types.Operator):
             self.report({"ERROR"}, "No image in editor")
             return {"CANCELLED"}
 
-        if len(oii.history) == 0:
+        if len(oii.edit_history) == 0:
             self.report({"INFO"}, "No history - use 'Render' first")
             return {"CANCELLED"}
-        last = oii.history[-1]
+        last = oii.edit_history[-1]
         oii.prompt = last.prompt
 
         self.report({"INFO"}, "Re-rendering with previous settings...")

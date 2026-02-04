@@ -21,7 +21,6 @@ class ViewImage(bpy.types.Operator):
 
     def execute(self, context):
         image = getattr(context, "image", None)
-        print(self.bl_idname, image)
         if not image:
             self.report({"ERROR"}, "No image")
             return {"CANCELLED"}
@@ -103,12 +102,15 @@ class OpenImageInNewWindow(bpy.types.Operator):
             data = json.loads(self.data)
             metadata = data.get("metadata", None)
             if metadata:
-                aspect_ratio = metadata.get("aspect_ratio", "AUTO")
+                aspect_ratio = metadata.get("aspect_ratio", "1:1")
                 oii = context.scene.blender_ai_studio_property
                 resolution = metadata.get("resolution", "1K")
                 oii.aspect_ratio = aspect_ratio
                 oii.resolution = resolution
         except Exception as e:
+            import traceback
+            traceback.print_exc()
+            traceback.print_stack()
             print(e)
             print("load_data error", self.data)
 
@@ -164,5 +166,35 @@ class RemoveHistory(bpy.types.Operator):
     def execute(self, context):
         oii = context.scene.blender_ai_studio_property
         index = self.index
-        oii.history.remove(index)
+        oii.edit_history.remove(index)
         return {"FINISHED"}
+
+
+class ClearHistory(bpy.types.Operator):
+    bl_idname = "bas.clear_history"
+    bl_label = "Clear All History"
+    bl_description = "Clear All History"
+    bl_translation_context = OPS_TCTX
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_confirm(self, event,
+                                                     title=self.bl_description,
+                                                     message="Are you sure you want to clear all history?")
+
+    def execute(self, context):
+        """
+        可能会无限循环
+        """
+        aoo = context.scene.blender_ai_studio_property
+        while True:
+            is_r = False
+            for index,i in  enumerate(aoo.edit_history):
+                if i.running_state != "running":
+                    aoo.edit_history.remove(index)
+                    is_r = True
+                    continue
+            if not is_r:
+                if context.area:
+                    context.area.tag_redraw()
+                return {"FINISHED"}
+

@@ -1,7 +1,8 @@
 import gpu
+import mimetypes
+import numpy as np
 import OpenImageIO as oiio
 from pathlib import Path
-import numpy as np
 
 
 ICON_PATH = Path(__file__).parent.joinpath("icons")
@@ -18,6 +19,9 @@ class TexturePool:
         if not file_path.exists():
             file_path = ICON_PATH.joinpath(f"{file_path}.png")
         if not file_path.exists():
+            file_path = ICON_PATH.joinpath("none.png")
+        mime_type = mimetypes.guess_type(file_path.name)[0]
+        if not mime_type or not mime_type.startswith("image/"):
             file_path = ICON_PATH.joinpath("none.png")
         buf = oiio.ImageBuf(file_path.as_posix())
         spec = buf.spec()

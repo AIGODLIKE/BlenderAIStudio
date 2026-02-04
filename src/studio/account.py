@@ -3,6 +3,7 @@ import json
 import tempfile
 import traceback
 import webbrowser
+from copy import deepcopy
 from pathlib import Path
 from threading import Thread
 from typing import Self
@@ -10,6 +11,8 @@ from typing import Self
 import bpy
 from bpy.app.translations import pgettext as _T
 
+from .config.model_registry import ModelRegistry
+from .config.url_config import URLConfigManager
 from .exception import (
     APIRequestException,
     AuthFailedException,
@@ -24,21 +27,14 @@ from ..logger import logger
 from ..preferences import AuthMode
 from ..utils import get_pref
 
-# TODO 导入耗时+300~ms
 try:
     from ...External.websockets.server import serve
-    from ...External.websockets.legacy.server import WebSocketServer
     from ...External.websockets.exceptions import ConnectionClosedOK, ConnectionClosed
 except Exception:
     from websockets.server import serve
     from websockets import WebSocketServerProtocol
-    from websockets.legacy.server import WebSocketServer
     from websockets.exceptions import ConnectionClosedOK, ConnectionClosed
 
-HELP_URL = "https://shimo.im/docs/47kgMZ7nj4Sm963V"
-SERVICE_BASE_URL = "https://api-addon.acggit.com"
-SERVICE_URL = f"{SERVICE_BASE_URL}/v1"
-LOGIN_URL = "https://addon-login.acggit.com"
 AUTH_PATH = Path(tempfile.gettempdir(), "aistudio/auth.json")
 try:
     AUTH_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -57,12 +53,12 @@ class Account:
 
     def __init__(self) -> None:
         self.nickname = ""
-        self.help_url = HELP_URL
         self.logged_in = False
         self.services_connected = False
         self.credits = 0
-        self.token = ""
+        self._token = ""  # 内部 token 存储
         self.price_table = {}
+        self.provider_count_map = {}
         self.redeem_to_credits_table = {
             6: 600,
             30: 3300,
@@ -72,6 +68,7 @@ class Account:
         self.initialized = False
         self.error_messages: list = []
         self.waiting_for_login = False
+        self._url_manager = URLConfigManager.get_instance()
         self.load_account_info_from_local()
         self.ping_once()
 
@@ -82,6 +79,42 @@ class Account:
     @auth_mode.setter
     def auth_mode(self, mode: str):
         get_pref().set_account_auth_mode(mode)
+
+    @property
+    def pricing_strategy(self) -> str:
+        return get_pref().account_pricing_strategy
+
+    @pricing_strategy.setter
+    def pricing_strategy(self, strategy: str):
+        get_pref().set_account_pricing_strategy(strategy)
+
+    @property
+    def help_url(self) -> str:
+        return self._url_manager.get_help_url()
+
+    @property
+    def service_url(self) -> str:
+        """获取服务 URL（动态，支持环境切换）"""
+        return self._url_manager.get_service_url()
+
+    @property
+    def login_url(self) -> str:
+        """获取登录 URL（动态，支持环境切换）"""
+        return self._url_manager.get_login_url()
+
+    @property
+    def token(self) -> str:
+        """获取 token（支持测试环境 token）"""
+        # 如果使用测试环境且设置了测试 token，优先使用
+        dev_token = self._url_manager.get_dev_token()
+        if dev_token:
+            return dev_token
+        return self._token
+
+    @token.setter
+    def token(self, value: str):
+        """设置 token"""
+        self._token = value
 
     def take_errors(self) -> list:
         errors = self.error_messages[:]
@@ -117,9 +150,9 @@ class Account:
         if self.waiting_for_login:
             return
         self.waiting_for_login = True
-        webbrowser.open(LOGIN_URL)
+        webbrowser.open(self.login_url)
 
-        async def login_callback(server: WebSocketServer, websocket: "WebSocketServerProtocol", event: dict):
+        async def login_callback(server: WebSocketClient, websocket: "WebSocketServerProtocol", event: dict):
             try:
                 data: dict = event.get("data", {})
                 self.load_account_info(data)
@@ -140,7 +173,7 @@ class Account:
             server = None
             for p in range(*port_range):
                 try:
-                    server = WebSocketServer(p)
+                    server = WebSocketClient(p)
                     server.reg_handler("send_token", login_callback)
                     server.run()
                     break
@@ -157,7 +190,7 @@ class Account:
         job.start()
 
     def ping_once(self):
-        url = f"{SERVICE_URL}/billing/model-price"
+        url = f"{self.service_url}/billing/model-price"
         headers = {
             "Content-Type": "application/json",
         }
@@ -165,6 +198,7 @@ class Account:
         def job():
             try:
                 import requests
+
                 resp = requests.get(url, headers=headers, timeout=2)
                 self.services_connected = resp.status_code == 200
             except Exception:
@@ -197,14 +231,17 @@ class Account:
             self.push_error(_T("Invalid auth data"))
             return
         self.nickname = data.get("nickname", "")
-        self.token = data.get("token", "")
+        self._token = data.get("token", "")
         self.credits = data.get("coin", 0)
         self.logged_in = True
 
     def save_account_info(self, data: dict):
         if not self._AUTH_PATH.parent.exists():
-            self.push_error(_T("Can't create auth directory"))
-            return
+            try:
+                self._AUTH_PATH.parent.mkdir(parents=True)
+            except Exception:
+                traceback.print_exc()
+                self.push_error(_T("Can't create auth directory"))
         try:
             self._AUTH_PATH.write_text(json.dumps(data, ensure_ascii=True, indent=2))
         except Exception:
@@ -215,7 +252,7 @@ class Account:
         self.logged_in = False
         self.nickname = "Not Login"
         self.credits = 0
-        self.token = ""
+        self._token = ""
         if not self._AUTH_PATH.exists():
             return
         try:
@@ -225,7 +262,7 @@ class Account:
 
     # 兑换积分
     def redeem_credits(self, code: str) -> int:
-        url = f"{SERVICE_URL}/billing/redeem-code"
+        url = f"{self.service_url}/billing/redeem-code"
         headers = {
             "X-Auth-T": self.token,
             "Content-Type": "application/json",
@@ -235,6 +272,7 @@ class Account:
         }
         try:
             import requests
+
             resp = requests.post(url, headers=headers, json=payload)
         except ConnectionError:
             self.push_error(_T("Network connection failed"))
@@ -280,12 +318,13 @@ class Account:
         def _fetch_credits_price():
             if self.price_table:
                 return
-            url = f"{SERVICE_URL}/billing/model-price"
+            url = f"{self.service_url}/billing/model-price"
             headers = {
                 "Content-Type": "application/json",
             }
             try:
                 import requests
+
                 resp = requests.get(url, headers=headers)
             except ConnectionError:
                 self.push_error(_T("Network connection failed"))
@@ -306,37 +345,35 @@ class Account:
                     return
                 data: dict = resp_json.get("data", {})
                 self.price_table = data
+                pricing_data = {}
+                for item in data:
+                    model_name = item.pop("modelName", None)
+                    self.provider_count_map[model_name] = item.pop("providerCount", 0)
+                    pricing_data[model_name] = deepcopy(item)
+                ModelRegistry.get_instance().update_pricing_from_backend(pricing_data)
+                id_map = {}
+                for model_name, model_data in pricing_data.items():
+                    for value in model_data.values():
+                        if isinstance(value, dict) and "modelId" in value:
+                            id_map[value["modelId"]] = model_name
+                ModelRegistry.get_instance().update_id_to_name(AuthMode.ACCOUNT.value, id_map)
             else:
                 self.push_error(_T("Price fetch failed") + ": " + resp.text)
 
         Thread(target=_fetch_credits_price, daemon=True).start()
 
-    def get_model_price_table(self, provider: str = "") -> dict:
-        if not self.price_table:
-            return {}
-        # TODO 实现价格表获取
-        return self.price_table[0]
-
-    def calc_model_price(self, model: str = "") -> dict:
-        if not self.price_table:
-            return {}
-
-        for item in self.price_table:
-            if item.get("modelId") == model:
-                return item
-        return {}
-
     def fetch_credits(self):
         def _fetch_credits():
             if self.auth_mode != AuthMode.ACCOUNT.value:
                 return
-            url = f"{SERVICE_URL}/billing/balance"
+            url = f"{self.service_url}/billing/balance"
             headers = {
                 "X-Auth-T": self.token,
                 "Content-Type": "application/json",
             }
             try:
                 import requests
+
                 resp = requests.get(url, headers=headers)
             except ConnectionError:
                 self.push_error(_T("Network connection failed"))
@@ -368,7 +405,7 @@ class Account:
         Thread(target=_fetch_credits, daemon=True).start()
 
 
-class WebSocketServer:
+class WebSocketClient:
     _host = "127.0.0.1"
 
     def __init__(self, port):
@@ -403,7 +440,7 @@ class WebSocketServer:
             self.logger.error(traceback.format_exc())
 
     @staticmethod
-    async def _default(server: "WebSocketServer", websocket: "WebSocketServerProtocol", event: dict):
+    async def _default(server: "WebSocketClient", websocket: "WebSocketServerProtocol", event: dict):
         try:
             server.logger.warning(f"默认消息: {event}")
             event = {
@@ -415,7 +452,7 @@ class WebSocketServer:
             pass
 
     @staticmethod
-    async def _query_status(server: "WebSocketServer", websocket: "WebSocketServerProtocol", event: dict):
+    async def _query_status(server: "WebSocketClient", websocket: "WebSocketServerProtocol", event: dict):
         try:
             server.logger.warning(f"查询状态: {event}")
             event = {

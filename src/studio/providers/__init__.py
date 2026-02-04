@@ -1,13 +1,13 @@
-from .gemini import (
-    GeminiProvider,
-    GeminiImageGenerateProvider,
-    AccountGeminiImageProvider,
-    GeminiImageEditProvider,
-)
+from .universal_provider import UniversalProvider
+from .builders import RequestBuilder, RequestData, BuilderRegistry
+from .parsers import ResponseParser, ParserRegistry
+
 
 __all__ = [
-    "GeminiProvider",
-    "GeminiImageGenerateProvider",
-    "AccountGeminiImageProvider",
-    "GeminiImageEditProvider",
+    "UniversalProvider",
+    "RequestBuilder",
+    "RequestData",
+    "BuilderRegistry",
+    "ResponseParser",
+    "ParserRegistry",
 ]

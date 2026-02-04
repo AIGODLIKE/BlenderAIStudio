@@ -7,14 +7,8 @@ from .task import (
 )
 
 from .sequence_task import SequenceTask
+from .universal_task import UniversalModelTask
 
-from .gemini_tasks import (
-    GeminiImageGenerationTask,
-    AccountGeminiImageGenerateTask,
-    GeminiImageEditTask,
-    AccountGeminiImageEditTask,
-    GeminiStyleTransferTask,
-)
 
 __all__ = [
     "Task",
@@ -23,9 +17,5 @@ __all__ = [
     "TaskResult",
     "TaskState",
     "SequenceTask",
-    "GeminiImageGenerationTask",
-    "AccountGeminiImageGenerateTask",
-    "GeminiImageEditTask",
-    'AccountGeminiImageEditTask',
-    "GeminiStyleTransferTask",
+    "UniversalModelTask",
 ]

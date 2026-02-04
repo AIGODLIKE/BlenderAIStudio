@@ -2,15 +2,7 @@
 
 使用示例：
     # 1. 创建任务
-    from .tasks import GeminiImageGenerationTask
-
-    task = GeminiImageGenerationTask(
-        api_key="your-api-key",
-        image_path="/path/to/depth.png",
-        user_prompt="1girl",
-        width=1024,
-        height=1024
-    )
+    task = Task()
 
     # 2. 注册回调
     def on_progress(event_data):
@@ -413,17 +405,25 @@ class Task(ABC):
         try:
             # 检查是否已取消
             if self.is_cancelled():
-                return TaskResult.failure_result(Exception("Task cancelled before execution"), "任务在执行前被取消")
+                self.set_state(TaskState.CANCELLED)
+                result = TaskResult.failure_result(Exception("Task cancelled before execution"), "任务在执行前被取消")
+                self._trigger_callback("cancelled", {"task": self, "result": result})
+                return result
 
             # 准备阶段
             self.set_state(TaskState.PREPARING)
             if not self.prepare():
                 self.set_state(TaskState.FAILED)
-                return TaskResult.failure_result(Exception("Task preparation failed"), "任务准备失败")
+                result = TaskResult.failure_result(Exception("Task preparation failed"), "任务准备失败")
+                self._trigger_callback("failed", {"task": self, "result": result})
+                return result
 
             # 检查是否被取消
             if self.is_cancelled():
-                return TaskResult.failure_result(Exception("Task cancelled during preparation"), "任务在准备阶段被取消")
+                self.set_state(TaskState.CANCELLED)
+                result = TaskResult.failure_result(Exception("Task cancelled during preparation"), "任务在准备阶段被取消")
+                self._trigger_callback("cancelled", {"task": self, "result": result})
+                return result
 
             # 执行阶段
             self.set_state(TaskState.RUNNING)
@@ -436,8 +436,9 @@ class Task(ABC):
             # 设置最终状态
             if self.is_cancelled():
                 self.set_state(TaskState.CANCELLED)
-                self._trigger_callback("cancelled", {"task": self, "result": None})
-                return TaskResult.failure_result(Exception("Task cancelled during execution"), "任务在执行过程中被取消")
+                result = TaskResult.failure_result(Exception("Task cancelled during execution"), "任务在执行过程中被取消")
+                self._trigger_callback("cancelled", {"task": self, "result": result})
+                return result
             elif result.is_success():
                 self.set_state(TaskState.COMPLETED)
                 self._trigger_callback("completed", {"task": self, "result": result})

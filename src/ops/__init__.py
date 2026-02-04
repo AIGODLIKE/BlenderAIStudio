@@ -9,7 +9,9 @@ from .ai_edit_image import (
 from .history import (
     ViewImage,
     RestoreHistory,
-    OpenImageInNewWindow, RemoveHistory,
+    OpenImageInNewWindow,
+    RemoveHistory,
+    ClearHistory,
 )
 from .mask_image import DrawImageMask, ApplyImageMask, SelectMask
 from .prompt_edit import (
@@ -22,6 +24,8 @@ from .references_image import (
     SelectReferenceImageByFile,
     SelectReferenceImageByImage,
 )
+from .privacy_tips import PrivacyTips
+from .update_tips import UpdateTips
 
 class_list = [
     ApplyAiEditImage,
@@ -44,9 +48,14 @@ class_list = [
     RestoreHistory,
     OpenImageInNewWindow,
     RemoveHistory,
+    ClearHistory,
 
     LoginAccountAuth,
     LogoutAccountAuth,
+
+    PrivacyTips,
+
+    UpdateTips,
 ]
 
 register_class, unregister_class = bpy.utils.register_classes_factory(class_list)

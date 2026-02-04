@@ -124,15 +124,15 @@ class Renderer:
         bool ShouldClip(vec2 pos, vec4 rect) {
             return pos.x < rect.x || pos.x > rect.z || pos.y < rect.y || pos.y > rect.w;
         }
-        
+
         vec3 LinearToSrgb(vec3 linear) {
             return pow(linear, vec3(1.0 / 2.2));
         }
-        
+
         vec3 SrgbToLinear(vec3 srgb) {
             return pow(srgb, vec3(2.2));
         }
-        
+
         void main() {
             if (ShouldClip(VertPos, ClipRect)) discard; // 如果超出裁剪区域，则不渲染
             FragColor = InColor * texture(Texture, FragUV);
@@ -290,7 +290,7 @@ class Renderer:
                 # y2 = y1 + (y2 - y1) * 0.5
                 shader.uniform_float("ClipRect", (x1, y1, x2, y2))
 
-                indices = idx_buf[cmd.idx_offset : cmd.idx_offset + cmd.elem_count].astype(np.int32)
+                indices = idx_buf[cmd.idx_offset: cmd.idx_offset + cmd.elem_count].astype(np.int32)
 
                 content = {
                     "Position": vertices,

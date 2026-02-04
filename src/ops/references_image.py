@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import bpy
 from bpy_extras.io_utils import ImportHelper
 
@@ -28,11 +30,24 @@ class SelectReferenceImageByFile(bpy.types.Operator, ImportHelper):
         options={"HIDDEN"},
     )
 
+    # 定义一个用于多文件选择的集合属性
+    files: bpy.props.CollectionProperty(
+        type=bpy.types.OperatorFileListElement,
+        options={'HIDDEN', 'SKIP_SAVE'}
+    )
+    # 用于存放所选文件夹路径的属性
+    directory: bpy.props.StringProperty(
+        subtype='DIR_PATH',
+        options={'HIDDEN', 'SKIP_SAVE'}
+    )
+
     def execute(self, context):
         print(self.bl_idname, self.filepath)
 
-        image = bpy.data.images.load(self.filepath)
-        add_reference_image(context, image)
+        for file in self.files:
+            img_path = Path(self.directory).joinpath(file.name).as_posix()
+            image = bpy.data.images.load(img_path)
+            add_reference_image(context, image)
         return {"FINISHED"}
 
 

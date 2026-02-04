@@ -1,5 +1,4 @@
 import os
-import random
 import threading
 
 import bpy
@@ -18,6 +17,7 @@ class RequestThread(threading.Thread):
         self.response = None
         self.result = None
         self.error = None
+        self.timeout = kwargs.get("timeout", 15)
 
     def run(self):
         """线程运行的核心方法（在子线程中执行）"""
@@ -59,6 +59,35 @@ class GetRequestThread(RequestThread):
         import requests
         # requests = import_requests()
         response = requests.get(self.url, timeout=15)
+        response.raise_for_status()  # 检查HTTP错误
+        self.response = response
+        self.result = response.text
+
+
+class PostRequestThread(RequestThread):
+    """用法
+
+    VERSION_URL = f"https://api-addon.acggit.com/v1/sys/version"
+    def on_request_finished(result, error):
+        if error:
+            print(f"[线程请求失败] {type(error).__name__}: {error}")
+            # 可以在这里更新UI，显示错误信息（因为已在主线程）
+            # 例如：bpy.context.scene.request_status = "Failed"
+        else:
+            print(f"[线程请求成功] 获取到 {len(result)} 字符的数据")
+            print(f"数据预览: {result[:200]}")
+    RequestThread(VERSION_URL, on_request_finished).start()
+    """
+
+    def __init__(self, url, callback_func, headers, payload, *args, **kwargs):
+        super().__init__(url, callback_func, *args, **kwargs)
+        self.daemon = True
+        self.headers = headers
+        self.payload = payload
+
+    def request(self):
+        import requests
+        response = requests.post(self.url, headers=self.headers, json=self.payload, timeout=self.timeout)
         response.raise_for_status()  # 检查HTTP错误
         self.response = response
         self.result = response.text

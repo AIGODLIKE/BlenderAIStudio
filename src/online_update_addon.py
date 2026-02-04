@@ -28,10 +28,10 @@ class UpdateService:
          "downloadType": 1, "downloadFileIdf": 2008822655007850496, "md5": "0d18f08dccf782b886ec257975c89b2b"},
     """
     version_info = None
-    is_refreshing = False  # 正在刷新中
+    is_refreshing = False  # 正在刷新中, 防止重复请求
 
     @staticmethod
-    def update_addon_version_info() -> None:
+    def update_addon_version_info(is_start=False) -> None:
         """更新插件版本信息"""
         cls = UpdateService
 
@@ -46,12 +46,14 @@ class UpdateService:
                     cls.version_info = json.loads(result)
                     vs = res['data']['versions']
                     logger.info(f"请求版本信息成功, 获取到 {len(vs)} 个版本数据")
+                    if cls.is_update_available():
+                        bpy.ops.bas.update_tips("INVOKE_DEFAULT")
                 except Exception as e:
                     logger.error(f"解析版本信息失败: {e}")
                 finally:
                     cls.is_refreshing = False
 
-        if cls.is_refreshing:
+        if cls.is_refreshing and not is_start:
             return
         cls.is_refreshing = True
         GetRequestThread(VERSION_URL, on_request_finished).start()
@@ -67,7 +69,7 @@ class UpdateService:
                 # logger.info(f"获取到 {len(versions)} 个版本数据")
                 return versions[0]
         except Exception as e:
-            logger.error(f"获取插件版本信息失败: {e}")
+            logger.error(f"获取最新一个插件版本信息失败: {e}")
         return None
 
     @staticmethod
@@ -232,7 +234,7 @@ class OnlineUpdateAddon(bpy.types.Operator, UpdateService):
     md5: bpy.props.StringProperty(default="")
 
     error_message = ""
-    download_info = None  # {"responseId":"xx","code":1000,"data":"https://ocdn-blender-launcher.aigodlike.com/addons/2009558539403526144?Expires=xx&OSSAccessKeyId=xx&Signature=xx"}
+    download_info = None  # {"responseId":"xx","code":1000,"data":"https://xxx.com/addons/2009558539403526144?Expires=xx&OSSAccessKeyId=xx&Signature=xx"}
     timer = None
     start_time = 0
     is_downloading = False
@@ -453,7 +455,6 @@ register_class, unregister_class = bpy.utils.register_classes_factory(class_list
 
 
 def register():
-    OnlineUpdateAddon.update_addon_version_info()
     register_class()
 
 
