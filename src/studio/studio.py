@@ -2575,33 +2575,45 @@ class AIStudio(AppHud):
             imgui.push_style_var_x(imgui.StyleVar.FRAME_PADDING, Const.RP_FRAME_P[0])
             imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.RP_FRAME_INNER_R)
             imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, Const.RP_CHILD_IS)
-            imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0)
+            imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0.5)
             imgui.push_style_color(imgui.Col.FRAME_BG, Const.FRAME_BG)
             imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
 
             items = list(PricingStrategy)
 
-            # 计算最大宽度
-            max_item_width = 0
-            for item in items:
-                max_item_width = max(max_item_width, imgui.calc_text_size(item.display_name)[0])
-            max_item_width += 2 * imgui.get_style().frame_padding[0]
-            aw = imgui.get_content_region_avail()[0]
-            max_item_width = max(aw, max_item_width)
+            bw = imgui.get_content_region_avail()[0]
+            bw = (bw - imgui.get_style().item_spacing[0] * (len(items) - 1)) / len(items)
+            bh = imgui.get_frame_height()
 
-            # 绘制下拉框
-            current_strategy = PricingStrategy(self.state.pricing_strategy)
-            if imgui.begin_combo("##Item", _T(current_strategy.display_name)):
-                for item in items:
-                    is_selected = self.state.pricing_strategy == item.value
-                    if is_selected:
-                        imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
-                    if imgui.button(_T(item.display_name), (max_item_width, 0)):
-                        self.state.pricing_strategy = item.value
-                        imgui.close_current_popup()
-                    if is_selected:
-                        imgui.pop_style_color()
-                imgui.end_combo()
+            for item in items:
+                if imgui.invisible_button(f"##{item.value}", (bw, bh)):
+                    self.state.pricing_strategy = item.value
+
+                # 先绘制背景
+                is_selected = self.state.pricing_strategy == item.value
+                dl = imgui.get_window_draw_list()
+                pmin = imgui.get_item_rect_min()
+                pmax = imgui.get_item_rect_max()
+                if is_selected:
+                    col = Const.BUTTON_SELECTED
+                elif imgui.is_item_hovered():
+                    col = Const.BUTTON_HOVERED
+                else:
+                    col = Const.TRANSPARENT
+                col = imgui.get_color_u32(col)
+                fr = imgui.get_style().frame_rounding
+                dl.add_rect_filled(pmin, pmax, col, fr)
+
+                # 在按钮上绘制文字
+                psize = imgui.get_item_rect_size()
+                text = _T(item.display_name)
+                text_size = imgui.calc_text_size(text)
+                text_pos = pmin[0] + (psize[0] - text_size[0]) * 0.5, pmin[1] + (psize[1] - text_size[1]) * 0.5
+                dl.add_text(text_pos, imgui.get_color_u32(Const.TEXT), text)
+
+                if item != items[-1]:
+                    imgui.same_line()
+
             imgui.pop_style_color(2)
             imgui.pop_style_var(4)
             imgui.pop_item_width()
