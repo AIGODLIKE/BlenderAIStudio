@@ -1,4 +1,6 @@
 import time
+from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
+from requests.exceptions import ReadTimeout
 from .history import StudioHistory, StudioHistoryItem
 from ..account import Account
 from ..tasks import TaskManager, TaskState, Task, TaskResult
@@ -117,6 +119,7 @@ class StudioClient(BaseAdapter):
 
         # 判断是否为网络异常 + 账号模式
         is_network_error = bool(result.error)
+        is_connection_error = isinstance(result.error, (HTTPConnectionPool, HTTPSConnectionPool, ReadTimeout))
 
         account = Account.get_instance()
         is_account_mode = account.auth_mode == AuthMode.ACCOUNT.value
@@ -134,7 +137,10 @@ class StudioClient(BaseAdapter):
             logger.critical(f"Task failed: {task.task_id}")
 
         if not result.success:
-            self.push_error(result.error or result.error_message)
+            if is_connection_error:
+                self.push_error("Generate Timeout, will refresh automatically.")
+            else:
+                self.push_error(result.error or result.error_message)
 
         item.finished_at = time.time()
         self.history.update_item(item)

@@ -54,6 +54,7 @@ error_translations = (
     ("Action '{action}' not supported for model '{model_name}'.", "模型 '{model_name}' 不支持操作 '{action}'。", None),
     ("Unknown action: '{action}'.", "未知操作: '{action}'。", None),
     ("Builder '{name}' not registered.", "构建器 '{name}' 未注册。", None),
+    ("Generate Timeout, will refresh automatically.", "生成超时，即将自动刷新。", None),
 )
 
 studio_panel_translations = (
