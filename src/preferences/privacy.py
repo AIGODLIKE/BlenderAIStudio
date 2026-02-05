@@ -7,30 +7,35 @@ from ..utils.device_info import get_all_devices
 from ..utils.memory_info import format_memory_info
 
 
+def get_system_info():
+    import platform
+    try:
+        os_string = f"{platform.system()};{platform.version()};{platform.machine()}"
+    except Exception as e:
+        os_string = "unknown"
+        logger.error(e)
+    return os_string
+
+
 def collect_info():
     pref = get_pref()
     if pref.init_privacy and pref.collect_version_data:
         from ..studio.account import Account
         try:
             account = Account.get_instance()
-            url = f"{account.service_url}/sys/report"
+            url = f"{account.service_url}/sys/device-statistics"
 
             headers = {
                 "X-Auth-T": account.token,
                 "Content-Type": "application/json",
             }
-            import platform
 
             payload = {
                 "blenderVersion": bpy.app.version_string,
                 "addonVersionString": get_addon_version_str(),
                 **get_all_devices(),
                 "memory": format_memory_info(),
-                "system": platform.system(),
-                "system_version": platform.version(),
-                "system_machine": platform.machine(),
-                "system_platform": platform.platform(),
-                "system_uname": str(platform.uname()),
+                "os": get_system_info()
             }
 
             def on_request_finished(result, error):

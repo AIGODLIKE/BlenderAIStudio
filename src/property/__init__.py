@@ -72,7 +72,7 @@ class FailedCheck:
             def a():
                 self.failed_check_state = "CHECKING"
                 account = Account.get_instance()
-                account.add_task_ids_to_fetch_status_now(self.task_id)
+                account.add_task_ids_to_fetch_status_now([self.task_id, ])
 
             bpy.app.timers.register(a, first_interval=.01)
         elif self.failed_check_state == "CHECKING":
