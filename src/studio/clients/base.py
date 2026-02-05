@@ -75,10 +75,10 @@ class StudioClient(BaseAdapter):
                     item.started_at = time.time()
             elif state == TaskState.RUNNING or state == TaskState.PROCESSING:
                 item.status = StudioHistoryItem.STATUS_RUNNING if state == TaskState.RUNNING else StudioHistoryItem.STATUS_PROCESSING
-                if not item.started_at:
-                    item.started_at = time.time()
             elif state == TaskState.COMPLETED:
                 self.task_id = ""
+            if state == TaskState.RUNNING:
+                item.started_at = time.time()
         if state == TaskState.PREPARING:
             logger.info(f"⏳ 任务准备 {task.progress.message}")
         elif state == TaskState.RUNNING:
