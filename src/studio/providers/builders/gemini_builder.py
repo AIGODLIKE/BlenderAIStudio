@@ -280,7 +280,7 @@ class GeminiImageGenerateBuilder(RequestBuilder):
         # 20MB
         total_image_size_limit = 20 * 1024 * 1024
         total_image_size = 0
-        all_image_paths = ref_images_path + ([image_path] if image_path else [])
+        all_image_paths = ref_images_path + ([image_path, ] if image_path else []) + [mask_image_path, ]
         for image_path in all_image_paths:
             total_image_size += Path(image_path).stat().st_size
         if total_image_size > total_image_size_limit:
@@ -298,7 +298,9 @@ class GeminiImageGenerateBuilder(RequestBuilder):
                 image_base64 = base64.b64encode(f.read()).decode("utf-8")
             part = {"inline_data": {"mime_type": "image/png", "data": image_base64}}
             parts.append(part)
-            logger.info(f"add_part {image_file_path}")
+            base64_size_mb = round(len(image_base64) / (1024 * 1024), 2)
+
+            logger.info(f"add_part\tbase64_size_mb:{base64_size_mb}\tpath:{image_file_path}")
 
         add_part(image_path)  # 添加主图
         # 遮罩默认在第一张参考图片位置
