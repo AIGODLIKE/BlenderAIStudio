@@ -78,19 +78,6 @@ class HistoryFailedCheck:
                 return True
         return False
 
-    def failed_check(self):
-        """
-        """
-        if self.failed_check_state == "CHECKING":  # 检查中,已经放到线程中,等待检查结果
-            def c():
-                account = Account.get_instance()
-                task_history = account.fetch_task_history(self.task_id)
-                if task_history:
-                    print(f"\tCHECKING:{self.task_id}{task_history}")
-                # self.failed_check_state = "COMPLETED"
-
-            bpy.app.timers.register(c, first_interval=.01)
-
 
 class EditHistory(HistoryState, GeneralProperty, HistoryFailedCheck, bpy.types.PropertyGroup):
     origin_image: bpy.props.PointerProperty(type=bpy.types.Image, name="原图图片")
@@ -136,7 +123,6 @@ class EditHistory(HistoryState, GeneralProperty, HistoryFailedCheck, bpy.types.P
         if self.is_running:
             self.draw_task(context, layout)
             return
-        self.failed_check()
         box = layout.box()
 
         self.draw_debug(box)
@@ -246,6 +232,7 @@ class EditHistory(HistoryState, GeneralProperty, HistoryFailedCheck, bpy.types.P
             column.label(text=self.failed_check_state)
             column.label(text=f"is_have_failed_check:{self.is_have_failed_check}")
             column.prop(self, "is_refund_points")
+            column.prop(self, "running_state")
 
 
 class DynamicEnumeration:
@@ -351,18 +338,36 @@ class SceneFailedCheck:
         """在场景属性下使用
         找所有的失败问题
         """
-        task_ids = []
+        account = Account.get_instance()
+
+        have_check_task_ids = []  # 需要推送检查的id
+        checking_task_ids = {}  # 需要检查有没有检查结果的id
+
         for history in self.edit_history:
             if history.is_have_failed_check:
-                task_ids.append(history.task_id)
+                have_check_task_ids.append(history.task_id)
 
                 def a():
                     history.failed_check_state = "CHECKING"  # 将此项设置为检查中
 
                 bpy.app.timers.register(a, first_interval=.01)
+            if history.failed_check_state == "CHECKING":
+                checking_task_ids[history.task_id] = history
 
-        account = Account.get_instance()
-        account.add_task_ids_to_fetch_status_threaded(task_ids)
+        # print("have_check_task_ids", have_check_task_ids)
+        # print("checking_task_ids", checking_task_ids)
+        check_result = account.fetch_task_history(checking_task_ids.keys())
+        # print("check_result", len(check_result))
+        for task_id, task_history in check_result.items():
+            ...
+            # print(f"\tCHECKING:{task_id}{task_history}")
+            # if task_history.state == TaskStatus.SUCCESS:
+            #     self.failed_check_state = "COMPLETED"
+            # elif task_history.state == TaskStatus.FAILED:
+            #     self.failed_check_state = "FAILED"
+            # elif task_history.state == TaskStatus.UNKNOWN:
+
+        account.add_task_ids_to_fetch_status_threaded(have_check_task_ids)
 
 
 class SceneProperty(bpy.types.PropertyGroup, GeneralProperty, DynamicEnumeration, SceneFailedCheck):

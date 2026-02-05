@@ -237,9 +237,10 @@ class AIStudioHistoryPanel(bpy.types.Panel):
 
     def draw_header(self, context):
         oii = context.scene.blender_ai_studio_property
-        text = bpy.app.translations.pgettext("Generate History")
+        oii.all_failed_check()
 
         row = self.layout.row()
+        text = bpy.app.translations.pgettext("Generate History")
         row.label(text=f"{text} {len(oii.edit_history)}")
         row.separator()
         row.operator("bas.clear_history", icon="X", text="", emboss=False)
