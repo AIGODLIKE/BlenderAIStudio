@@ -187,6 +187,10 @@ class TaskSyncService:
             return False
 
     def _handle_completed_task(self, task_history: TaskHistoryData, status: TaskStatusData):
+        # 检查任务是否已经下载过
+        if task_history.state == TaskStatus.SUCCESS and task_history.outputs:
+            logger.info(f"Task {task_history.task_id} already downloaded, skip re-download")
+            return
         logger.info(f"Task {task_history.task_id} completed, downloading result...")
 
         # 下载结果
