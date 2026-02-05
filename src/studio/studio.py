@@ -2018,52 +2018,14 @@ class AIStudio(AppHud):
                 imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, 15)
                 full_width = imgui.get_content_region_avail()[0]
                 self.font_manager.push_h1_font()
-                status = self.client.query_status()
-                # 按钮状态:
-                #   1. 无状态
-                #   2. 正在提交
-                #   3. 正在渲染
-                #   4. 停止渲染
-                # "running", "processing"
-                task_state: TaskState = status.get("state", "")
-                is_rendering = False
-                show_stop_btn = False
                 label = "  " + _T("Start")
                 if self.state.auth_mode == AuthMode.ACCOUNT.value:
                     price = self.client.calc_price()
                     if price is not None:
                         label += _T("(%s/use)") % price
-                if self.client.is_task_submitting:
-                    label = "  " + _T("Task Submitting...")
-                if task_state == "running":
-                    is_rendering = True
-                    elapsed_time = self.client.query_task_elapsed_time()
-                    label = f"  {_T('Generating')}({elapsed_time:.1f})s"
-                    rmin = imgui.get_cursor_screen_pos()
-                    rmax = (rmin[0] + full_width, rmin[1] + gen_btn_height)
-                    if imgui.is_mouse_hovering_rect(rmin, rmax):
-                        label = "  " + _T("Stop AI Rendering")
-                        show_stop_btn = True
-                if task_state in {"preparing", "rendering"}:
-                    is_rendering = True
-                    elapsed_time = status.get("elapsed_time", 0)
-                    label = f"  {_T('Rendering')}({elapsed_time:.1f})s"
-                    rmin = imgui.get_cursor_screen_pos()
-                    rmax = (rmin[0] + full_width, rmin[1] + gen_btn_height)
-                    if imgui.is_mouse_hovering_rect(rmin, rmax):
-                        label = "  " + _T("Stop AI Rendering")
-                        show_stop_btn = True
                 col_btn = Const.SLIDER_NORMAL
                 col_btn_hover = (77 / 255, 161 / 255, 255 / 255, 1)
                 col_btn_active = (26 / 255, 112 / 255, 208 / 255, 1)
-                if is_rendering:
-                    col_btn = (255 / 255, 141 / 255, 26 / 255, 1)
-                    col_btn_hover = (255 / 255, 87 / 255, 51 / 255, 1)
-                    col_btn_active = (255 / 255, 131 / 255, 5 / 255, 1)
-                    if show_stop_btn:
-                        col_btn = (255 / 255, 116 / 255, 51 / 255, 1)
-                        col_btn_hover = (255 / 255, 116 / 255, 51 / 255, 1)
-                        col_btn_active = (255 / 255, 62 / 255, 20 / 255, 1)
 
                 imgui.push_style_color(imgui.Col.BUTTON, col_btn)
                 imgui.push_style_color(imgui.Col.BUTTON_HOVERED, col_btn_hover)
@@ -2071,10 +2033,7 @@ class AIStudio(AppHud):
 
                 label_size = imgui.calc_text_size(label)
                 if imgui.button("##开始AI渲染", (full_width, gen_btn_height)):
-                    if not is_rendering:
-                        self.client.add_task(self.state)
-                    elif show_stop_btn:
-                        self.client.cancel_generate_task()
+                    self.client.add_task(self.state)
 
                 pmin = imgui.get_item_rect_min()
                 pmax = imgui.get_item_rect_max()
@@ -2085,10 +2044,6 @@ class AIStudio(AppHud):
                 pmin = pmin[0] + offset_x, pmin[1] + offset_y
                 pmax = pmax[0] - offset_x, pmax[1] - offset_y
                 icon_name = "start_ai_generate"
-                if is_rendering:
-                    icon_name = "ai_rendering"
-                    if show_stop_btn:
-                        icon_name = "stop_ai_generate"
                 icon = TexturePool.get_tex_id(icon_name)
                 dl = imgui.get_window_draw_list()
                 dl.add_image(icon, pmin, (pmin[0] + (pmax[1] - pmin[1]), pmax[1]))
