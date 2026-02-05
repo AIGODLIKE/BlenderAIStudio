@@ -57,7 +57,29 @@ class HistoryState:
         self.running_state = ""
 
 
-class EditHistory(HistoryState, GeneralProperty, bpy.types.PropertyGroup):
+class FailedCheck:
+    task_id: bpy.props.StringProperty(name="任务ID")
+    failed_check_state: bpy.props.EnumProperty(name="Failed Check State", items=[
+        ("NOT_CHECKED", "未检查", ""),
+        # ("FAILED", "检查失败", ""), 应该没有这种情况
+        ("COMPLETED", "检查完成", ""),
+        ("CHECKING", "检查中", ""),
+    ], default="NOT_CHECKED")
+    is_refund_points: bpy.props.BoolProperty(name="已退回积分")
+
+    def failed_check(self):
+        if self.failed_check_state == "NOT_CHECKED":
+            self.failed_check_state = "CHECKING"
+            account = Account.get_instance()
+            account.add_task_ids_to_fetch_status_now(self.task_id)
+        elif self.failed_check_state == "CHECKING":
+            account = Account.get_instance()
+            task_history = account.fetch_task_history(self.task_id)
+            print(f"\tCHECKING:{self.task_id}{task_history}")
+            self.failed_check_state = "COMPLETED"
+
+
+class EditHistory(HistoryState, GeneralProperty, FailedCheck, bpy.types.PropertyGroup):
     origin_image: bpy.props.PointerProperty(type=bpy.types.Image, name="原图图片")
     generated_images: bpy.props.CollectionProperty(type=ImageItem, name="生成的图片")
 
@@ -198,27 +220,6 @@ class EditHistory(HistoryState, GeneralProperty, bpy.types.PropertyGroup):
         ):
             if text.strip():
                 column.label(text=text)
-
-        # if state_str == "running":
-        #     column.progress(factor=self.running_progress, type="RING", text=self.running_message)
-        #     column.progress(factor=self.running_progress, type="BAR", text=self.running_message)
-
-        # column = layout.column(align=True)
-        # image = context.space_data.image
-        # if image == self.origin_image:
-        #     if gi := self.generated_image:
-        #         box = column.box()
-        #         box.context_pointer_set("image", gi)
-        #         if gi.preview:
-        #             box.template_icon(gi.preview.icon_id, scale=6)
-        #         box.operator("bas.view_image", text="View Generated Image")
-        # elif image == self.generated_image:
-        #     if oi := self.origin_image:
-        #         box = column.box()
-        #         box.context_pointer_set("image", oi)
-        #         if oi.preview:
-        #             box.template_icon(oi.preview.icon_id, scale=6)
-        #         box.operator("bas.view_image", text="View Origin Image")
 
 
 class DynamicEnumeration:
@@ -423,10 +424,17 @@ class SceneProperty(bpy.types.PropertyGroup, GeneralProperty, DynamicEnumeration
         """
         清理任务的运行状态
         只会在启动插件或加载文件时进行
+        会出现这种情况一般是生成结果还没反回时Blender就被关闭了
         """
         for h in self.edit_history:
-            if h.running_state not in ("completed", "failed", "cancelled",):
+            if h.running_state not in ("completed", "failed", "cancelled"):
                 h.running_state = "failed"
+            if h.failed_check_state not in (
+                    "NOT_CHECKED",
+                    "FAILED",
+                    "COMPLETED",
+            ):
+                h.failed_check_state = "FAILED"
 
 
 class_list = [

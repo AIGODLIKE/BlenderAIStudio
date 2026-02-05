@@ -321,6 +321,7 @@ class ApplyAiEditImage(bpy.types.Operator):
         task.register_callback("progress_updated", on_progress)
         task.register_callback("completed", on_completed)
         task.register_callback("failed", on_failed)
+        edit_history.task_id = task.task_id
         TaskManager.get_instance().submit_task(task)
         logger.info(f"任务提交: {task.task_id}")
 
