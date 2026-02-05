@@ -72,7 +72,7 @@ class FailedCheck:
             def a():
                 self.failed_check_state = "CHECKING"
                 account = Account.get_instance()
-                account.add_task_ids_to_fetch_status_now([self.task_id, ])
+                account.add_task_ids_to_fetch_status_threaded([self.task_id, ])
 
             bpy.app.timers.register(a, first_interval=.01)
         elif self.failed_check_state == "CHECKING":
@@ -81,8 +81,18 @@ class FailedCheck:
                 task_history = account.fetch_task_history(self.task_id)
                 print(f"\tCHECKING:{self.task_id}{task_history}")
                 # self.failed_check_state = "COMPLETED"
+                account.add_task_ids_to_fetch_status_threaded([self.task_id, ])
 
             bpy.app.timers.register(c, first_interval=.01)
+
+
+class SceneFailedCheck:
+
+    def all_failed_check(self):
+        """在场景属性下使用
+        找所有的失败问题
+        """
+        return self.failed_check_state == "FAILED"
 
 
 class EditHistory(HistoryState, GeneralProperty, FailedCheck, bpy.types.PropertyGroup):
@@ -131,6 +141,8 @@ class EditHistory(HistoryState, GeneralProperty, FailedCheck, bpy.types.Property
             return
         self.failed_check()
         box = layout.box()
+
+        self.draw_debug(box)
 
         column = box.column()
         row = column.row(align=True)
@@ -227,6 +239,7 @@ class EditHistory(HistoryState, GeneralProperty, FailedCheck, bpy.types.Property
         ):
             if text.strip():
                 column.label(text=text)
+        self.draw_debug(column)
 
     def draw_debug(self, layout):
         if get_pref().use_dev_environment:
@@ -234,7 +247,7 @@ class EditHistory(HistoryState, GeneralProperty, FailedCheck, bpy.types.Property
             column.label(text="Debug")
             column.label(text=self.task_id)
             column.label(text=self.failed_check_state)
-            column.label(text=self.is_refund_points)
+            column.prop(self, "is_refund_points")
 
 
 class DynamicEnumeration:
@@ -334,7 +347,7 @@ class DynamicEnumeration:
     )
 
 
-class SceneProperty(bpy.types.PropertyGroup, GeneralProperty, DynamicEnumeration):
+class SceneProperty(bpy.types.PropertyGroup, GeneralProperty, DynamicEnumeration, SceneFailedCheck):
     """
     生成的属性
     """

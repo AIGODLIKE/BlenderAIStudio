@@ -37,8 +37,11 @@ class StatusResponseParser:
     def parse_batch_response(self, response_json: dict) -> dict[str, TaskStatusData]:
         result = {}
         data = response_json.get("data", {})
-
+        print("response_json",response_json)
+        print("parse_batch_response")
         for task_id, task_info in data.items():
+            print(f"\t{task_id}:{task_info}")
+            print()
             state = TaskStatus(task_info.get("state", TaskStatus.UNKNOWN.value))
             urls = task_info.get("urls") or []
             progress = 1.0 if state == TaskStatus.SUCCESS else 0.0
@@ -51,6 +54,8 @@ class StatusResponseParser:
                 progress=progress,
                 error_message=error_message,
             )
+        print()
+        print()
 
         return result
 
