@@ -280,8 +280,7 @@ class ApplyAiEditImage(bpy.types.Operator):
                             gi.preview_ensure()
                             gi.name = generate_image_name
                             space_data.image = gi
-                            gih = edit_history.generated_images.add()
-                            gih.image = gi
+                            edit_history.add_generated_image(gi)
                         except Exception as e:
                             print("生成完成设置生成图像到活动项错误 error", e)
                             import traceback

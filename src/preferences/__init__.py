@@ -127,6 +127,11 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey, Priv
         self.account_pricing_strategy = value
         bpy.context.preferences.use_preferences_save = True
 
+    use_dev_ui: bpy.props.BoolProperty(
+        name="Use Development UI",
+        default=False,
+        **translation_context,
+    )
     # 环境配置
     use_dev_environment: bpy.props.BoolProperty(
         name="Use Development Environment",
@@ -177,6 +182,7 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey, Priv
         # 环境配置
         column = layout.column()
         column.label(text="Environment Settings")
+        column.prop(self, "use_dev_ui")
         column.prop(self, "use_dev_environment")
 
         if self.use_dev_environment:

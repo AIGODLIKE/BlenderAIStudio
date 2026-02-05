@@ -98,11 +98,22 @@ def check_update():
     OnlineUpdateAddon.update_addon_version_info(True)  # 启动自检更新,如果有测提示更新
 
 
+def check_failed_task():
+    scene = bpy.context.scene
+    if aii := getattr(scene, "blender_ai_studio_property", None):
+        if t := aii.all_failed_check():
+            return t
+    return 1 / 2
+
+
 def register():
     Timer.reg()
     bpy.app.timers.register(privacy, first_interval=0.5)  # 只在第一次启动时执行
     bpy.app.timers.register(check_update, first_interval=1)  # 只在第一次启动时执行
+    bpy.app.timers.register(check_failed_task, first_interval=0.1, persistent=True)
 
 
 def unregister():
     Timer.unreg()
+    if bpy.app.timers.is_registered(check_failed_task):
+        bpy.app.timers.unregister(check_failed_task)
