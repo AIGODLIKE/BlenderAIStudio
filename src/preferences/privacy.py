@@ -19,19 +19,25 @@ def collect_info():
                 "X-Auth-T": account.token,
                 "Content-Type": "application/json",
             }
+            import platform
 
             payload = {
                 "blenderVersion": bpy.app.version_string,
                 "addonVersionString": get_addon_version_str(),
                 **get_all_devices(),
                 "memory": format_memory_info(),
+                "system": platform.system(),
+                "system_version": platform.version(),
+                "system_machine": platform.machine(),
+                "system_platform": platform.platform(),
+                "system_uname": str(platform.uname()),
             }
 
             def on_request_finished(result, error):
                 if result:
                     logger.info("send collect_info finished")
                 if error:
-                    logger.error("send collect_info error: %s", error)
+                    logger.error("send collect_info on_request_finished error: %s", error)
 
             PostRequestThread(url, on_request_finished, headers, payload).start()
         except Exception as e:

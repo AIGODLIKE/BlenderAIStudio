@@ -328,6 +328,7 @@ translations = (
     ("BLenderAiStudio Update Tips", "BLenderAiStudio 更新提示", "Operator"),
     ("Total image size exceeds the limit of 20MB.", "总图像大小超过20MB限制。", ""),
     ("Credits Refunded", "积分已退回", ""),
+    ("Model", "模型", ""),
     *error_translations,
     *studio_panel_translations,
     *task_translations,

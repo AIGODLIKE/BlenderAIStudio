@@ -69,14 +69,20 @@ class FailedCheck:
 
     def failed_check(self):
         if self.failed_check_state == "NOT_CHECKED":
-            self.failed_check_state = "CHECKING"
-            account = Account.get_instance()
-            account.add_task_ids_to_fetch_status_now(self.task_id)
+            def a():
+                self.failed_check_state = "CHECKING"
+                account = Account.get_instance()
+                account.add_task_ids_to_fetch_status_now(self.task_id)
+
+            bpy.app.timers.register(a, first_interval=.01)
         elif self.failed_check_state == "CHECKING":
-            account = Account.get_instance()
-            task_history = account.fetch_task_history(self.task_id)
-            print(f"\tCHECKING:{self.task_id}{task_history}")
-            self.failed_check_state = "COMPLETED"
+            def c():
+                account = Account.get_instance()
+                task_history = account.fetch_task_history(self.task_id)
+                print(f"\tCHECKING:{self.task_id}{task_history}")
+                # self.failed_check_state = "COMPLETED"
+
+            bpy.app.timers.register(c, first_interval=.01)
 
 
 class EditHistory(HistoryState, GeneralProperty, FailedCheck, bpy.types.PropertyGroup):
@@ -123,6 +129,7 @@ class EditHistory(HistoryState, GeneralProperty, FailedCheck, bpy.types.Property
         if self.is_running:
             self.draw_task(context, layout)
             return
+        self.failed_check()
         box = layout.box()
 
         column = box.column()
@@ -220,6 +227,14 @@ class EditHistory(HistoryState, GeneralProperty, FailedCheck, bpy.types.Property
         ):
             if text.strip():
                 column.label(text=text)
+
+    def draw_debug(self, layout):
+        if get_pref().use_dev_environment:
+            column = layout.box().column(align=True)
+            column.label(text="Debug")
+            column.label(text=self.task_id)
+            column.label(text=self.failed_check_state)
+            column.label(text=self.is_refund_points)
 
 
 class DynamicEnumeration:
@@ -431,10 +446,10 @@ class SceneProperty(bpy.types.PropertyGroup, GeneralProperty, DynamicEnumeration
                 h.running_state = "failed"
             if h.failed_check_state not in (
                     "NOT_CHECKED",
-                    "FAILED",
+                    # "FAILED",
                     "COMPLETED",
             ):
-                h.failed_check_state = "FAILED"
+                h.failed_check_state = "NOT_CHECKED"
 
 
 class_list = [
