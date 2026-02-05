@@ -5,7 +5,7 @@ from typing import Dict, Any, TYPE_CHECKING
 from copy import deepcopy
 from pathlib import Path
 from .base import RequestBuilder, RequestData
-from .prompt import (
+from .gemini_prompt import (
     GENERATE_RENDER_WITH_REFERENCE,
     GENERATE_RENDER_WITHOUT_REFERENCE,
     GENERATE_DEPTH_MAP_WITHOUT_REFERENCE,
