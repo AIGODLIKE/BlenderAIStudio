@@ -1,7 +1,7 @@
 import mimetypes
 import time
 from queue import Queue
-from threading import Thread
+from threading import Thread, Lock
 from typing import Callable, Optional, TYPE_CHECKING
 
 from .task_history import (
@@ -104,6 +104,7 @@ class TaskSyncService:
     - 下载并保存结果文件
     - 更新 History 记录
     - 通过回调通知上层（解耦 Blender 操作）
+    - 防止并发重复同步（主动查询 vs 定时轮询）
     """
 
     def __init__(self, account: "Account", task_history: "AccountTaskHistory"):
@@ -111,6 +112,9 @@ class TaskSyncService:
         self.task_history = task_history
         self.parser = StatusResponseParser()
         self.result_callback: Optional[Callable[[TaskHistoryData], None]] = None
+
+        self._syncing_task_ids: set[str] = set()
+        self._sync_lock = Lock()
 
     def set_result_callback(self, callback: Callable[[TaskHistoryData], None]):
         """设置结果回调函数
@@ -127,17 +131,25 @@ class TaskSyncService:
         if not task_ids:
             return 0
 
+        #  过滤掉已在同步中的任务
+        with self._sync_lock:
+            available_task_ids = [tid for tid in task_ids if tid not in self._syncing_task_ids]
+            if not available_task_ids:
+                return 0
+
+            self._syncing_task_ids.update(available_task_ids)  # 标记为同步中
+
         try:
             # 1. 查询后端状态
-            logger.info(f"Querying status of {len(task_ids)} tasks...")
-            response_json = self.account._fetch_task_status(task_ids)
+            logger.info(f"Querying status of {len(available_task_ids)} tasks...")
+            response_json = self.account._fetch_task_status(available_task_ids)
 
             # 2. 解析响应
             status_map = self.parser.parse_batch_response(response_json)
 
             # 3. 更新每个任务
             success_count = 0
-            for task_id in task_ids:
+            for task_id in available_task_ids:
                 task_history = self.task_history.ensure_task_history(task_id)
                 if task_id in status_map:
                     if self._update_single_task(task_history, status_map[task_id]):
@@ -146,12 +158,17 @@ class TaskSyncService:
                     # 任务不在响应中，标记为不存在
                     self._mark_task_not_found(task_history)
 
-            logger.info(f"Successfully synced {success_count}/{len(task_ids)} tasks")
+            logger.info(f"Successfully synced {success_count}/{len(available_task_ids)} tasks")
             return success_count
 
         except Exception as e:
             logger.error(f"Failed to sync task status: {e}")
             return 0
+
+        finally:
+            # 移除标记
+            with self._sync_lock:
+                self._syncing_task_ids.difference_update(available_task_ids)
 
     def sync_single_task(self, task_id: str) -> bool:
         return self.sync_tasks([task_id]) > 0
