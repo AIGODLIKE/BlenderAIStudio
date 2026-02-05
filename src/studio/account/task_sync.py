@@ -40,7 +40,7 @@ class StatusResponseParser:
 
         for task_id, task_info in data.items():
             state = TaskStatus(task_info.get("state", TaskStatus.UNKNOWN.value))
-            urls = task_info.get("urls")
+            urls = task_info.get("urls") or []
             progress = 1.0 if state == TaskStatus.SUCCESS else 0.0
             error_message = task_info.get("msg")
 
