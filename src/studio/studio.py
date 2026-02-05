@@ -678,7 +678,18 @@ class StudioHistoryViewer:
             imgui.end_table()
 
     def _draw_content_preparing(self, item: StudioHistoryItem) -> None:
-        self._draw_content_pending(item)
+        if imgui.begin_table("##Content", 1):
+            h1 = imgui.get_text_line_height() * 3
+            w1 = imgui.get_content_region_avail()[0]
+            imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 0)
+            imgui.table_next_column()
+            over_text = _T("Rendering") + "." * round(imgui.get_time() // 0.5 % 4)
+            self.app.font_manager.push_h1_font(24 * 2)
+            imgui.push_style_color(imgui.Col.PLOT_HISTOGRAM, Const.YELLOW)
+            CustomWidgets.progress_bar_with_overlay(1, (w1, h1), over_text)
+            imgui.pop_style_color(1)
+            self.app.font_manager.pop_font()
+            imgui.end_table()
 
     def _draw_content_running(self, item: StudioHistoryItem) -> None:
         self._draw_content_pending(item)
