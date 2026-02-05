@@ -102,7 +102,7 @@ class GeminiImageGenerateBuilder(RequestBuilder):
             headers=headers,
             payload=payload,
             method=endpoint.get("method", "POST"),
-            timeout=300,
+            timeout=80,
         )
 
     def _preprocess_params(self, params: Dict[str, Any]) -> Dict[str, Any]:
