@@ -2550,8 +2550,8 @@ class AIStudio(AppHud):
                 title = _T("Provider Strategy")
                 tips = [
                     _T("Select provider by strategy."),
-                    _T("Best Speed: faster provider first."),
-                    _T("Best Balance: more stable provider first."),
+                    _T("Best Balance: faster provider first."),
+                    _T("Best Price: more stable provider first."),
                 ]
                 AppHelperDraw.draw_tips_with_title(self, tips, title)
             imgui.pop_style_var(1)
@@ -2623,7 +2623,10 @@ class AIStudio(AppHud):
         if True:
             text1 = _T("将从")
             text2 = str(self.state.provider_count(self.client.current_model_name))
-            text3 = _T("家供应商选择最稳定方案")
+            if self.state.pricing_strategy == PricingStrategy.BEST_BALANCE.value:
+                text3 = _T("家供应商选择最稳定方案")
+            else:
+                text3 = _T("家供应商选择最优惠方案")
             icon = "check_ok"
             # 1. 基础尺寸与位置计算
             width = imgui.get_content_region_avail()[0]

@@ -43,14 +43,14 @@ class AuthMode(Enum):
 
 
 class PricingStrategy(Enum):
-    BEST_SPEED = "bestSpeed"
-    BEST_BALANCE = "bestPrice"
+    BEST_PRICE = "bestPrice"
+    BEST_BALANCE = "bestBalance"
 
     @property
     def display_name(self) -> str:
         """获取可翻译的显示名称"""
-        if self == PricingStrategy.BEST_SPEED:
-            return "Best Speed"
+        if self == PricingStrategy.BEST_PRICE:
+            return "Best Price"
         elif self == PricingStrategy.BEST_BALANCE:
             return "Best Balance"
         return self.value
