@@ -336,6 +336,7 @@ class UniversalClient(StudioClient):
         item.task_id = self.task_id
         item.model = self.model_name
         item.created_at = time.time()
+        item.started_at = time.time()
         item.status = StudioHistoryItem.STATUS_PREPARING
         item.metadata.setdefault("params", {}).update(params)
         self.history.add(item)
