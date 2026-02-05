@@ -6,6 +6,7 @@ from pathlib import Path
 from traceback import print_exc
 from uuid import uuid4
 from bpy.app.translations import pgettext as _T
+from threading import Lock
 from ..timer import Timer
 from ..utils import get_temp_folder
 
@@ -264,6 +265,19 @@ class BlenderRenderHelper:
     负责根据 itype 渲染 Blender 场景，返回渲染结果路径。
     """
 
+    IS_RENDERING = False
+    IS_RENDERING_LOCK = Lock()
+
+    @classmethod
+    def set_is_rendering(cls, value: bool):
+        with cls.IS_RENDERING_LOCK:
+            cls.IS_RENDERING = value
+
+    @classmethod
+    def get_is_rendering(cls) -> bool:
+        with cls.IS_RENDERING_LOCK:
+            return cls.IS_RENDERING
+
     def __init__(self):
         self.is_rendering = False
         self.render_cancel = False
@@ -299,20 +313,32 @@ class BlenderRenderHelper:
 
         if itype == "CameraRender":
             self._wait_for_rendering()
-            self._render_camera(image_path, context)
+            BlenderRenderHelper.set_is_rendering(True)
+            try:
+                self._render_camera(image_path, context)
+            finally:
+                BlenderRenderHelper.set_is_rendering(False)
         elif itype == "CameraDepth":
             self._wait_for_rendering()
-            self._render_depth(image_path, context)
+            BlenderRenderHelper.set_is_rendering(True)
+            try:
+                self._render_depth(image_path, context)
+            finally:
+                BlenderRenderHelper.set_is_rendering(False)
         elif itype == "FastRender":
             self._wait_for_rendering()
-            self._render_opengl_viewport(image_path, context)
+            BlenderRenderHelper.set_is_rendering(True)
+            try:
+                self._render_opengl_viewport(image_path, context)
+            finally:
+                BlenderRenderHelper.set_is_rendering(False)
         else:
             raise ValueError(f"Unknown input image type: {itype}")
 
         return image_path
 
     def _is_other_rendering(self):
-        return bpy.app.is_job_running("RENDER")
+        return bpy.app.is_job_running("RENDER") or BlenderRenderHelper.get_is_rendering()
 
     def _wait_for_rendering(self):
         """等待渲染完成"""
@@ -404,6 +430,19 @@ class BlenderRenderHelper:
         if self.rendering_time_start == 0:
             return 0
         return time.time() - self.rendering_time_start
+
+
+@bpy.app.handlers.persistent
+def reset_render_status(_, __):
+    BlenderRenderHelper.set_is_rendering(False)
+
+
+def register():
+    bpy.app.handlers.load_post.append(reset_render_status)
+
+
+def unregister():
+    bpy.app.handlers.load_post.remove(reset_render_status)
 
 
 if __name__ == "__main__":
