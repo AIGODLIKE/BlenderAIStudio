@@ -1,9 +1,11 @@
-import bpy
 import base64
-from bpy.app.translations import pgettext as _T
-from typing import Dict, Any, TYPE_CHECKING
 from copy import deepcopy
 from pathlib import Path
+from typing import Dict, Any, TYPE_CHECKING
+
+import bpy
+from bpy.app.translations import pgettext as _T
+
 from .base import RequestBuilder, RequestData
 from .gemini_prompt import (
     GENERATE_RENDER_WITH_REFERENCE,
@@ -17,7 +19,6 @@ from .gemini_prompt import (
     EDIT_BASE_PROMPT,
 )
 from .... import logger
-
 from ....utils import calc_appropriate_aspect_ratio
 
 if TYPE_CHECKING:
@@ -38,7 +39,8 @@ class GeminiImageGenerateBuilder(RequestBuilder):
     def __init__(self, is_pro: bool = False):
         self.is_pro = is_pro
 
-    def build(self, params: Dict[str, Any], model_config: "ModelConfig", auth_mode: str, credentials: Dict[str, str]) -> RequestData:
+    def build(self, params: Dict[str, Any], model_config: "ModelConfig", auth_mode: str,
+              credentials: Dict[str, str]) -> RequestData:
         """构建 Gemini 图像请求
 
         Args:
@@ -173,11 +175,11 @@ class GeminiImageGenerateBuilder(RequestBuilder):
         return processed
 
     def _build_headers(
-        self,
-        header_template: Dict[str, str],
-        credentials: Dict[str, str],
-        model_config: "ModelConfig",
-        params: Dict[str, Any],
+            self,
+            header_template: Dict[str, str],
+            credentials: Dict[str, str],
+            model_config: "ModelConfig",
+            params: Dict[str, Any],
     ) -> Dict[str, str]:
         """构建 Headers
 
@@ -281,10 +283,11 @@ class GeminiImageGenerateBuilder(RequestBuilder):
         total_image_size_limit = 20 * 1024 * 1024
         total_image_size = 0
         all_image_paths = ref_images_path + ([image_path, ] if image_path else []) + [mask_image_path, ]
-        for image_path in all_image_paths:
-            total_image_size += Path(image_path).stat().st_size
-        if total_image_size > total_image_size_limit:
-            raise ValueError("Total image size exceeds the limit of 20MB.")
+        for i in all_image_paths:
+            total_image_size += Path(i).stat().st_size
+            if total_image_size > total_image_size_limit:
+                logger.warning(f"total_image_size :{total_image_size / 1024 / 1024}MB")
+                raise ValueError("Total image size exceeds the limit of 20MB.")
 
         prompt = self._build_edit_prompt(
             user_prompt,
@@ -363,10 +366,10 @@ class GeminiImageGenerateBuilder(RequestBuilder):
             return base_prompt
 
     def _build_generate_prompt(
-        self,
-        user_prompt: str,
-        has_reference: bool = False,
-        is_color_render: bool = False,
+            self,
+            user_prompt: str,
+            has_reference: bool = False,
+            is_color_render: bool = False,
     ) -> str:
         if is_color_render:
             if has_reference:

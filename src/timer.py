@@ -101,7 +101,7 @@ def check_update():
 def check_failed_task():
     scene = bpy.context.scene
     if aii := getattr(scene, "blender_ai_studio_property", None):
-        if t := aii.all_failed_check():
+        if t := aii.check_all_failed():
             return t
     return 1 / 2
 

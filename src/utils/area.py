@@ -7,7 +7,11 @@ def find_ai_image_editor_space_data():
     for area in bpy.context.screen.areas:
         if area.type == "IMAGE_EDITOR":
             for region in area.regions:
-                if region.type == "TOOLS":
-                    if region.active_panel_category == "Image":
+                if region.type == "UI":
+                    if region.active_panel_category == "AIStudio":
                         panel_data.append(area.spaces[0])
     return panel_data
+
+
+if __name__ == "__main__":
+    print(find_ai_image_editor_space_data())

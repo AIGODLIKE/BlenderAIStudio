@@ -86,7 +86,8 @@ class HistoryFailedCheck:
         if self.is_refund_points:
             column.label(text="已退还积分")
         if self.failed_check_message:
-            column.label(text=self.failed_check_message)
+            for j in self.failed_check_message.split("\n"):
+                column.label(text=j)
 
 
 class EditHistory(HistoryState, GeneralProperty, HistoryFailedCheck, bpy.types.PropertyGroup):
@@ -142,7 +143,7 @@ class EditHistory(HistoryState, GeneralProperty, HistoryFailedCheck, bpy.types.P
         self.draw_debug(box)
         self.draw_failed_check(box)
 
-        column = box.column()
+        column = box.column(align=True)
         row = column.row(align=True)
         row.context_pointer_set("history", self)
         row.prop(self, "expand_history", text=self.name,
@@ -167,15 +168,16 @@ class EditHistory(HistoryState, GeneralProperty, HistoryFailedCheck, bpy.types.P
                 row.context_pointer_set("image", oi)
                 row.template_icon(oi.preview.icon_id, scale=5)
 
-        if self.running_state == "failed":
-            rr = column.row()
-            rr.alert = True
-            rr.label(text=self.running_message)
+        if self.running_state == "failed" and self.running_message:
+            for j in self.running_message.split("\n"):
+                rr = column.row(align=True)
+                rr.alert = True
+                rr.label(text=j)
             # TODO 重试按钮
         if not self.expand_history:
             return
 
-        column = box.column()
+        column = box.column(align=True)
         if generated_images := self.generated_images:
             row = column.row()
             for i in generated_images:
@@ -349,9 +351,10 @@ class DynamicEnumeration:
 
 class SceneFailedCheck:
 
-    def all_failed_check(self):
+    def check_all_failed(self, immediately=False):
         """在场景属性下使用
         找所有的失败问题
+        immediately 立刻刷新,如果是请求的时候发生的错误就立即检查一次
         """
         account = Account.get_instance()
 
@@ -364,21 +367,24 @@ class SceneFailedCheck:
                 have_check_task_ids.append(history.task_id)
                 checking_task_ids[history.task_id] = history
 
-        account.add_task_ids_to_fetch_status_threaded(have_check_task_ids)  # 发送检查任务
+        if immediately:
+            account.add_task_ids_to_fetch_status_now(have_check_task_ids)
+        else:
+            account.add_task_ids_to_fetch_status_threaded(have_check_task_ids)  # 发送检查任务
 
         check_result = account.fetch_task_history(checking_task_ids.keys())  # 查找检查结果
         for task_id, thd in check_result.items():
             match_history = checking_task_ids.get(task_id, None)
             if thd and match_history:
                 if thd.state == TaskStatus.UNKNOWN:  # 没有发送到服务器的情况
-                    match_history.failed_check_message = "检查阶段错误,未扣除积分"
+                    match_history.failed_check_message = "Inspection stage error, points not deducted"
                     match_history.failed_check_state = "COMPLETED"
                 elif thd.state == TaskStatus.FAILED:  # 生成失败的情况
                     match_history.is_refund_points = True
-                    match_history.failed_check_message = "生成失败,未扣除积分\n请检查您的提示词&参考图"
+                    match_history.failed_check_message = "Generation failed, points not deducted\nPlease check your prompt words&reference pictures"
                     match_history.failed_check_state = "COMPLETED"
                     match_history.running_message = thd.error_message
-                    logger.info(f"生成失败 task_id:{task_id} {thd}")
+                    # logger.info(f"生成失败 task_id:{task_id} {thd}")
                 elif thd.state == TaskStatus.SUCCESS:  # 生成成功的情况
                     # 将成功的图片加载到Blender中
                     try:
@@ -387,28 +393,35 @@ class SceneFailedCheck:
                                 image = bpy.data.images.load(file_path)
 
                                 match_history.add_generated_image(image)  # 添加生成的图片到历史
+                                match_history.failed_check_message = "Retrieve image again completed"
 
                                 if image.preview:
                                     image.preview.reload()
                                 else:
                                     image.preview_ensure()
-                                space_data_list = find_ai_image_editor_space_data()
+
+                                space_data_list = find_ai_image_editor_space_data()  # 将图片加载到图片编辑器中
                                 for space_data in space_data_list:
                                     setattr(space_data, "image", image)
-                                logger.info(f"重新拉取图片 task_id:{task_id} {image}")
+
+                                logger.info(f"Retrieve the image again task_id:{task_id} {image}")
                     except Exception as e:
-                        logger.error(f"加载图片失败: task_id:{task_id}  {e}")
+                        logger.error(f"Failed to load image: task_id:{task_id}  {e}")
                     finally:
                         # 不管加不加载得成功生成的内容都是成功的,
+                        match_history.running_message = ""
                         match_history.running_state = "completed"  # 标记为生成完成
                         match_history.failed_check_state = "COMPLETED"
+
                 elif thd.state == TaskStatus.RUNNING:  # 这个图片正在生成中,这样的情况一般是在生成图片的时候强制关闭了Blender
-                    match_history.failed_check_message = "生成中..."
+                    match_history.failed_check_message = "Generating..."
                 else:
-                    print("其他情况", thd.state, task_id)
+                    logger.error(f"其他情况 task_id:{task_id} {thd.state}")
+        if immediately:
+            return 1
         if len(have_check_task_ids) == 0:
-            return 3
-        return 2
+            return 3  # 下次检查时间 在bpy.app.timers
+        return 1  # 如果有检查的图片,则返回1
 
 
 class SceneProperty(bpy.types.PropertyGroup, GeneralProperty, DynamicEnumeration, SceneFailedCheck):

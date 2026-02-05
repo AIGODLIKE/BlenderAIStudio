@@ -314,6 +314,8 @@ class ApplyAiEditImage(bpy.types.Operator):
                 except Exception as e:
                     logger.error(str(e))
 
+                context.scene.blender_ai_studio_property.check_all_failed(True)
+
             bpy.app.timers.register(f, first_interval=0.1)
 
         task.register_callback("state_changed", on_state_changed)
