@@ -377,6 +377,7 @@ class SceneFailedCheck:
                     match_history.is_refund_points = True
                     match_history.failed_check_message = "生成失败,未扣除积分\n请检查您的提示词&参考图"
                     match_history.failed_check_state = "COMPLETED"
+                    logger.info(f"生成失败 task_id:{task_id} {thd}")
                 elif thd.state == TaskStatus.SUCCESS:  # 生成成功的情况
                     # 将成功的图片加载到Blender中
                     try:
@@ -391,10 +392,8 @@ class SceneFailedCheck:
                                 else:
                                     image.preview_ensure()
                                 space_data_list = find_ai_image_editor_space_data()
-                                print("space_data_list", space_data_list)
                                 for space_data in space_data_list:
                                     setattr(space_data, "image", image)
-
                                 logger.info(f"重新拉取图片 task_id:{task_id} {image}")
                     except Exception as e:
                         logger.error(f"加载图片失败: task_id:{task_id}  {e}")
