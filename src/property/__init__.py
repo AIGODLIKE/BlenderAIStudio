@@ -42,7 +42,7 @@ class GeneralProperty:
 
 class HistoryState:
     running_operator: bpy.props.StringProperty()
-    running_state: bpy.props.StringProperty(name="running    completed    failed")
+    running_state: bpy.props.StringProperty(name="running    completed    failed TaskState")
     running_message: bpy.props.StringProperty()
     running_progress: bpy.props.FloatProperty(name="进度", min=0, max=1.0)
 
@@ -186,21 +186,21 @@ class EditHistory(HistoryState, GeneralProperty, HistoryFailedCheck, bpy.types.P
         text = bpy.app.translations.pgettext("%s reference images") % len(self.reference_images)
         column.label(text=text, icon_value=get_custom_icon("select_references_by_bl_image"))
 
-        box.separator(factor=2)
+        column = box.column(align=True)
         icon_size = 1
         if generated_images := self.generated_images:
             for gih in generated_images:
                 gi = gih.image
-                row = box.row()
+                row = column.row()
                 row.context_pointer_set("image", gi)
                 row.template_icon(gi.preview.icon_id, scale=icon_size)
                 row.operator("bas.view_image", text="View Generated Image")
-        box.separator()
         if oi := self.origin_image:
-            row = box.row()
+            row = column.row()
             row.context_pointer_set("image", oi)
             row.template_icon(oi.preview.icon_id, scale=icon_size)
             row.operator("bas.view_image", text="View Origin Image")
+
         box.context_pointer_set("history", self)
         box.operator("bas.restore_history", icon="FILE_PARENT")
 
@@ -242,9 +242,9 @@ class EditHistory(HistoryState, GeneralProperty, HistoryFailedCheck, bpy.types.P
     def draw_debug(self, layout):
         if get_pref().use_dev_ui:
             column = layout.box().column(align=True)
-            column.label(text="Debug")
             column.label(text=self.task_id)
-            column.label(text=self.failed_check_state)
+            column.prop(self, "failed_check_state")
+            column.separator(type="LINE")
             column.label(text=f"is_have_failed_check:{self.is_have_failed_check}")
             column.prop(self, "is_refund_points")
             column.prop(self, "running_state")
@@ -377,6 +377,7 @@ class SceneFailedCheck:
                     match_history.is_refund_points = True
                     match_history.failed_check_message = "生成失败,未扣除积分\n请检查您的提示词&参考图"
                     match_history.failed_check_state = "COMPLETED"
+                    match_history.running_message = thd.error_message
                     logger.info(f"生成失败 task_id:{task_id} {thd}")
                 elif thd.state == TaskStatus.SUCCESS:  # 生成成功的情况
                     # 将成功的图片加载到Blender中

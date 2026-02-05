@@ -324,6 +324,7 @@ translations = (
     ("Best Price", "低价优先", None),
     ("Environment Settings", "开发环境设置", None),
     ("Use Development Environment", "使用开发环境", PROP_TCTX),
+    ("Use Development UI", "使用开发UI", PROP_TCTX),
     ("Dev API Base URL", "开发API", PROP_TCTX),
     ("Dev Login URL", "登录URL", PROP_TCTX),
     ("Dev Token", "Token", PROP_TCTX),
