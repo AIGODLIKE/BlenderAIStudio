@@ -1,7 +1,5 @@
 import requests
 from typing import Dict, Any
-from urllib3.util.retry import Retry
-from requests.adapters import HTTPAdapter
 from .base import BaseProvider
 from .builders import BuilderRegistry
 from .parsers import ParserRegistry
@@ -95,19 +93,9 @@ class UniversalProvider(BaseProvider):
         # TODO 待改进(目前硬编码) 这里ID用于账户模式后端标识
         if self.auth_mode == AuthMode.ACCOUNT.value:
             request_data.query_params["reqId"] = self.task_id
-        retry_strategy = Retry(
-            total=3,
-            status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["POST", "GET", "OPTIONS"],
-            backoff_factor=1,
-        )
-        adapter = HTTPAdapter(max_retries=retry_strategy)
-        session = requests.Session()
-        session.mount("https://", adapter)
-        session.mount("http://", adapter)
 
         # 2. 发送 HTTP 请求
-        response = session.request(
+        response = requests.request(
             method=request_data.method,
             url=request_data.url,
             headers=request_data.headers,
