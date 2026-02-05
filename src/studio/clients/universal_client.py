@@ -13,7 +13,8 @@ from ..config.model_registry import ModelConfig, ModelRegistry
 from ..tasks import UniversalModelTask, Task, TaskResult
 from ...preferences import AuthMode
 from ...logger import logger
-from ...utils import get_pref
+from ...utils import get_pref, get_temp_folder
+from ...timer import Timer
 
 
 class UniversalClient(StudioClient):
@@ -277,6 +278,8 @@ class UniversalClient(StudioClient):
             replace_image(self, prop, index)
         elif action == "delete_image":
             delete_image(self, prop, index)
+        elif action == "paste_image":
+            paste_image(self, prop)
 
     def calc_price(self) -> int | None:
         """计算价格，Account 模式使用动态价格，API 模式使用静态配置"""
@@ -486,3 +489,57 @@ def replace_image(client: StudioClient, prop: str, index: int = -1):
 
 def delete_image(client: StudioClient, prop: str, index: int):
     client.get_value(prop).pop(index)
+
+
+def paste_image(client: StudioClient, prop: str):
+    context = bpy.context.copy()
+
+    def paste_image_callback():
+        # 直接新建窗口并设为 Image Editor
+        bpy.ops.wm.window_new()
+        ctx = bpy.context
+        wm = ctx.window_manager
+        win = wm.windows[-1]
+        screen = win.screen
+        area = screen.areas[0]
+        area.type = "IMAGE_EDITOR"
+        space = area.spaces.active
+        region = next(
+            (r for r in area.regions if r.type == "WINDOW"),
+            area.regions[0] if area.regions else None,
+        )
+
+        if not region:
+            logger.warning("Paste image: no valid Image Editor region")
+            return
+        old_images = set(bpy.data.images)
+        try:
+            context["window"] = win
+            context["screen"] = screen
+            context["area"] = area
+            context["region"] = region
+            context["space"] = space
+            with bpy.context.temp_override(**context):
+                result = bpy.ops.image.clipboard_paste()
+            if result != {"FINISHED"}:
+                logger.warning("Paste image failed: %s", result)
+                return
+        except Exception as e:
+            logger.error(e)
+            return
+        finally:
+            # 关闭新建的 Image Editor 窗口
+            with bpy.context.temp_override(window=win):
+                bpy.ops.wm.window_close()
+        new_images = set(bpy.data.images) - old_images
+        if new_images:
+            image_save_path = get_temp_folder(prefix="paste_image")
+            image_name = f"paste_image_{time.time()}.png"
+            image_path = Path(image_save_path).joinpath(image_name).as_posix()
+
+            image = new_images.pop()
+            image.save(filepath=image_path)
+            bpy.data.images.remove(image)
+            client.get_value(prop).append(image_path)
+
+    Timer.put(paste_image_callback)

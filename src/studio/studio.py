@@ -148,6 +148,11 @@ class StudioImagesDescriptor(WidgetDescriptor):
                         imgui.push_id("##Upload")
                         self.display_upload_image()
                         imgui.pop_id()
+
+                        imgui.table_next_column()
+                        imgui.push_id("##Paste")
+                        self.display_paste_image()
+                        imgui.pop_id()
                     imgui.end_table()
 
                 imgui.pop_style_var(2)
@@ -180,6 +185,32 @@ class StudioImagesDescriptor(WidgetDescriptor):
             pos = imgui.get_mouse_pos()
             imgui.set_next_window_pos((pos[0] - 40, pos[1] + 50), cond=imgui.Cond.ALWAYS)
             self.adapter.on_image_action(self.widget_name, "upload_image")
+        imgui.end_group()
+
+    def display_paste_image(self):
+        bw = bh = self._get_stable_cell_size()
+        icon = TexturePool.get_tex_id("image_paste")
+        tex = TexturePool.get_tex(icon)
+        fbw = tex.width / max(tex.width, tex.height) if tex else 1
+        fbh = tex.height / max(tex.width, tex.height) if tex else 1
+        imgui.begin_group()
+        imgui.set_next_item_allow_overlap()
+        imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
+        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
+        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
+        clicked = imgui.button(f"##{self.title}_{self.widget_name}1", (bw, bh))
+        iw, ih = (bw * fbw, bh * fbh)
+        pmin = imgui.get_item_rect_min()
+        pmini = (pmin[0] + (bw - iw) / 2, pmin[1] + (bh - ih) / 2)
+        pmax = imgui.get_item_rect_max()
+        pmaxi = (pmax[0] - (bw - iw) / 2, pmax[1] - (bh - ih) / 2)
+        dl = imgui.get_window_draw_list()
+        dl.add_image_rounded(icon, pmini, pmaxi, (0, 0), (1, 1), 0xFFFFFFFF, 15)
+        imgui.pop_style_color(3)
+        if clicked:
+            pos = imgui.get_mouse_pos()
+            imgui.set_next_window_pos((pos[0] - 40, pos[1] + 50), cond=imgui.Cond.ALWAYS)
+            self.adapter.on_image_action(self.widget_name, "paste_image")
         imgui.end_group()
 
     def display_image_with_close(self, app, img_path: str = "", index=-1):
