@@ -60,7 +60,7 @@ class UniversalClient(StudioClient):
                 "hide_title": True,
                 "default": 1,
                 "min": 1,
-                "max": 8,
+                "max": 16,
                 "step": 1,
             }
         )
