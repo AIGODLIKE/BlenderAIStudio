@@ -57,7 +57,10 @@ class HistoryState:
         self.running_state = ""
 
 
-class FailedCheck:
+class HistoryFailedCheck:
+    """历史失败检查
+    如果生成的过程中失败了,要检查是否正确的生成了的
+    """
     task_id: bpy.props.StringProperty(name="任务ID")
     failed_check_state: bpy.props.EnumProperty(name="Failed Check State", items=[
         ("NOT_CHECKED", "未检查", ""),
@@ -67,35 +70,29 @@ class FailedCheck:
     ], default="NOT_CHECKED")
     is_refund_points: bpy.props.BoolProperty(name="已退回积分")
 
-    def failed_check(self):
-        if self.failed_check_state == "NOT_CHECKED":
-            def a():
-                self.failed_check_state = "CHECKING"
-                account = Account.get_instance()
-                account.add_task_ids_to_fetch_status_threaded([self.task_id, ])
+    @property
+    def is_have_failed_check(self) -> bool:
+        """是需要错误检查的"""
+        if self.running_state == "failed":  # 生成状态是错误
+            if self.failed_check_state != "COMPLETED":  # 没检查完成 ,就需要一直检查
+                return True
+        return False
 
-            bpy.app.timers.register(a, first_interval=.01)
-        elif self.failed_check_state == "CHECKING":
+    def failed_check(self):
+        """
+        """
+        if self.failed_check_state == "CHECKING":  # 检查中,已经放到线程中,等待检查结果
             def c():
                 account = Account.get_instance()
                 task_history = account.fetch_task_history(self.task_id)
-                print(f"\tCHECKING:{self.task_id}{task_history}")
+                if task_history:
+                    print(f"\tCHECKING:{self.task_id}{task_history}")
                 # self.failed_check_state = "COMPLETED"
-                account.add_task_ids_to_fetch_status_threaded([self.task_id, ])
 
             bpy.app.timers.register(c, first_interval=.01)
 
 
-class SceneFailedCheck:
-
-    def all_failed_check(self):
-        """在场景属性下使用
-        找所有的失败问题
-        """
-        return self.failed_check_state == "FAILED"
-
-
-class EditHistory(HistoryState, GeneralProperty, FailedCheck, bpy.types.PropertyGroup):
+class EditHistory(HistoryState, GeneralProperty, HistoryFailedCheck, bpy.types.PropertyGroup):
     origin_image: bpy.props.PointerProperty(type=bpy.types.Image, name="原图图片")
     generated_images: bpy.props.CollectionProperty(type=ImageItem, name="生成的图片")
 
@@ -247,6 +244,7 @@ class EditHistory(HistoryState, GeneralProperty, FailedCheck, bpy.types.Property
             column.label(text="Debug")
             column.label(text=self.task_id)
             column.label(text=self.failed_check_state)
+            column.label(text=f"is_have_failed_check:{self.is_have_failed_check}")
             column.prop(self, "is_refund_points")
 
 
@@ -345,6 +343,26 @@ class DynamicEnumeration:
         get=get_aspect_ratio,
         set=set_aspect_ratio
     )
+
+
+class SceneFailedCheck:
+
+    def all_failed_check(self):
+        """在场景属性下使用
+        找所有的失败问题
+        """
+        task_ids = []
+        for history in self.edit_history:
+            if history.is_have_failed_check:
+                task_ids.append(history.task_id)
+
+                def a():
+                    history.failed_check_state = "CHECKING"  # 将此项设置为检查中
+
+                bpy.app.timers.register(a, first_interval=.01)
+
+        account = Account.get_instance()
+        account.add_task_ids_to_fetch_status_threaded(task_ids)
 
 
 class SceneProperty(bpy.types.PropertyGroup, GeneralProperty, DynamicEnumeration, SceneFailedCheck):
@@ -482,8 +500,7 @@ def clear_run():
 
 @persistent
 def load_post(a, b):
-    # clear_run()
-    ...
+    clear_run()
 
 
 def register():
@@ -491,7 +508,7 @@ def register():
     bpy.types.Scene.blender_ai_studio_property = bpy.props.PointerProperty(type=SceneProperty)
     bpy.types.Image.blender_ai_studio_property = bpy.props.PointerProperty(type=MaskImageProperty)
     bpy.types.Text.blender_ai_studio_prompt_hash = bpy.props.StringProperty()
-    bpy.app.timers.register(clear_run, persistent=True)
+    bpy.app.timers.register(clear_run, first_interval=0.1, persistent=True)
     bpy.app.handlers.load_post.append(load_post)
 
 
