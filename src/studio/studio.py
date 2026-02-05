@@ -483,10 +483,10 @@ class StudioHistoryViewer:
             imgui.table_setup_column("##Ele4", imgui.TableColumnFlags.WIDTH_FIXED, 0, 3)
             imgui.table_setup_column("##Ele5", imgui.TableColumnFlags.WIDTH_FIXED, 0, 4)
 
-            imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.CLOSE_BUTTON_ACTIVE)
+            imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.GRAY)
 
             imgui.table_next_column()
-            imgui.push_style_color(imgui.Col.TEXT, Const.CLOSE_BUTTON_ACTIVE)
+            imgui.push_style_color(imgui.Col.TEXT, Const.GRAY)
             imgui.align_text_to_frame_padding()
             imgui.text(f"#{item.index:03d}")
             imgui.pop_style_color()
@@ -516,9 +516,8 @@ class StudioHistoryViewer:
 
             imgui.table_next_column()
             old_show_detail = item.show_detail
-            imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.CLOSE_BUTTON_ACTIVE)
             if old_show_detail:
-                imgui.push_style_color(imgui.Col.BUTTON, Const.CLOSE_BUTTON_ACTIVE)
+                imgui.push_style_color(imgui.Col.BUTTON, Const.GRAY)
             if CustomWidgets.icon_label_button("image_detail", "", "CENTER", (bw, bh), isize=isize):
                 item.show_detail = not item.show_detail
             if imgui.is_item_hovered():
@@ -528,7 +527,6 @@ class StudioHistoryViewer:
                 AppHelperDraw.draw_tips_with_title(self.app, tips, title)
             if old_show_detail:
                 imgui.pop_style_color(1)
-            imgui.pop_style_color(1)
 
             imgui.table_next_column()
             if CustomWidgets.icon_label_button("delete", "", "CENTER", (bw, bh), isize=isize):
