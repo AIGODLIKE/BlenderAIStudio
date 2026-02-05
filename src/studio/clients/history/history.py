@@ -7,6 +7,7 @@ from pathlib import Path
 from threading import Thread
 from typing import Optional
 from uuid import uuid4
+from ..progress_estimator import TaskProgressEstimator
 from ...account import Account
 from ...account.task_history import TaskHistoryData
 
@@ -134,6 +135,16 @@ class StudioHistoryItem:
             return
         self.elapsed_time = time.time() - self.started_at
 
+    def get_estimated_progress(self) -> float:
+        if not self.model or self.started_at <= 0:
+            return 0.0
+
+        if self.is_finished():
+            return 1.0
+
+        current_elapsed_time = time.time() - self.started_at
+        return TaskProgressEstimator.estimate_progress(self.model, current_elapsed_time)
+
     def get_prompt(self):
         # 尝试从不同位置获取提示词
         prompt = self.metadata.get("prompt", "")  # 旧格式
@@ -225,6 +236,10 @@ class StudioHistory:
             item.error_message = ""
             item.outputs = task_history.outputs
             item.result = task_history.result
+
+            # 记录任务完成时间到进度估算器
+            if item.started_at > 0 and item.model:
+                TaskProgressEstimator.record_task_completion(item.model, item.elapsed_time)
         elif task_history.state.is_running():
             item.status = StudioHistoryItem.STATUS_UNKNOWN
             item.elapsed_time = time.time() - item.started_at

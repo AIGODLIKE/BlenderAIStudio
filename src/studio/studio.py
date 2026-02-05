@@ -634,9 +634,11 @@ class StudioHistoryViewer:
             w1 = imgui.get_content_region_avail()[0]
             imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 0)
             imgui.table_next_column()
-            progress = bpy.context.object.location.x if bpy.context.object else 0.0
-            progress = progress % 1.0
+
+            # 使用智能进度估算（基于历史任务时间）
+            progress = item.get_estimated_progress()
             over_text = f"{progress * 100:.1f}%"
+
             self.app.font_manager.push_h1_font(24 * 2)
             imgui.push_style_color(imgui.Col.PLOT_HISTOGRAM, Const.BUTTON_SELECTED)
             CustomWidgets.progress_bar_with_overlay(progress, (w1, h1), over_text)

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Iterable, Dict, Any, List
 
 from .base import StudioClient, StudioHistoryItem
+from .progress_estimator import TaskProgressEstimator
 from ..utils import save_mime_typed_datas_to_temp_files, load_images_into_blender
 from ..account import Account
 from ..config.model_registry import ModelConfig, ModelRegistry
@@ -391,6 +392,12 @@ class UniversalClient(StudioClient):
         item.status = StudioHistoryItem.STATUS_SUCCESS
         item.finished_at = time.time()
         self.history.update_item(item)
+
+        # 记录任务完成时间到进度估算器
+        if item.started_at > 0:
+            elapsed_time = item.finished_at - item.started_at
+            TaskProgressEstimator.record_task_completion(item.model, elapsed_time)
+
         logger.info(f"任务完成: {task_id}")
 
     def cancel_generate_task(self):
