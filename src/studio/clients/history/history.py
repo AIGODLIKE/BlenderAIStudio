@@ -226,9 +226,8 @@ class StudioHistory:
             item.outputs = task_history.outputs
             item.result = task_history.result
         elif task_history.state.is_running():
-            item.status = StudioHistoryItem.STATUS_RUNNING
+            item.status = StudioHistoryItem.STATUS_UNKNOWN
             item.elapsed_time = time.time() - item.started_at
-            item.progress = task_history.progress
         elif task_history.state.is_failed():
             item.status = StudioHistoryItem.STATUS_FAILED
             item.finished_at = task_history.finished_at
@@ -238,7 +237,8 @@ class StudioHistory:
         elif task_history.state.is_unknown():
             item.status = StudioHistoryItem.STATUS_FAILED
             item.error_message = task_history.error_message
-        self.save_history()
+        if not task_history.state.is_running():
+            self.save_history()
 
     def update_item(self, item: "StudioHistoryItem"):
         self.save_history()
