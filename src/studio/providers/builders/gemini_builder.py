@@ -208,7 +208,7 @@ class GeminiImageGenerateBuilder(RequestBuilder):
         image_path = params.get("main_image", "")
         user_prompt = params.get("user_prompt", "")
         ref_images_path = params.get("reference_images", [])
-        is_color_render = params.get("is_color_render", False)
+        is_color_render = params.get("input_image_type", "") != "CameraDepth"
         width = params.get("width", 1024)
         height = params.get("height", 1024)
         aspect_ratio = params.get("aspect_ratio", "1:1")

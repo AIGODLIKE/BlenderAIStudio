@@ -94,7 +94,7 @@ class SeedreamImageGenerateBuilder(RequestBuilder):
         - image(可选): data:image/<fmt>;base64,<...> 列表
         """
         ref_images_path = params.get("reference_images", [])
-        is_color_render = params.get("is_color_render", False)
+        is_color_render = params.get("input_image_type", "") != "CameraDepth"
         model = params.get("model") or model_config.model_id
         prompt = params.get("prompt", "").strip()
         full_prompt = self._build_generate_prompt(
