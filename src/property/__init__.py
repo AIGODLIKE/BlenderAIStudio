@@ -383,8 +383,8 @@ class SceneFailedCheck:
                     match_history.is_refund_points = True
                     match_history.failed_check_message = "Generation failed, points not deducted\nPlease check your prompt words&reference pictures"
                     match_history.failed_check_state = "COMPLETED"
-                    match_history.running_message = thd.error_message
-                    # logger.info(f"生成失败 task_id:{task_id} {thd}")
+                    # match_history.running_message = thd.error_message
+                    logger.info(f"生成失败 task_id:{task_id} {thd.error_message}")
                 elif thd.state == TaskStatus.SUCCESS:  # 生成成功的情况
                     # 将成功的图片加载到Blender中
                     try:
