@@ -4,7 +4,7 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Any, TYPE_CHECKING, List
 from .base import RequestBuilder, RequestData
-from .prompt import (
+from .seedream_prompt import (
     GENERATE_RENDER_WITH_REFERENCE,
     GENERATE_RENDER_WITHOUT_REFERENCE,
     GENERATE_DEPTH_MAP_WITHOUT_REFERENCE,
@@ -21,7 +21,8 @@ if TYPE_CHECKING:
 
 
 class SeedreamImageGenerateBuilder(RequestBuilder):
-    def build(self, params: Dict[str, Any], model_config: "ModelConfig", auth_mode: str, credentials: Dict[str, str]) -> RequestData:
+    def build(self, params: Dict[str, Any], model_config: "ModelConfig", auth_mode: str,
+              credentials: Dict[str, str]) -> RequestData:
         params = self._preprocess_params(params)
         action = params.get("__action", model_config.default_action)
 
@@ -31,7 +32,6 @@ class SeedreamImageGenerateBuilder(RequestBuilder):
             raise ValueError(error_msg)
 
         url = model_config.build_api_url(auth_mode)
-
         endpoint = model_config.get_endpoint(auth_mode)
         headers = self._build_headers(
             endpoint["headers"],
@@ -52,7 +52,7 @@ class SeedreamImageGenerateBuilder(RequestBuilder):
             headers=headers,
             payload=payload,
             method=endpoint.get("method", "POST"),
-            timeout=300,
+            timeout=80,
         )
 
     def _preprocess_params(self, params: Dict[str, Any]) -> Dict[str, Any]:
@@ -65,11 +65,11 @@ class SeedreamImageGenerateBuilder(RequestBuilder):
         return processed
 
     def _build_headers(
-        self,
-        header_template: Dict[str, str],
-        credentials: Dict[str, str],
-        model_config: "ModelConfig",
-        params: Dict[str, Any],
+            self,
+            header_template: Dict[str, str],
+            credentials: Dict[str, str],
+            model_config: "ModelConfig",
+            params: Dict[str, Any],
     ) -> Dict[str, str]:
         headers = {}
 
@@ -94,7 +94,7 @@ class SeedreamImageGenerateBuilder(RequestBuilder):
         - image(可选): data:image/<fmt>;base64,<...> 列表
         """
         ref_images_path = params.get("reference_images", [])
-        is_color_render = params.get("is_color_render", False)
+        is_color_render = params.get("input_image_type", "") != "CameraDepth"
         model = params.get("model") or model_config.model_id
         prompt = params.get("prompt", "").strip()
         full_prompt = self._build_generate_prompt(
@@ -118,11 +118,11 @@ class SeedreamImageGenerateBuilder(RequestBuilder):
         return payload
 
     def _build_edit_payload(self, params: Dict[str, Any], model_config: "ModelConfig") -> dict:
-        user_prompt = params.get("user_prompt", "")
+        prompt = params.get("prompt", "").strip()
         ref_images_path = params.get("reference_images", [""])
         mask_image_path = ref_images_path[0] if ref_images_path else ""
         prompt = self._build_edit_prompt(
-            user_prompt,
+            prompt,
             has_mask=bool(mask_image_path),
             has_reference=bool(ref_images_path[1:]),
         )
@@ -218,7 +218,7 @@ class SeedreamImageGenerateBuilder(RequestBuilder):
             return base_prompt
 
         if has_mask and has_reference:  # 有遮罩和参考图片
-            base_prompt = EDIT_WITH_MASK_AND_REFERENCES % user_prompt
+            base_prompt = EDIT_WITH_MASK_AND_REFERENCES
             return base_prompt
         elif has_mask:  # 有遮罩
             base_prompt = EDIT_WITH_MASK
@@ -228,15 +228,15 @@ class SeedreamImageGenerateBuilder(RequestBuilder):
             # 没有遮罩也没有参考图片,只有提示词输入的基本提示词
             base_prompt = EDIT_BASE_PROMPT
         if user_prompt.strip():
-            return f"{base_prompt}\n\nUSER'S EDIT INSTRUCTIONS:\n{user_prompt.strip()}"
+            return f"{base_prompt}\n\n用户的编辑说明:\n{user_prompt.strip()}"
         else:
             return base_prompt
 
     def _build_generate_prompt(
-        self,
-        user_prompt: str,
-        has_reference: bool = False,
-        is_color_render: bool = False,
+            self,
+            user_prompt: str,
+            has_reference: bool = False,
+            is_color_render: bool = False,
     ) -> str:
         if is_color_render:
             if has_reference:
@@ -249,5 +249,5 @@ class SeedreamImageGenerateBuilder(RequestBuilder):
             else:
                 base_prompt = GENERATE_DEPTH_MAP_WITH_REFERENCE
         if user_prompt.strip():
-            return f"{base_prompt}\n\nUSER PROMPT (EXECUTE THIS): {user_prompt.strip()}"
+            return f"{base_prompt}\n\n用户的编辑说明: {user_prompt.strip()}"
         return base_prompt

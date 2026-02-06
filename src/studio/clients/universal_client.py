@@ -1,13 +1,13 @@
 import bpy
 import time
-import mimetypes
 from traceback import print_exc
-from datetime import datetime
 from bpy.app.translations import pgettext_iface as _T
 from pathlib import Path
-from typing import Iterable, Dict, Any
+from typing import Iterable, Dict, Any, List
 
-from .base import StudioClient, StudioHistory, StudioHistoryItem
+from .base import StudioClient, StudioHistoryItem
+from .progress_estimator import TaskProgressEstimator
+from ..utils import save_mime_typed_datas_to_temp_files, load_images_into_blender
 from ..account import Account
 from ..config.model_registry import ModelConfig, ModelRegistry
 from ..tasks import UniversalModelTask, Task, TaskResult
@@ -49,6 +49,22 @@ class UniversalClient(StudioClient):
 
         self._meta_cache: Dict[str, Dict[str, Any]] = {}
 
+        # 额外参数(不会传递给模型,用于UI显示)
+        self._extra_params: List[Dict[str, Any]] = []
+        # 1. 批量渲染 任务数(整数, [1, 8])
+        self._extra_params.append(
+            {
+                "name": "batch_count",
+                "display_name": "Batch Count",
+                "type": "INT",
+                "hide_title": True,
+                "default": 1,
+                "min": 1,
+                "max": 16,
+                "step": 1,
+            }
+        )
+
         # 当前选择的模型 ID
         self._current_model_name = self.DEFAULT_MODEL_NAME
 
@@ -58,6 +74,9 @@ class UniversalClient(StudioClient):
 
         # 生成 meta（用于 UI）
         self._meta_cache[self.model_name] = self._generate_meta()
+
+        self._last_fetch_task_timestamp = 0
+        self._fetch_task_interval = 10
 
     @property
     def api_key(self) -> str:
@@ -112,6 +131,10 @@ class UniversalClient(StudioClient):
             self._current_model_name = model_name
             self._update_model_config()
 
+    @property
+    def batch_count(self) -> int:
+        return self.get_value("batch_count") or 1
+
     def get_value(self, prop: str):
         if prop == "api_key":
             return self.api_key
@@ -135,7 +158,7 @@ class UniversalClient(StudioClient):
         params = {}
         if not self._model_config:
             return params
-        for pdef in self._model_config.parameters:
+        for pdef in self._model_config.parameters + self._extra_params:
             pname = pdef.get("name")
             if not pname:
                 continue
@@ -190,7 +213,7 @@ class UniversalClient(StudioClient):
             params = self._model_config.parameters
 
         # 从 ModelConfig 加载所有参数
-        for param in params:
+        for param in params + self._extra_params:
             param_name = param.get("name")
             if not param_name:
                 continue
@@ -212,6 +235,12 @@ class UniversalClient(StudioClient):
                 meta[param_name]["options"] = param["options"]
             if "limit" in param:
                 meta[param_name]["limit"] = param["limit"]
+            if "min" in param:
+                meta[param_name]["min"] = param["min"]
+            if "max" in param:
+                meta[param_name]["max"] = param["max"]
+            if "step" in param:
+                meta[param_name]["step"] = param["step"]
 
             # ✅ 新增：visible_when 和 processor 字段
             if "visible_when" in param:
@@ -249,13 +278,29 @@ class UniversalClient(StudioClient):
             replace_image(self, prop, index)
         elif action == "delete_image":
             delete_image(self, prop, index)
+        elif action == "paste_image":
+            paste_image(self, prop)
 
     def calc_price(self) -> int | None:
         """计算价格，Account 模式使用动态价格，API 模式使用静态配置"""
         resolution = self.get_value("resolution") or "1K"
         strategy = Account.get_instance().pricing_strategy
         price = self._model_registry.calc_price(self.model_name, strategy, resolution)
-        return price
+        return price * self.batch_count
+
+    def _should_fetch_task_status(self) -> bool:
+        return time.time() - self._last_fetch_task_timestamp > self._fetch_task_interval
+
+    def fetch_task_status(self):
+        if not self._should_fetch_task_status():
+            return
+        task_ids = []
+        for item in self.history.find_all_needs_status_sync_items():
+            task_ids.append(item.task_id)
+        if not task_ids:
+            return
+        Account.get_instance().add_task_ids_to_fetch_status_threaded(task_ids)
+        self._last_fetch_task_timestamp = time.time()
 
     def add_task(self, account: "Account"):
         # 预校验
@@ -276,9 +321,12 @@ class UniversalClient(StudioClient):
                 "modelId": model_id,
                 "size": resolution,
             }
+        for _ in range(self.batch_count):
+            self._add_task_one(account, credentials, params)
 
+    def _add_task_one(self, account: "Account", credentials, params):
         task = UniversalModelTask(
-            model_id=model_id,
+            model_id=self.model_id,
             auth_mode=account.auth_mode,
             credentials=credentials,
             params=params,
@@ -292,6 +340,7 @@ class UniversalClient(StudioClient):
         item.task_id = self.task_id
         item.model = self.model_name
         item.created_at = time.time()
+        item.started_at = time.time()
         item.status = StudioHistoryItem.STATUS_PREPARING
         item.metadata.setdefault("params", {}).update(params)
         self.history.add(item)
@@ -322,41 +371,11 @@ class UniversalClient(StudioClient):
         Returns:
             保存的文件路径列表
         """
-        temp_folder = get_temp_folder(prefix="generate")
-        timestamp = time.time()
-        time_str = datetime.fromtimestamp(timestamp).strftime("%Y%m%d%H%M%S")
-        saved_files = []
-
-        for idx, (mime_type, data) in enumerate(parsed_data):
-            ext = mimetypes.guess_extension(mime_type) or ""
-            # 使用索引避免多个文件名冲突
-            if len(parsed_data) > 1:
-                save_file = Path(temp_folder, f"Gen_{time_str}_{idx}{ext}")
-            else:
-                save_file = Path(temp_folder, f"Gen_{time_str}{ext}")
-
-            if isinstance(data, bytes):
-                save_file.write_bytes(data)
-            elif isinstance(data, str):
-                save_file.write_text(data, encoding="utf-8")
-
-            logger.info(f"结果已保存到: {save_file.as_posix()}")
-            saved_files.append((mime_type, save_file.as_posix()))
-
-        return saved_files
+        return save_mime_typed_datas_to_temp_files(parsed_data)
 
     @staticmethod
     def _load_into_blender(outputs: list[tuple[str, str]]):
-        for mime_type, file_path in outputs:
-            if mime_type.startswith("image/"):
-
-                def load_image_into_blender(file_path: str):
-                    try:
-                        bpy.data.images.load(file_path)
-                    except Exception:
-                        print_exc()
-
-                Timer.put((load_image_into_blender, file_path))
+        load_images_into_blender(outputs)
 
     def _update_history_item_on_complete(
         self,
@@ -376,6 +395,12 @@ class UniversalClient(StudioClient):
         item.status = StudioHistoryItem.STATUS_SUCCESS
         item.finished_at = time.time()
         self.history.update_item(item)
+
+        # 记录任务完成时间到进度估算器
+        if item.started_at > 0:
+            elapsed_time = item.finished_at - item.started_at
+            TaskProgressEstimator.record_task_completion(item.model, elapsed_time)
+
         logger.info(f"任务完成: {task_id}")
 
     def cancel_generate_task(self):
@@ -464,3 +489,57 @@ def replace_image(client: StudioClient, prop: str, index: int = -1):
 
 def delete_image(client: StudioClient, prop: str, index: int):
     client.get_value(prop).pop(index)
+
+
+def paste_image(client: StudioClient, prop: str):
+    context = bpy.context.copy()
+
+    def paste_image_callback():
+        # 直接新建窗口并设为 Image Editor
+        bpy.ops.wm.window_new()
+        ctx = bpy.context
+        wm = ctx.window_manager
+        win = wm.windows[-1]
+        screen = win.screen
+        area = screen.areas[0]
+        area.type = "IMAGE_EDITOR"
+        space = area.spaces.active
+        region = next(
+            (r for r in area.regions if r.type == "WINDOW"),
+            area.regions[0] if area.regions else None,
+        )
+
+        if not region:
+            logger.warning("Paste image: no valid Image Editor region")
+            return
+        old_images = set(bpy.data.images)
+        try:
+            context["window"] = win
+            context["screen"] = screen
+            context["area"] = area
+            context["region"] = region
+            context["space"] = space
+            with bpy.context.temp_override(**context):
+                result = bpy.ops.image.clipboard_paste()
+            if result != {"FINISHED"}:
+                logger.warning("Paste image failed: %s", result)
+                return
+        except Exception as e:
+            logger.error(e)
+            return
+        finally:
+            # 关闭新建的 Image Editor 窗口
+            with bpy.context.temp_override(window=win):
+                bpy.ops.wm.window_close()
+        new_images = set(bpy.data.images) - old_images
+        if new_images:
+            image_save_path = get_temp_folder(prefix="paste_image")
+            image_name = f"paste_image_{time.time()}.png"
+            image_path = Path(image_save_path).joinpath(image_name).as_posix()
+
+            image = new_images.pop()
+            image.save(filepath=image_path)
+            bpy.data.images.remove(image)
+            client.get_value(prop).append(image_path)
+
+    Timer.put(paste_image_callback)

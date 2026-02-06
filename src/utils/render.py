@@ -6,6 +6,7 @@ from pathlib import Path
 from traceback import print_exc
 from uuid import uuid4
 from bpy.app.translations import pgettext as _T
+from threading import Lock
 from ..timer import Timer
 from ..utils import get_temp_folder
 
@@ -52,11 +53,26 @@ def silent_rendering():
             setattr(bpy.context.preferences.view, "render_display_type", last_display_type)
 
 
-# def render_scene_viewport_opengl_to_png(scene: bpy.types.Scene, image_path: str, view_context: bool):
-#     check_scene_camera_with_exception(scene)
-#     with with_scene_render_output_settings(scene, image_path):
-#         bpy.ops.render.opengl(write_still=True, view_context=view_context)
-#
+def render_scene_viewport_opengl_to_png(context: dict, image_path: str):
+    scene: bpy.types.Scene = context["scene"]
+    space_data: bpy.types.SpaceView3D = context["space_data"]
+    check_scene_camera_with_exception(scene)
+    with bpy.context.temp_override(**context):
+        with with_scene_render_output_settings(scene, image_path):
+            old_engine = scene.render.engine
+            old_show_overlays = space_data.overlay.show_overlays
+            for engine in ["BLENDER_EEVEE_NEXT", "BLENDER_EEVEE", "EEVEE"]:
+                try:
+                    scene.render.engine = engine
+                    break
+                except Exception:
+                    continue
+            space_data.overlay.show_overlays = False
+            bpy.ops.render.opengl(write_still=True, view_context=True)
+            scene.render.engine = old_engine
+            space_data.overlay.show_overlays = old_show_overlays
+    return image_path
+
 
 def render_scene_to_png(scene: bpy.types.Scene, image_path: str):
     check_scene_camera_with_exception(scene)
@@ -249,6 +265,19 @@ class BlenderRenderHelper:
     负责根据 itype 渲染 Blender 场景，返回渲染结果路径。
     """
 
+    IS_RENDERING = False
+    IS_RENDERING_LOCK = Lock()
+
+    @classmethod
+    def set_is_rendering(cls, value: bool):
+        with cls.IS_RENDERING_LOCK:
+            cls.IS_RENDERING = value
+
+    @classmethod
+    def get_is_rendering(cls) -> bool:
+        with cls.IS_RENDERING_LOCK:
+            return cls.IS_RENDERING
+
     def __init__(self):
         self.is_rendering = False
         self.render_cancel = False
@@ -273,7 +302,6 @@ class BlenderRenderHelper:
         Raises:
             ValueError: 场景没有相机
             RuntimeError: 渲染失败
-            NotImplementedError: FastRender 未实现
         """
         if itype == "NoInput":
             return ""
@@ -285,19 +313,32 @@ class BlenderRenderHelper:
 
         if itype == "CameraRender":
             self._wait_for_rendering()
-            self._render_camera(image_path, context)
+            BlenderRenderHelper.set_is_rendering(True)
+            try:
+                self._render_camera(image_path, context)
+            finally:
+                BlenderRenderHelper.set_is_rendering(False)
         elif itype == "CameraDepth":
             self._wait_for_rendering()
-            self._render_depth(image_path, context)
+            BlenderRenderHelper.set_is_rendering(True)
+            try:
+                self._render_depth(image_path, context)
+            finally:
+                BlenderRenderHelper.set_is_rendering(False)
         elif itype == "FastRender":
-            raise NotImplementedError("FastRender not implemented yet")
+            self._wait_for_rendering()
+            BlenderRenderHelper.set_is_rendering(True)
+            try:
+                self._render_opengl_viewport(image_path, context)
+            finally:
+                BlenderRenderHelper.set_is_rendering(False)
         else:
             raise ValueError(f"Unknown input image type: {itype}")
 
         return image_path
 
     def _is_other_rendering(self):
-        return bpy.app.is_job_running("RENDER")
+        return bpy.app.is_job_running("RENDER") or BlenderRenderHelper.get_is_rendering()
 
     def _wait_for_rendering(self):
         """等待渲染完成"""
@@ -370,11 +411,38 @@ class BlenderRenderHelper:
             self.render_cancel = False
             raise RuntimeError("Render Canceled")
 
+    def _render_opengl_viewport(self, output_path: str, context: dict):
+        """渲染 OpenGL 视图"""
+        scene: bpy.types.Scene = context["scene"]
+
+        if not scene.camera:
+            raise ValueError("Scene Camera Not Found")
+
+        Timer.wait_run(render_scene_viewport_opengl_to_png)(context, output_path)
+        time.sleep(1)  # 给用户反应时间
+        # 检查是否取消
+        if self.render_cancel:
+            self.render_cancel = False
+            raise RuntimeError("Render Canceled")
+
     def get_rendering_time(self) -> float:
         """获取渲染耗时"""
         if self.rendering_time_start == 0:
             return 0
         return time.time() - self.rendering_time_start
+
+
+@bpy.app.handlers.persistent
+def reset_render_status(_, __):
+    BlenderRenderHelper.set_is_rendering(False)
+
+
+def register():
+    bpy.app.handlers.load_post.append(reset_render_status)
+
+
+def unregister():
+    bpy.app.handlers.load_post.remove(reset_render_status)
 
 
 if __name__ == "__main__":

@@ -268,6 +268,7 @@ class App:
 
         # 0. 窗口ID
         frame.push_id(self._id)
+        self.disable_nav_windowing()
 
         # 2. 输入处理
         self.poll_ime()
@@ -310,6 +311,16 @@ class App:
             return
         draw_list = imgui.get_foreground_draw_list()
         draw_list.add_circle_filled(self.io.mouse_pos, 2, imgui.get_color_u32((0, 1, 0, 1)))
+
+    def disable_nav_windowing(self):
+        if self.io.config_mac_osx_behaviors:
+            nav_windowing_key_next = imgui.Key.MOD_SUPER | imgui.Key.KEY_TAB
+            nav_windowing_key_prev = imgui.Key.MOD_SUPER | imgui.Key.MOD_SHIFT | imgui.Key.KEY_TAB
+        else:
+            nav_windowing_key_next = imgui.Key.MOD_CTRL | imgui.Key.KEY_TAB
+            nav_windowing_key_prev = imgui.Key.MOD_CTRL | imgui.Key.MOD_SHIFT | imgui.Key.KEY_TAB
+        imgui.shortcut(nav_windowing_key_next, imgui.InputFlags.ROUTE_GLOBAL)
+        imgui.shortcut(nav_windowing_key_prev, imgui.InputFlags.ROUTE_GLOBAL)
 
     def poll_ime(self):
         self.refresh_ime_status()

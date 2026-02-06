@@ -43,14 +43,14 @@ class AuthMode(Enum):
 
 
 class PricingStrategy(Enum):
-    BEST_SPEED = "bestSpeed"
-    BEST_BALANCE = "bestPrice"
+    BEST_PRICE = "bestPrice"
+    BEST_BALANCE = "bestBalance"
 
     @property
     def display_name(self) -> str:
         """获取可翻译的显示名称"""
-        if self == PricingStrategy.BEST_SPEED:
-            return "Best Speed"
+        if self == PricingStrategy.BEST_PRICE:
+            return "Best Price"
         elif self == PricingStrategy.BEST_BALANCE:
             return "Best Balance"
         return self.value
@@ -127,6 +127,11 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey, Priv
         self.account_pricing_strategy = value
         bpy.context.preferences.use_preferences_save = True
 
+    use_dev_ui: bpy.props.BoolProperty(
+        name="Use Development UI",
+        default=False,
+        **translation_context,
+    )
     # 环境配置
     use_dev_environment: bpy.props.BoolProperty(
         name="Use Development Environment",
@@ -177,6 +182,7 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey, Priv
         # 环境配置
         column = layout.column()
         column.label(text="Environment Settings")
+        column.prop(self, "use_dev_ui")
         column.prop(self, "use_dev_environment")
 
         if self.use_dev_environment:

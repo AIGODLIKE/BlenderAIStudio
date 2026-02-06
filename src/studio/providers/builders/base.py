@@ -15,7 +15,7 @@ class RequestData:
     payload: Dict[str, Any]
     method: str = "POST"
     query_params: Dict[str, str] = field(default_factory=dict)
-    timeout: int = 300
+    timeout: int = 80
 
 
 class RequestBuilder(ABC):

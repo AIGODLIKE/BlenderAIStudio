@@ -45,8 +45,9 @@ class UpdateService:
                     res = json.loads(result)
                     cls.version_info = json.loads(result)
                     vs = res['data']['versions']
-                    logger.info(f"请求版本信息成功, 获取到 {len(vs)} 个版本数据")
+                    logger.info(f"Successfully requested version information, obtained  %s version data" % len(vs))
                     if cls.is_update_available():
+                        logger.info(f"is_update_available!!!")
                         bpy.ops.bas.update_tips("INVOKE_DEFAULT")
                 except Exception as e:
                     logger.error(f"解析版本信息失败: {e}")

@@ -1,8 +1,16 @@
-from .base import StudioHistoryItem, StudioHistory
-from .universal_client import UniversalClient
+import bpy
 
-__all__ = [
-    "StudioHistoryItem",
-    "StudioHistory",
-    "UniversalClient",
+
+modules = [
+    "history",
 ]
+
+reg, unreg = bpy.utils.register_submodule_factory(__package__, modules)
+
+
+def register():
+    reg()
+
+
+def unregister():
+    unreg()

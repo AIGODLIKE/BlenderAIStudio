@@ -1,8 +1,9 @@
 import bpy
+from bpy.app.translations import pgettext_iface as iface
 
 from ..i18n import PANEL_TCTX
 from ..online_update_addon import UpdateService
-from ..studio.account import AuthMode
+from ..preferences import AuthMode
 from ..studio.config.model_registry import ModelRegistry
 from ..utils import get_custom_icon, get_addon_version_str, get_pref
 
@@ -180,8 +181,7 @@ class AIStudioImagePanel(bpy.types.Panel):
         pref.draw_account(column)
 
         row = column.row(align=True)
-        row.label(text="", icon_value=get_custom_icon("aspect_ratio"))
-        row.prop(ai, "model_name", text="")
+        row.prop(ai, "model_name")
         pref.have_input_api_key(context, column)
         column.separator(type="LINE")
 
@@ -191,7 +191,7 @@ class AIStudioImagePanel(bpy.types.Panel):
                 name = param.get("name", None)
                 if draw_func := getattr(AIStudioImagePanel, f"draw_{name}", None):
                     draw_func(ai, column)
-        except ValueError as e:
+        except ValueError:
             ...
 
     @staticmethod
@@ -237,9 +237,9 @@ class AIStudioHistoryPanel(bpy.types.Panel):
 
     def draw_header(self, context):
         oii = context.scene.blender_ai_studio_property
-        text = bpy.app.translations.pgettext("Generate History")
 
         row = self.layout.row()
+        text = bpy.app.translations.pgettext("Generate History")
         row.label(text=f"{text} {len(oii.edit_history)}")
         row.separator()
         row.operator("bas.clear_history", icon="X", text="", emboss=False)
@@ -248,6 +248,11 @@ class AIStudioHistoryPanel(bpy.types.Panel):
     def draw(self, context):
         oii = context.scene.blender_ai_studio_property
         layout = self.layout
+
+        rl = list(oii.running_task_list)
+        if rl:
+            text = iface("%s Item is currently being generated")
+            layout.label(text=text % len(rl))
         items = oii.edit_history[:]
         il = len(items)
         for index, h in enumerate(reversed(items)):

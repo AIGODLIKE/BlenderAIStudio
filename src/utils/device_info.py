@@ -109,8 +109,8 @@ def get_all_devices():
             else:
                 all_devices["GPU"].append(name)
     return {
-        "CPU": ";".join(all_devices["CPU"]),
-        "GPU": ";".join(all_devices["GPU"]),
+        "cpu": ";".join(all_devices["CPU"]),
+        "gpu": ";".join(all_devices["GPU"]),
     }
 
 

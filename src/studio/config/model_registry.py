@@ -692,7 +692,7 @@ class ModelRegistry:
 
     def resolve_submit_id(self, model_name: str, strategy: Optional[str] = None) -> str:
         """
-        resolve_submit_id("NanoBananaPro","bestSpeed")
+        resolve_submit_id("NanoBananaPro", "bestPrice")
         """
         chosen_entry = self._pricing_table.get(model_name) or {}
         print_table = chosen_entry.get(strategy, {})

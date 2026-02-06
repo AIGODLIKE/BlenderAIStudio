@@ -7,7 +7,7 @@ from collections import deque
 from .ime import IMEManager
 
 # Windows 常量
-IME_CMODE_NATIVE = 0x0001
+IACE_DEFAULT = 0x0010
 GCS_COMPSTR = 0x0008  # 获取当前的组合字符串, 正在编辑但未确认的字符串（用户正在输入的内容）
 GCS_RESULTSTR = 0x0800  # 获取结果字符串, 用户确认完成输入后的最终字符串
 WM_IME_COMPOSITION = 0x010F
@@ -72,7 +72,6 @@ class WindowsIMEManager(IMEManager):
         except Exception:
             raise RuntimeError("无法加载 Windows IMM32/User32 DLL")
 
-        self._himc = None
         self._initialized = False
         self._ime_enabled = False
         self._hwnd = None
@@ -173,16 +172,7 @@ class WindowsIMEManager(IMEManager):
         if not self._hwnd:
             return False
 
-        # 获取当前窗口的输入法上下文
-        self._himc = self.imm32.ImmGetContext(self._hwnd)
-        if not self._himc:
-            # 如果没有上下文，创建一个新的
-            self._himc = self.imm32.ImmCreateContext()
-            if self._himc:
-                self.imm32.ImmAssociateContext(self._hwnd, self._himc)
-
-        if self._himc:
-            self._initialized = True
+        self._initialized = True
 
         return self._initialized
 
@@ -199,27 +189,17 @@ class WindowsIMEManager(IMEManager):
             return False
 
         hwnd = self._get_foreground_window()
-        himc = self.imm32.ImmGetContext(hwnd)
-
-        if not himc:
-            himc = self.imm32.ImmAssociateContext(hwnd, self._himc)
-
-        if not himc:
-            return False
 
         try:
-            # 获取当前转换模式
-            conversion = wintypes.DWORD()
-            sentence = wintypes.DWORD()
-            self.imm32.ImmGetConversionStatus(himc, byref(conversion), byref(sentence))
+            # 将输入法上下文恢复为默认上下文，即可重新启用输入法
+            # 重新启用输入法后，输入法的输入模式（如：英文/中文...）将保持输入法停用前的状态
+            self.imm32.ImmAssociateContextEx(hwnd, None, IACE_DEFAULT)
 
-            # 设置为中文输入模式
-            conversion.value |= IME_CMODE_NATIVE
-            self.imm32.ImmSetConversionStatus(himc, conversion.value, sentence.value)
             self._ime_enabled = True
+
             return True
-        finally:
-            self.imm32.ImmReleaseContext(hwnd, himc)
+        except Exception:
+            return False
 
     def disable_ime(self) -> bool:
         """禁用输入法"""
@@ -227,25 +207,16 @@ class WindowsIMEManager(IMEManager):
             return False
 
         hwnd = self._get_foreground_window()
-        himc = self.imm32.ImmGetContext(hwnd)
-
-        if not himc:
-            return False
 
         try:
-            # 获取当前转换模式
-            conversion = wintypes.DWORD()
-            sentence = wintypes.DWORD()
-            self.imm32.ImmGetConversionStatus(himc, byref(conversion), byref(sentence))
+            # 停用输入法需要将输入法上下文设为空
+            self.imm32.ImmAssociateContext(hwnd, None)
 
-            # 禁用中文输入模式
-            conversion.value &= ~IME_CMODE_NATIVE
-            self.imm32.ImmSetConversionStatus(himc, conversion.value, sentence.value)
             self._ime_enabled = False
 
             return True
-        finally:
-            self.imm32.ImmReleaseContext(hwnd, himc)
+        except Exception:
+            return False
 
     def get_composition_string(self) -> str:
         """获取当前组字串（输入过程中的预览文本）"""
@@ -423,10 +394,6 @@ class WindowsIMEManager(IMEManager):
         """清理资源"""
         # 卸载钩子
         self.uninstall_message_hook()
-
-        if self._himc:
-            self.imm32.ImmDestroyContext(self._himc)
-            self._himc = None
 
         self._initialized = False
         self._input_queue.clear()

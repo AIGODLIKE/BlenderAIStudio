@@ -8,13 +8,8 @@ import tempfile
 from pathlib import Path
 from typing import List, Tuple, Any
 from .base import ResponseParser
-from ...exception import (
-    StudioException,
-    InsufficientBalanceException,
-    APIRequestException,
-    AuthFailedException,
-    ToeknExpiredException,
-)
+from .utils import _check_response_account_mode
+from ...exception import StudioException
 from ....utils import get_temp_folder
 
 try:
@@ -70,23 +65,7 @@ class GeminiImageParser(ResponseParser):
         return _parse_image_data_from_response_json(data)
 
     def _check_response_custom(self, resp: dict):
-        """
-        TODO 限制到账号模式
-        """
-        # {'responseId': 2005309135796568064, 'code': -4, 'errCode': -4000, 'errMsg': '请先登录!'}
-        err_msg = resp.get("errMsg", "")
-        code = resp.get("code")
-        err_code = resp.get("errCode")
-        if not err_msg:
-            return
-        print("_check_response_custom", resp)
-        err_type_map = {
-            "余额不足": InsufficientBalanceException("Insufficient balance!"),
-            "API请求错误!": APIRequestException("API Request Error!"),
-            "鉴权错误": AuthFailedException("Authentication failed!"),
-            "Token过期": ToeknExpiredException("Token expired!"),
-        }
-        raise err_type_map.get(err_msg, Exception(err_msg))
+        _check_response_account_mode(resp)
 
     def _process_resp_json(self, resp) -> dict:
         if self.is_account_mode:

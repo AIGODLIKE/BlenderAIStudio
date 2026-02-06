@@ -3,3 +3,4 @@
 *.png -text
 *.jpg -text
 *.jpeg -text
+*.ttf -text

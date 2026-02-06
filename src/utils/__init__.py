@@ -1,10 +1,13 @@
+import bpy
 import hashlib
 import os
 import time
-
-import bpy
+from typing import TYPE_CHECKING
 
 from .pkg_installer import PkgInstaller
+
+if TYPE_CHECKING:
+    from ..preferences import BlenderAIStudioPref
 
 __all__ = [
     "PkgInstaller",
@@ -50,7 +53,7 @@ def str_version_to_int(version_str):
     return tuple(map(int, version_str.split(".")))
 
 
-def get_pref():
+def get_pref() -> "BlenderAIStudioPref":
     from ... import __package__ as base_name
     return bpy.context.preferences.addons[base_name].preferences
 
@@ -258,3 +261,18 @@ def start_blender(step=1):
     ))
 
     subprocess.Popen(args)
+
+
+modules = [
+    "render",
+]
+
+reg, unreg = bpy.utils.register_submodule_factory(__package__, modules)
+
+
+def register():
+    reg()
+
+
+def unregister():
+    unreg()

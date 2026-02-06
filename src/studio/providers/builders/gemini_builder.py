@@ -1,10 +1,13 @@
-import bpy
 import base64
-from bpy.app.translations import pgettext as _T
-from typing import Dict, Any, TYPE_CHECKING
 from copy import deepcopy
+from pathlib import Path
+from typing import Dict, Any, TYPE_CHECKING
+
+import bpy
+from bpy.app.translations import pgettext as _T
+
 from .base import RequestBuilder, RequestData
-from .prompt import (
+from .gemini_prompt import (
     GENERATE_RENDER_WITH_REFERENCE,
     GENERATE_RENDER_WITHOUT_REFERENCE,
     GENERATE_DEPTH_MAP_WITHOUT_REFERENCE,
@@ -16,7 +19,6 @@ from .prompt import (
     EDIT_BASE_PROMPT,
 )
 from .... import logger
-
 from ....utils import calc_appropriate_aspect_ratio
 
 if TYPE_CHECKING:
@@ -37,7 +39,8 @@ class GeminiImageGenerateBuilder(RequestBuilder):
     def __init__(self, is_pro: bool = False):
         self.is_pro = is_pro
 
-    def build(self, params: Dict[str, Any], model_config: "ModelConfig", auth_mode: str, credentials: Dict[str, str]) -> RequestData:
+    def build(self, params: Dict[str, Any], model_config: "ModelConfig", auth_mode: str,
+              credentials: Dict[str, str]) -> RequestData:
         """构建 Gemini 图像请求
 
         Args:
@@ -101,7 +104,7 @@ class GeminiImageGenerateBuilder(RequestBuilder):
             headers=headers,
             payload=payload,
             method=endpoint.get("method", "POST"),
-            timeout=300,
+            timeout=80,
         )
 
     def _preprocess_params(self, params: Dict[str, Any]) -> Dict[str, Any]:
@@ -172,11 +175,11 @@ class GeminiImageGenerateBuilder(RequestBuilder):
         return processed
 
     def _build_headers(
-        self,
-        header_template: Dict[str, str],
-        credentials: Dict[str, str],
-        model_config: "ModelConfig",
-        params: Dict[str, Any],
+            self,
+            header_template: Dict[str, str],
+            credentials: Dict[str, str],
+            model_config: "ModelConfig",
+            params: Dict[str, Any],
     ) -> Dict[str, str]:
         """构建 Headers
 
@@ -205,10 +208,20 @@ class GeminiImageGenerateBuilder(RequestBuilder):
         image_path = params.get("main_image", "")
         user_prompt = params.get("user_prompt", "")
         ref_images_path = params.get("reference_images", [])
-        is_color_render = params.get("is_color_render", False)
+        is_color_render = params.get("input_image_type", "") != "CameraDepth"
         width = params.get("width", 1024)
         height = params.get("height", 1024)
         aspect_ratio = params.get("aspect_ratio", "1:1")
+
+        # 20MB
+        total_image_size_limit = 20 * 1024 * 1024
+        total_image_size = 0
+        all_image_paths = ref_images_path + ([image_path] if image_path else [])
+        for image_path in all_image_paths:
+            total_image_size += Path(image_path).stat().st_size
+        if total_image_size > total_image_size_limit:
+            raise ValueError("Total image size exceeds the limit of 20MB.")
+
         # 构建完整提示词
         full_prompt = self._build_generate_prompt(
             user_prompt,
@@ -266,6 +279,16 @@ class GeminiImageGenerateBuilder(RequestBuilder):
         image_size = params.get("resolution", "1K")
         aspect_ratio = params.get("aspect_ratio", "1:1")
 
+        # 20MB
+        total_image_size_limit = 20 * 1024 * 1024
+        total_image_size = 0
+        all_image_paths = ref_images_path + ([image_path, ] if image_path else []) + [mask_image_path, ]
+        for i in all_image_paths:
+            total_image_size += Path(i).stat().st_size
+            if total_image_size > total_image_size_limit:
+                logger.warning(f"total_image_size :{total_image_size / 1024 / 1024}MB")
+                raise ValueError("Total image size exceeds the limit of 20MB.")
+
         prompt = self._build_edit_prompt(
             user_prompt,
             has_mask=bool(mask_image_path),
@@ -278,7 +301,9 @@ class GeminiImageGenerateBuilder(RequestBuilder):
                 image_base64 = base64.b64encode(f.read()).decode("utf-8")
             part = {"inline_data": {"mime_type": "image/png", "data": image_base64}}
             parts.append(part)
-            logger.info(f"add_part {image_file_path}" )
+            base64_size_mb = round(len(image_base64) / (1024 * 1024), 2)
+
+            logger.info(f"add_part\tbase64_size_mb:{base64_size_mb}\tpath:{image_file_path}")
 
         add_part(image_path)  # 添加主图
         # 遮罩默认在第一张参考图片位置
@@ -326,7 +351,7 @@ class GeminiImageGenerateBuilder(RequestBuilder):
             return base_prompt
 
         if has_mask and has_reference:  # 有遮罩和参考图片
-            base_prompt = EDIT_WITH_MASK_AND_REFERENCES % user_prompt
+            base_prompt = EDIT_WITH_MASK_AND_REFERENCES
             return base_prompt
         elif has_mask:  # 有遮罩
             base_prompt = EDIT_WITH_MASK
@@ -341,10 +366,10 @@ class GeminiImageGenerateBuilder(RequestBuilder):
             return base_prompt
 
     def _build_generate_prompt(
-        self,
-        user_prompt: str,
-        has_reference: bool = False,
-        is_color_render: bool = False,
+            self,
+            user_prompt: str,
+            has_reference: bool = False,
+            is_color_render: bool = False,
     ) -> str:
         if is_color_render:
             if has_reference:

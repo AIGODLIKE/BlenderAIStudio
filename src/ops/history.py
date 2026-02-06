@@ -188,7 +188,7 @@ class ClearHistory(bpy.types.Operator):
         aoo = context.scene.blender_ai_studio_property
         while True:
             is_r = False
-            for index,i in  enumerate(aoo.edit_history):
+            for index, i in enumerate(aoo.edit_history):
                 if i.running_state != "running":
                     aoo.edit_history.remove(index)
                     is_r = True
@@ -197,4 +197,3 @@ class ClearHistory(bpy.types.Operator):
                 if context.area:
                     context.area.tag_redraw()
                 return {"FINISHED"}
-

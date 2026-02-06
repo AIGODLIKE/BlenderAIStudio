@@ -7,13 +7,23 @@ from ..utils.device_info import get_all_devices
 from ..utils.memory_info import format_memory_info
 
 
+def get_system_info():
+    import platform
+    try:
+        os_string = f"{platform.system()};{platform.version()};{platform.machine()}"
+    except Exception as e:
+        os_string = "unknown"
+        logger.error(e)
+    return os_string
+
+
 def collect_info():
     pref = get_pref()
     if pref.init_privacy and pref.collect_version_data:
         from ..studio.account import Account
         try:
             account = Account.get_instance()
-            url = f"{account.service_url}/sys/report"
+            url = f"{account.service_url}/sys/device-statistics"
 
             headers = {
                 "X-Auth-T": account.token,
@@ -25,13 +35,14 @@ def collect_info():
                 "addonVersionString": get_addon_version_str(),
                 **get_all_devices(),
                 "memory": format_memory_info(),
+                "os": get_system_info()
             }
 
             def on_request_finished(result, error):
                 if result:
                     logger.info("send collect_info finished")
                 if error:
-                    logger.error("send collect_info error: %s", error)
+                    logger.error("send collect_info on_request_finished error: %s", error)
 
             PostRequestThread(url, on_request_finished, headers, payload).start()
         except Exception as e:
@@ -49,7 +60,7 @@ class Privacy:
     init_privacy: bpy.props.BoolProperty(default=False, update=lambda self, context: collect_info(),
                                          name="Privacy settings have been initialized")
     collect_version_data: bpy.props.BoolProperty(
-        default=False, name="Version Data",
+        default=True, name="Version Data",
         update=lambda self, context: collect_info(),
         description="Check this box and we will collect your plugin version, Blender version, and hardware information")
     save_generated_images_to_cloud: bpy.props.BoolProperty(
@@ -65,8 +76,8 @@ class Privacy:
             text="Check this box and we will collect your plugin version, Blender version, and hardware information")
         column.label(text="to better serve you")
         column.separator(type="LINE")
-        column.prop(self, "save_generated_images_to_cloud")
-        column.label(text="When using Stable Mode to generate images")
-        column.label(text="we will retain a copy of the generated image in the cloud to prevent image file loss")
+        # column.prop(self, "save_generated_images_to_cloud")
+        # column.label(text="When using Stable Mode to generate images")
+        # column.label(text="we will retain a copy of the generated image in the cloud to prevent image file loss")
         column.separator()
         column.label(text="You can also change this setting later in Preferences")

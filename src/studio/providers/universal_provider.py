@@ -4,7 +4,7 @@ from .base import BaseProvider
 from .builders import BuilderRegistry
 from .parsers import ParserRegistry
 from ..config.model_registry import ModelConfig
-from ..account import AuthMode
+from ...preferences import AuthMode
 
 
 class UniversalProvider(BaseProvider):
