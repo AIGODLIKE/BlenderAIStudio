@@ -180,6 +180,16 @@ class StudioHistory:
         self.items: list[StudioHistoryItem] = []
         self.current_index = 0
 
+    def add_fake_items(self):
+        self.add_fake_item().status = StudioHistoryItem.STATUS_PENDING
+        self.add_fake_item().status = StudioHistoryItem.STATUS_PREPARING
+        self.add_fake_item().status = StudioHistoryItem.STATUS_RUNNING
+        self.add_fake_item().status = StudioHistoryItem.STATUS_PROCESSING
+        self.add_fake_item().status = StudioHistoryItem.STATUS_SUCCESS
+        self.add_fake_item().status = StudioHistoryItem.STATUS_FAILED
+        self.add_fake_item().status = StudioHistoryItem.STATUS_CANCELLED
+        self.add_fake_item().status = StudioHistoryItem.STATUS_UNKNOWN
+
     def add_fake_item(self):
         desktop = Path.home().joinpath("Desktop")
         output_file = desktop.joinpath("OutputImage/AIStudio/Output.png")
