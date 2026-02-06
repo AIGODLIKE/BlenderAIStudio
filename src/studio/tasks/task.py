@@ -483,7 +483,7 @@ class TaskManager:
     _instance = None
     _lock = threading.Lock()
 
-    def __init__(self, max_concurrent: int = 3):
+    def __init__(self, max_concurrent: int = 10):
         """
         初始化任务管理器
 
@@ -497,7 +497,7 @@ class TaskManager:
         self._shutdown = False
 
     @classmethod
-    def get_instance(cls, max_concurrent: int = 3) -> "TaskManager":
+    def get_instance(cls, max_concurrent: int = 10) -> "TaskManager":
         """
         获取单例实例
 
