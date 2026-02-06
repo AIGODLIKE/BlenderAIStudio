@@ -36,6 +36,7 @@ class GeneralProperty:
     reference_images: bpy.props.CollectionProperty(type=ImageItem, name="多张参考图", description="最大14张输入图片")
     mask_images: bpy.props.CollectionProperty(type=ImageItem, name="编辑的图片")
     mask_index: bpy.props.IntProperty(name="Mask Image Index", default=0)
+    # TODO 切换图片的时候mask不会变,需要修改到图片属性下
 
     prompt: bpy.props.StringProperty(name="Prompt", maxlen=10000, )
 
