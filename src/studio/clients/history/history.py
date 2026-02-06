@@ -291,6 +291,8 @@ class StudioHistory:
                 logger.debug("Invalid history data")
                 logger.debug(data)
             items = [StudioHistoryItem.load(item) for item in data]
+            # 排除未提交的任务(排队中、准备中)
+            items = [item for item in items if item.status not in (StudioHistoryItem.STATUS_PENDING, StudioHistoryItem.STATUS_PREPARING)]
             logger.debug(f"load history {len(items)}")
             self.items = items
             self.update_max_index()
