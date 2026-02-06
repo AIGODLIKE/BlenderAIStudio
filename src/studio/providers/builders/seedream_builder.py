@@ -249,5 +249,5 @@ class SeedreamImageGenerateBuilder(RequestBuilder):
             else:
                 base_prompt = GENERATE_DEPTH_MAP_WITH_REFERENCE
         if user_prompt.strip():
-            return f"{base_prompt}\n\nUSER PROMPT (EXECUTE THIS): {user_prompt.strip()}"
+            return f"{base_prompt}\n\n用户的编辑说明: {user_prompt.strip()}"
         return base_prompt
