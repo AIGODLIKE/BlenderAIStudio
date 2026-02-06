@@ -6,6 +6,144 @@ import bpy
 from .. import logger
 from ..i18n.translations.zh_HANS import OPS_TCTX
 from ..utils import png_name_suffix, get_pref, get_temp_folder, save_image_to_temp_folder, refresh_image_preview
+from ..utils.area import find_ai_image_editor_space_data
+
+
+def get_history_by_task_id(task_id):
+    if oii := getattr(bpy.context.scene, "blender_ai_studio_property", None):
+        for h in oii.edit_history:
+            if h.task_id == task_id:
+                return h
+    return None
+
+
+def add_callback(task, temp_folder, generate_image_name):
+    from ..studio.tasks import UniversalModelTask, TaskManager, TaskResult, TaskState, Task
+    task_id = task.task_id
+
+    # 2. 注册回调
+    def on_state_changed(event_data):
+        def f():
+            edit_history = get_history_by_task_id(task_id)
+            _task: Task = event_data["task"]
+            old_state: TaskState = event_data["old_state"]
+            new_state: TaskState = event_data["new_state"]
+            text = f"状态改变: {old_state.value} -> {new_state.value}"
+            logger.info(text)
+            try:
+                edit_history.running_state = new_state.value
+            except Exception as e:
+                logger.error(str(e))
+
+        bpy.app.timers.register(f, first_interval=0.1)
+
+    def on_progress(event_data):
+        def f():
+            # {
+            #     "current_step": 2,
+            #     "total_steps": 4,
+            #     "percentage": 0.5,
+            #     "message": "正在调用 API...",
+            #     "details": {},
+            # }
+            _task: Task = event_data["task"]
+            progress: dict = event_data["progress"]
+            percent = progress["percentage"]
+            message = progress["message"]
+            p = bpy.app.translations.pgettext("Progress")
+            text = f"{p}: {percent * 100}% - {message}"
+            edit_history = get_history_by_task_id(task_id)
+
+            try:
+                edit_history.running_progress = percent
+                edit_history.running_message = text
+            except Exception as e:
+                logger.error(str(e))
+            logger.info(text)
+
+        bpy.app.timers.register(f, first_interval=0.1)
+
+    def on_completed(event_data):
+        def f():
+            # result_data = {
+            #     "image_data": b"",
+            #     "mime_type": "image/png",
+            #     "width": 1024,
+            #     "height": 1024,
+            # }
+            edit_history = get_history_by_task_id(task_id)
+
+            _task: Task = event_data["task"]
+            result: TaskResult = event_data["result"]
+            results: list[tuple[str, str | bytes]] = result.data
+            if not results:
+                logger.warning("No results")
+                return
+
+            # 存储结果
+            result_data = results[0]
+            ext = mimetypes.guess_extension(result_data[0])
+            save_file = Path(temp_folder).joinpath(f"{generate_image_name}_Output{ext}")
+            save_file.write_bytes(result_data[1])
+            text = f"任务完成: {_task.task_id} {save_file}"
+            logger.info(text)
+
+            try:
+                edit_history.stop_running()
+                edit_history.running_state = "completed"
+                edit_history.running_message = "Running completed"
+
+                if gi := bpy.data.images.load(str(save_file), check_existing=False):
+                    try:
+                        gi.preview_ensure()
+                        gi.name = generate_image_name
+
+                        space_data_list = find_ai_image_editor_space_data()  # 将图片加载到图片编辑器中
+                        for space_data in space_data_list:
+                            setattr(space_data, "image", gi)
+
+                        edit_history.add_generated_image(gi)
+                    except Exception as e:
+                        print("生成完成设置生成图像到活动项错误 error", e)
+                        import traceback
+                        traceback.print_exc()
+                        traceback.print_stack()
+                else:
+                    ut = bpy.app.translations.pgettext("Unable to load generated image!")
+                    edit_history.running_message = ut + " " + str(save_file)
+
+            except Exception as e:
+                logger.error(str(e))
+
+        bpy.app.timers.register(f, first_interval=0.1)
+
+    def on_failed(event_data):
+        def f():
+            text = f"on_failed {event_data}"
+            logger.info(text)
+
+            _task: Task = event_data["task"]
+            result: TaskResult = event_data["result"]
+            try:
+                edit_history = get_history_by_task_id(task_id)
+                edit_history.running_state = "failed"
+
+                if not result.success:
+                    edit_history.running_message = str(result.error)
+                    logger.info(edit_history.running_message)
+                else:
+                    edit_history.running_message = "Unknown error" + " " + str(result.data)
+                edit_history.stop_running()
+            except Exception as e:
+                logger.error(str(e))
+            bpy.context.scene.blender_ai_studio_property.check_all_failed(True)
+
+        bpy.app.timers.register(f, first_interval=0.1)
+
+    task.register_callback("state_changed", on_state_changed)
+    task.register_callback("progress_updated", on_progress)
+    task.register_callback("completed", on_completed)
+    task.register_callback("failed", on_failed)
 
 
 class ApplyAiEditImage(bpy.types.Operator):
@@ -205,124 +343,8 @@ class ApplyAiEditImage(bpy.types.Operator):
         )
 
         edit_history.running_message = "Start..."
-
-        # 2. 注册回调
-        def on_state_changed(event_data):
-            def f():
-                _task: Task = event_data["task"]
-                old_state: TaskState = event_data["old_state"]
-                new_state: TaskState = event_data["new_state"]
-                text = f"状态改变: {old_state.value} -> {new_state.value}"
-                logger.info(text)
-                try:
-                    edit_history.running_state = new_state.value
-                except Exception as e:
-                    logger.error(str(e))
-
-            bpy.app.timers.register(f, first_interval=0.1)
-
-        def on_progress(event_data):
-            def f():
-                # {
-                #     "current_step": 2,
-                #     "total_steps": 4,
-                #     "percentage": 0.5,
-                #     "message": "正在调用 API...",
-                #     "details": {},
-                # }
-                _task: Task = event_data["task"]
-                progress: dict = event_data["progress"]
-                percent = progress["percentage"]
-                message = progress["message"]
-                p = bpy.app.translations.pgettext("Progress")
-                text = f"{p}: {percent * 100}% - {message}"
-
-                try:
-                    edit_history.running_progress = percent
-                    edit_history.running_message = text
-                except Exception as e:
-                    logger.error(str(e))
-                logger.info(text)
-
-            bpy.app.timers.register(f, first_interval=0.1)
-
-        def on_completed(event_data):
-            def f():
-                # result_data = {
-                #     "image_data": b"",
-                #     "mime_type": "image/png",
-                #     "width": 1024,
-                #     "height": 1024,
-                # }
-
-                _task: Task = event_data["task"]
-                result: TaskResult = event_data["result"]
-                results: list[tuple[str, str | bytes]] = result.data
-                if not results:
-                    logger.warning("No results")
-                    return
-
-                # 存储结果
-                result_data = results[0]
-                ext = mimetypes.guess_extension(result_data[0])
-                save_file = Path(temp_folder).joinpath(f"{generate_image_name}_Output{ext}")
-                save_file.write_bytes(result_data[1])
-                text = f"任务完成: {_task.task_id} {save_file}"
-                logger.info(text)
-
-                try:
-                    edit_history.stop_running()
-                    edit_history.running_state = "completed"
-                    edit_history.running_message = "Running completed"
-
-                    if gi := bpy.data.images.load(str(save_file), check_existing=False):
-                        try:
-                            gi.preview_ensure()
-                            gi.name = generate_image_name
-                            space_data.image = gi
-                            edit_history.add_generated_image(gi)
-                        except Exception as e:
-                            print("生成完成设置生成图像到活动项错误 error", e)
-                            import traceback
-                            traceback.print_exc()
-                            traceback.print_stack()
-                    else:
-                        ut = bpy.app.translations.pgettext("Unable to load generated image!")
-                        edit_history.running_message = ut + " " + str(save_file)
-
-                except Exception as e:
-                    logger.error(str(e))
-
-            bpy.app.timers.register(f, first_interval=0.1)
-
-        def on_failed(event_data):
-            def f():
-                text = f"on_failed {event_data}"
-                logger.info(text)
-
-                _task: Task = event_data["task"]
-                result: TaskResult = event_data["result"]
-                try:
-                    edit_history.running_state = "failed"
-
-                    if not result.success:
-                        edit_history.running_message = str(result.error)
-                        logger.info(edit_history.running_message)
-                    else:
-                        edit_history.running_message = "Unknown error" + " " + str(result.data)
-                    edit_history.stop_running()
-                except Exception as e:
-                    logger.error(str(e))
-
-                context.scene.blender_ai_studio_property.check_all_failed(True)
-
-            bpy.app.timers.register(f, first_interval=0.1)
-
-        task.register_callback("state_changed", on_state_changed)
-        task.register_callback("progress_updated", on_progress)
-        task.register_callback("completed", on_completed)
-        task.register_callback("failed", on_failed)
         edit_history.task_id = task.task_id
+        add_callback(task, temp_folder, generate_image_name)
         TaskManager.get_instance().submit_task(task)
         logger.info(f"任务提交: {task.task_id}")
 

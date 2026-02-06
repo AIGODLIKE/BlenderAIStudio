@@ -74,8 +74,8 @@ class DrawImageMask(bpy.types.Operator):
                 asset_library_identifier="",
                 relative_asset_identifier=r"brushes\\essentials_brushes-mesh_texture.blend\\Brush\\Paint Hard Pressure",
             )
-            paint_settings.size = 4
-            paint_settings.color = [1, 0, 0]
+            paint_settings.size = 25
+            paint_settings.color = [0, 0, 0]
             bpy.ops.ed.undo_push(message="Push Undo")
             return {"FINISHED"}
 
