@@ -855,6 +855,8 @@ class StudioHistoryViewer:
         mlt_flags = imgui.InputTextFlags.WORD_WRAP
         text_box_height = h * 5 + imgui.get_style().frame_padding[1] * 2
         _, _ = imgui.input_text_multiline("##prompt", prompt, (-1, text_box_height), mlt_flags)
+        if not item.is_success():
+            return
         icon = TexturePool.get_tex_id(item.get_output_file_image())
         tex = TexturePool.get_tex(icon)
         tex_width = tex.width
