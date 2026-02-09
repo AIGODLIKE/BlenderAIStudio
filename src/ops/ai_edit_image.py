@@ -6,7 +6,7 @@ import bpy
 from .. import logger
 from ..i18n.translations.zh_HANS import OPS_TCTX
 from ..utils import png_name_suffix, get_pref, get_temp_folder, save_image_to_temp_folder, refresh_image_preview
-from ..utils.area import find_ai_image_editor_space_data
+from ..utils.area import find_ai_image_editor_space_data, find_image_editor_areas
 
 
 def get_history_by_task_id(task_id):
@@ -174,8 +174,8 @@ class ApplyAiEditImage(bpy.types.Operator):
 
     def modal(self, context, event):
         oii = context.scene.blender_ai_studio_property
-        if context.area:
-            context.area.tag_redraw()
+        for area in find_image_editor_areas():
+            area.tag_redraw()
 
         if len(oii.running_task_list) == 0:  # 所有的任务都没了,不刷新界面了
             return {"FINISHED"}

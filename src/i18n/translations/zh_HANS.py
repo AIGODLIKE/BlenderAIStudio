@@ -236,6 +236,7 @@ translations = (
     ("%s Item is currently being generated", "%s 项正在生成中", None),
     ("Please enter the prompt", "请输入提示词", OPS_TCTX),
     ("The image is empty", "图像为空", None),
+    ("Image is render result", "图像是渲染结果", None),
     ("Apply AI Edit Image", "应用AI编辑图像", None),
     ("Restore History", "还原历史记录", OPS_TCTX),
     ("Apply AI Edit", "应用AI编辑", OPS_TCTX),

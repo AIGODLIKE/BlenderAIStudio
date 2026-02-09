@@ -1,10 +1,12 @@
-import bpy
 import hashlib
 import os
 import time
 from typing import TYPE_CHECKING
 
+import bpy
+
 from .pkg_installer import PkgInstaller
+from .. import logger
 
 if TYPE_CHECKING:
     from ..preferences import BlenderAIStudioPref
@@ -92,6 +94,13 @@ def get_text_editor_window(context: bpy.types.Context):
     return None
 
 
+def check_image_is_render_result(image) -> bool:
+    """检查图片是否为渲染图"""
+    not_pixels = len(image.pixels) == 0
+    have_render_slots = len(image.render_slots) > 0
+    return not_pixels and have_render_slots
+
+
 def save_image_to_temp_folder(image, temp_folder) -> str | None:
     try:
         import os
@@ -103,7 +112,10 @@ def save_image_to_temp_folder(image, temp_folder) -> str | None:
             image.filepath_raw = image_path
             image.file_format = 'PNG'
             try:
-                image.save()
+                if check_image_is_render_result(image):
+                    image.save_render(image_path)
+                else:
+                    image.save()
             except Exception as e:
                 print(e)
                 import traceback
@@ -113,6 +125,7 @@ def save_image_to_temp_folder(image, temp_folder) -> str | None:
             if os.path.exists(image_path):
                 os.path.getsize(image_path)
             else:
+                logger.info(f"save_image_to_temp_folder not exists {image_path}")
                 image.save_render(image_path)
         finally:
             image.filepath_raw = filepath_raw

@@ -5,7 +5,7 @@ from ..i18n import PANEL_TCTX
 from ..online_update_addon import UpdateService
 from ..preferences import AuthMode
 from ..studio.config.model_registry import ModelRegistry
-from ..utils import get_custom_icon, get_addon_version_str, get_pref
+from ..utils import get_custom_icon, get_addon_version_str, get_pref, check_image_is_render_result
 
 
 def check_is_draw_mask(context):
@@ -126,7 +126,9 @@ class AIStudioImagePanel(bpy.types.Panel):
         box.label(text=f"{w}*{h} px(72dpi)", icon_value=get_custom_icon("image_info_resolution"))
         box.label(text=f"{image.name}", icon_value=get_custom_icon("image_info_vendor"))
         box.operator("image.clipboard_copy", icon="COPYDOWN", text="Copy image to clipboard")
-        if w == 0 and h == 0:
+        if check_image_is_render_result(image):
+            box.label(text="Image is render result")
+        elif w == 0 and h == 0:
             box.alert = True
             box.label(text="The image is empty", icon="ERROR")
 
