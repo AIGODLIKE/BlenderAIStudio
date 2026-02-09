@@ -273,7 +273,7 @@ translations = (
     ("Are you sure you want to clear all history?", "您确定要清除所有历史记录吗?", ""),
     ("ReRender Image", "重渲染图像", None),
     ("Render", "渲染", OPS_TCTX),
-    ("Aspect Ratio:", "宽高比:", None),
+    ("Aspect Ratio", "宽高比", PROP_TCTX),
     ("Image Info", "图片信息", None),
     ("Continue drawing", "继续绘制", "Operator"),
     ("Generate History", "生成历史", None),

@@ -340,13 +340,15 @@ class DynamicEnumeration:
 
     def set_aspect_ratio(self, value):
         key = f"{self.model_name}_aspect_ratio"
+        logger.debug(f"set_aspect_ratio {key} {value}")
         set_bl_property(self, key, value)
 
     aspect_ratio: bpy.props.EnumProperty(
         name="Aspect Ratio",
         items=get_aspect_ratio_items,
         get=get_aspect_ratio,
-        set=set_aspect_ratio
+        set=set_aspect_ratio,
+        translation_context=PROP_TCTX,
     )
 
 

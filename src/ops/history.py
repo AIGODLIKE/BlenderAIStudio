@@ -3,6 +3,7 @@ from threading import Thread
 
 import bpy
 
+from .. import logger
 from ..i18n.translations.zh_HANS import OPS_TCTX
 from ..utils import load_image
 from ..utils.ctypes.window import foreground_image_edit_window
@@ -102,9 +103,15 @@ class OpenImageInNewWindow(bpy.types.Operator):
             data = json.loads(self.data)
             metadata = data.get("metadata", None)
             if metadata:
-                aspect_ratio = metadata.get("aspect_ratio", "1:1")
+                params = metadata.get("params", None)
+                logger.info(f"{self.bl_label} {params.keys()}")
+                aspect_ratio = params.get("aspect_ratio", "1:1")
+                resolution = params.get("resolution", "1K")
+                prompt = params.get("prompt", "")
+
+                logger.info(f"{self.bl_label} {aspect_ratio} {resolution} {prompt}")
                 oii = context.scene.blender_ai_studio_property
-                resolution = metadata.get("resolution", "1K")
+                oii.prompt = prompt
                 oii.aspect_ratio = aspect_ratio
                 oii.resolution = resolution
         except Exception as e:
