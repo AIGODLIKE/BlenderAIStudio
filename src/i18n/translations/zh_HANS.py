@@ -196,6 +196,7 @@ edit_image_translations = {
     ("Up to 12 images can be selected", "最多可选择12张图像", None),
     ("Paste Reference Image", "粘贴参考图", ""),
     ("Remove Reference Image", "删除参考图", ""),
+    ("No Prompt", "无提示词", ""),
 }
 preferences_translations = (
     ("Setting", "设置", PROP_TCTX),
