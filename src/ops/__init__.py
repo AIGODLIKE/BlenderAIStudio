@@ -23,6 +23,7 @@ from .references_image import (
     ReplaceReferenceImage,
     SelectReferenceImageByFile,
     SelectReferenceImageByImage,
+    ClipboardPasteReferenceImage,
 )
 from .privacy_tips import PrivacyTips
 from .update_tips import UpdateTips
@@ -36,6 +37,7 @@ class_list = [
     SelectReferenceImageByFile,
     SelectReferenceImageByImage,
     ReplaceReferenceImage,
+    ClipboardPasteReferenceImage,
 
     SelectMask,
     DrawImageMask,
