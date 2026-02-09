@@ -764,9 +764,12 @@ class StudioHistoryViewer:
                 clip_uv_y = abs(tex.height - (tex.width / bw) * bh) / tex.height * 0.5
                 uvmin = (0, clip_uv_y)
                 uvmax = (1, 1 - clip_uv_y)
-            if imgui.button("##FakeButton", (bw, bh)) and Path(img).exists():
-                self.copy_image(img)
-                self.app.push_info_message(_T("Image Copied!"))
+            if imgui.button("##FakeButton", (bw, bh)):
+                if Path(img).exists():
+                    self.copy_image(img)
+                    self.app.push_info_message(_T("Image Copied!"))
+                else:
+                    self.app.push_info_message(_T("Image not found! Copy Failed!"))
             pmin = imgui.get_item_rect_min()
             pmax = imgui.get_item_rect_max()
             dl = imgui.get_window_draw_list()

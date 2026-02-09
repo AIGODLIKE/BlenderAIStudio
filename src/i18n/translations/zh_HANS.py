@@ -148,6 +148,7 @@ studio_panel_translations = (
     ("(%s/use)", "(%s/次)", None),
     ("AI Edit", "AI编辑", None),
     ("Image Copied!", "图片已复制到剪贴板！", None),
+    ("Image not found! Copy Failed!", "图像无法找到! 无法被复制!", None),
     ("Prompt Copied!", "提示词已复制到剪贴板！", None),
     ("No Prompt Found!", "未找到提示词！", None),
     ("Refresh Task", "刷新任务", None),
