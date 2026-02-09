@@ -123,7 +123,6 @@ class EditHistory(HistoryState, GeneralProperty, HistoryFailedCheck, bpy.types.P
         oii = context.scene.blender_ai_studio_property
         oii.prompt = self.prompt
         oii.mask_index = self.mask_index
-
         oii.reference_images.clear()
         for ri in self.reference_images:
             nri = oii.reference_images.add()
@@ -135,6 +134,10 @@ class EditHistory(HistoryState, GeneralProperty, HistoryFailedCheck, bpy.types.P
             nmi = oii.mask_images.add()
             nmi.name = mi.name
             nmi.image = mi.image
+
+        if space_data := getattr(context, "space_data", None):
+            if self.origin_image:
+                setattr(space_data, "image", self.origin_image)
 
     def draw_history(self, context, layout: bpy.types.UILayout, index):
         if self.is_running:

@@ -169,15 +169,18 @@ class ApplyAiEditImage(bpy.types.Operator):
     def exit(self, context):
         if self.__class__._timer:
             context.window_manager.event_timer_remove(self.__class__._timer)
+            self.__class__._timer = None
         if context.area:
             context.area.tag_redraw()
 
     def modal(self, context, event):
         oii = context.scene.blender_ai_studio_property
-        for area in find_image_editor_areas():
+        areas = find_image_editor_areas()
+        for area in areas:
             area.tag_redraw()
 
         if len(oii.running_task_list) == 0:  # 所有的任务都没了,不刷新界面了
+            self.exit(context)
             return {"FINISHED"}
         return {"PASS_THROUGH"}
 
