@@ -210,7 +210,11 @@ class ApplyAiEditImage(bpy.types.Operator):
         generate_image_name = png_name_suffix(origin_image.name, f"_{self.running_operator}")
 
         # 将blender图片保存到临时文件夹
-        temp_folder = get_temp_folder(prefix="edit")
+        try:
+            temp_folder = get_temp_folder(prefix="edit")
+        except PermissionError as e:
+            self.report({"ERROR"}, str(e))
+            return {"CANCELLED"}
 
         origin_image_file_path = save_image_to_temp_folder(origin_image, temp_folder)
         reference_images_path = []

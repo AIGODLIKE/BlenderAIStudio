@@ -1,5 +1,6 @@
 import hashlib
 import os
+import sys
 import time
 from typing import TYPE_CHECKING
 
@@ -229,11 +230,85 @@ def debug_time(func, print_time=True):
     return wap
 
 
+def check_folder_writable_permission(folder_path):
+    """
+    不执行写入操作，仅通过权限检查判断文件夹是否可写
+
+    Args:
+        folder_path (str): 要检查的文件夹路径
+
+    Returns:
+        bool: True表示有写入权限，False表示无写入权限
+    """
+    # 1. 检查文件夹是否存在
+    if not os.path.exists(folder_path):
+        print(f"错误：文件夹 '{folder_path}' 不存在")
+        return False
+    # 2. 检查路径是否为文件夹
+    if not os.path.isdir(folder_path):
+        print(f"错误：'{folder_path}' 不是一个有效的文件夹")
+        return False
+
+    temp_filename = f"_permission_check_{int(time.time() * 1000)}_{os.getpid()}.tmp"
+    temp_filepath = os.path.join(folder_path, temp_filename)
+
+    # 核心：尝试以写入模式打开文件（真正的权限验证）
+    file_handle = None
+    try:
+        # 打开模式：w=写入（不存在则创建，存在则清空），b=二进制（跨平台兼容）
+        # exclusive creation (O_EXCL) 确保文件不存在才创建，避免覆盖
+        if sys.platform.startswith('win'):
+            # Windows 下的独占创建
+            file_handle = open(temp_filepath, 'wb')
+        else:
+            # Linux/macOS 下的独占创建（避免竞态）
+            file_handle = os.fdopen(os.open(temp_filepath, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'wb')
+        print(f"file_handle {file_handle}")
+
+        # 能打开说明有权限，立即关闭+删除（不残留文件）
+        file_handle.close()
+        print(f"file_handle.close")
+        os.remove(temp_filepath)
+        print(f"os.remove(temp_filepath)")
+        return True
+    except PermissionError:
+        # 捕获权限不足（核心异常，关闭权限后会触发这个）
+        print(f"❌ 文件夹 '{folder_path}' 无写入权限（PermissionError）")
+        return False
+    except FileExistsError:
+        # 极端情况：临时文件名冲突，重试无意义，返回False（概率极低）
+        print(f"⚠️ 临时文件 '{temp_filepath}' 已存在，跳过检查")
+        return False
+    except Exception as e:
+        # 其他错误（如磁盘满、路径不可访问等）
+        print(f"❌ 检查失败：{type(e).__name__} - {e}")
+        return False
+    finally:
+        # 兜底：确保文件句柄关闭，避免资源泄漏
+        if file_handle and not file_handle.closed:
+            file_handle.close()
+        # 兜底：确保临时文件被删除，不残留垃圾
+        if os.path.exists(temp_filepath):
+            try:
+                os.remove(temp_filepath)
+            except Exception as e:
+                print(f"remove error {e}")
+
+
 def get_temp_folder(suffix=None, prefix=None):
     import tempfile
     file_name = os.path.basename(bpy.data.filepath)[:-6] if bpy.data.is_saved else ''  # 'Untitled.blend' -> 'Untitled'
     time_str = time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime())
-    return tempfile.mkdtemp(prefix=f"{file_name}_{time_str}_{prefix}_", suffix=suffix, dir=get_pref().output_cache_dir)
+    folder = get_pref().output_cache_dir
+
+    if not check_folder_writable_permission(folder):
+        # 不可写入反回错误
+        error_text = bpy.app.translations.pgettext_iface("Folder cannot be written to")
+        text = f"{error_text}：{folder}"
+        logger.error(text)
+        raise PermissionError(text)
+    temp_folder = tempfile.mkdtemp(prefix=f"{file_name}_{time_str}_{prefix}_", suffix=suffix, dir=folder)
+    return temp_folder
 
 
 def calculate_md5(file_path, chunk_size=8192):

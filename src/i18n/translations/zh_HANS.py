@@ -5,6 +5,7 @@ STUDIO_TCTX = "BlenderAIStudioSTUDIOTCTX"
 
 error_translations = (
     ("Network connection failed", "网络连接失败", None),
+    ("Folder cannot be written to", "无法写入文件夹", None),
     ("Redeem failed", "兑换失败", None),
     ("Price fetch failed", "价格获取失败", None),
     ("Credits fetch failed", "余额获取失败", None),

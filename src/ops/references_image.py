@@ -191,7 +191,11 @@ class ClipboardPasteReferenceImage(bpy.types.Operator):
             return {"FINISHED"}
         new_image = context.space_data.image
         if new_image != old_image:
-            image_save_path = get_temp_folder(prefix="paste_image")
+            try:
+                image_save_path = get_temp_folder(prefix="paste_image")
+            except PermissionError as e:
+                self.report({"ERROR"}, str(e))
+                return {"CANCELLED"}
             image_name = f"paste_image_{time.time()}.png"
             image_path = Path(image_save_path).joinpath(image_name).as_posix()
 

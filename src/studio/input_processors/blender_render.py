@@ -79,7 +79,8 @@ class RenderProcessor(InputProcessor):
 
             logger.info(f"RenderProcessor: Render Completed -> {image_path}")
             return {"image_path": image_path}
-        except CancelledError:
+        except CancelledError as e:
+            logger.info(f"RenderProcessor: Render Canceled {e}")
             raise
         except Exception as e:
             logger.error(f"RenderProcessor: Render Failed -> {e}")

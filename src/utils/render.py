@@ -305,7 +305,6 @@ class BlenderRenderHelper:
         """
         if itype == "NoInput":
             return ""
-
         # 创建临时文件
         temp_folder = get_temp_folder(prefix="generate")
         temp_image_path = tempfile.NamedTemporaryFile(suffix=".png", prefix="Render", delete=False, dir=temp_folder)
@@ -448,17 +447,22 @@ def unregister():
 if __name__ == "__main__":
     render_agent = RenderAgent()
 
+
     def on_complete(sce):
         print("on_complete", sce)
+
 
     def on_post(sce):
         print("on_post", sce)
 
+
     def on_write(sce):
         print("Render Finished")
 
+
     def on_cancel(sce):
         print("Render Cancel")
+
 
     bpy.app.handlers.render_cancel.append(on_cancel)
     bpy.app.handlers.render_complete.append(on_complete)
