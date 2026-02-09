@@ -9,6 +9,7 @@ from .online_update import OnlineUpdate
 from .privacy import Privacy
 from ..i18n import PROP_TCTX
 from ..online_update_addon import UpdateService
+from ..utils import check_folder_writable_permission
 from ... import __package__ as base_name
 
 translation_context = {}
@@ -79,10 +80,16 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey, Priv
         size=2,
         **translation_context,
     )
+
+    def update_cache_dir(self, context):
+        self.output_cache_dir_not_writable = check_folder_writable_permission(self.output_cache_dir)
+
+    output_cache_dir_not_writable: bpy.props.BoolProperty()
     output_cache_dir: bpy.props.StringProperty(
         name="Output Cache Directory",
         subtype="DIR_PATH",
         default=tempfile.gettempdir(),
+        update=update_cache_dir,
         **translation_context,
     )
     account_auth_mode: bpy.props.EnumProperty(
@@ -167,7 +174,17 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey, Priv
     def draw_setting(self, layout):
         layout.prop(self, "ui_pre_scale")
         layout.prop(self, "ui_offset")
-        layout.prop(self, "output_cache_dir")
+
+        column = layout.column()
+        not_writable = not self.output_cache_dir_not_writable
+        if not_writable:
+            column.alert = True
+        column.prop(self, "output_cache_dir")
+        if not_writable:
+            column.alert = True
+            column.label(text="Output Cache Directory Not Writable", icon="ERROR")
+            column.label(text="Please change the output cache directory to a writable directory")
+
         self.draw_service(layout.box())
 
     def draw_online_update(self, layout):

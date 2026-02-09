@@ -28,6 +28,7 @@ __all__ = [
     "refresh_image_preview",
     "get_temp_folder",
     "debug_time",
+    "check_folder_writable_permission",
 ]
 
 
@@ -263,13 +264,10 @@ def check_folder_writable_permission(folder_path):
         else:
             # Linux/macOS 下的独占创建（避免竞态）
             file_handle = os.fdopen(os.open(temp_filepath, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'wb')
-        print(f"file_handle {file_handle}")
 
         # 能打开说明有权限，立即关闭+删除（不残留文件）
         file_handle.close()
-        print(f"file_handle.close")
         os.remove(temp_filepath)
-        print(f"os.remove(temp_filepath)")
         return True
     except PermissionError:
         # 捕获权限不足（核心异常，关闭权限后会触发这个）
