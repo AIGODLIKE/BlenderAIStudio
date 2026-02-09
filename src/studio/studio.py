@@ -1748,11 +1748,12 @@ class BubbleLogger:
 
 
 class AIStudio(AppHud):
+    CACHED_CLIENT = {}
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.active_panel = AIStudioPanelType.GENERATION
         self.state = Account.get_instance()
-        self.client = UniversalClient()
+        self.client = self.create_client_with_cache()
         self.store_panel = StorePanel(self)
         self.client_wrapper = StudioWrapper()
         self.bubble_logger = BubbleLogger(self)
@@ -1767,6 +1768,11 @@ class AIStudio(AppHud):
         # 初始化 active_client 为默认模型 Name
         self.active_client = ""
         self.refresh_client()
+
+
+    def create_client_with_cache(self) -> "UniversalClient":
+        self.CACHED_CLIENT.setdefault(bpy.context.area, UniversalClient())
+        return self.CACHED_CLIENT[bpy.context.area]
 
     def refresh_client(self):
         available_models = self.get_available_models()
