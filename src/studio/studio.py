@@ -764,9 +764,12 @@ class StudioHistoryViewer:
                 clip_uv_y = abs(tex.height - (tex.width / bw) * bh) / tex.height * 0.5
                 uvmin = (0, clip_uv_y)
                 uvmax = (1, 1 - clip_uv_y)
-            if imgui.button("##FakeButton", (bw, bh)) and Path(img).exists():
-                self.copy_image(img)
-                self.app.push_info_message(_T("Image Copied!"))
+            if imgui.button("##FakeButton", (bw, bh)):
+                if Path(img).exists():
+                    self.copy_image(img)
+                    self.app.push_info_message(_T("Image Copied!"))
+                else:
+                    self.app.push_info_message(_T("Image not found! Copy Failed!"))
             pmin = imgui.get_item_rect_min()
             pmax = imgui.get_item_rect_max()
             dl = imgui.get_window_draw_list()
@@ -1748,11 +1751,12 @@ class BubbleLogger:
 
 
 class AIStudio(AppHud):
+    CACHED_CLIENT = {}
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.active_panel = AIStudioPanelType.GENERATION
         self.state = Account.get_instance()
-        self.client = UniversalClient()
+        self.client = self.create_client_with_cache()
         self.store_panel = StorePanel(self)
         self.client_wrapper = StudioWrapper()
         self.bubble_logger = BubbleLogger(self)
@@ -1767,6 +1771,11 @@ class AIStudio(AppHud):
         # 初始化 active_client 为默认模型 Name
         self.active_client = ""
         self.refresh_client()
+
+
+    def create_client_with_cache(self) -> "UniversalClient":
+        self.CACHED_CLIENT.setdefault(bpy.context.area, UniversalClient())
+        return self.CACHED_CLIENT[bpy.context.area]
 
     def refresh_client(self):
         available_models = self.get_available_models()
