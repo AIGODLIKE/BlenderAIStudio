@@ -47,7 +47,6 @@ class AIStudioImagePanel(bpy.types.Panel):
         column = layout.column(align=True)
         bb = column.box()
         self.draw_model_parameters(context, bb)  # 动态绘制需要的参数
-
         col = layout.column(align=True)
         ai.draw_reference_images(context, col)
         col.separator(factor=1.5)
@@ -126,10 +125,10 @@ class AIStudioImagePanel(bpy.types.Panel):
 
         box.label(text=f"{w}*{h} px(72dpi)", icon_value=get_custom_icon("image_info_resolution"))
         box.label(text=f"{image.name}", icon_value=get_custom_icon("image_info_vendor"))
+        box.operator("image.clipboard_copy", icon="COPYDOWN", text="Copy image to clipboard")
         if w == 0 and h == 0:
             box.alert = True
             box.label(text="The image is empty", icon="ERROR")
-        box.operator("image.clipboard_copy", icon="COPYDOWN", text="Copy image to clipboard")
 
     @staticmethod
     def draw_ai_edit_layout(context, layout: bpy.types.UILayout):

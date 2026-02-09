@@ -86,7 +86,7 @@ class HistoryFailedCheck:
     def draw_failed_check(self, layout: bpy.types.UILayout):
         column = layout.column()
         if self.is_refund_points:
-            column.label(text="已退还积分")
+            column.label(text="Credits Refunded")
         if self.failed_check_message:
             for j in self.failed_check_message.split("\n"):
                 column.label(text=j)

@@ -44,8 +44,6 @@ class SelectReferenceImageByFile(bpy.types.Operator, ImportHelper):
     )
 
     def execute(self, context):
-        print(self.bl_idname, self.filepath)
-
         for file in self.files:
             img_path = Path(self.directory).joinpath(file.name).as_posix()
             image = bpy.data.images.load(img_path)
@@ -165,11 +163,11 @@ class ClipboardPasteReferenceImage(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        is_image_editor = context.area.type = "IMAGE_EDITOR"
-        try:
-            return bpy.ops.image.clipboard_paste.poll() and is_image_editor
-        except Exception:
-            return is_image_editor
+        is_image_editor = context.area and context.area.type == "IMAGE_EDITOR"
+        # try:
+        #     return bpy.ops.image.clipboard_paste.poll() and is_image_editor
+        # except Exception:
+        return is_image_editor
 
     def execute(self, context):
         # 直接新建窗口并设为 Image Editor
