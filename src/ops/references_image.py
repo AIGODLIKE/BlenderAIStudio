@@ -21,7 +21,7 @@ def add_reference_image(context, image, image_name=False):
 
 class SelectReferenceImageByFile(bpy.types.Operator, ImportHelper):
     bl_idname = "bas.select_reference_image_by_file"
-    bl_label = "Select References By File"
+    bl_label = "Select Reference By File"
     bl_translation_context = OPS_TCTX
     bl_options = {"REGISTER"}
 
@@ -55,7 +55,7 @@ class SelectReferenceImageByFile(bpy.types.Operator, ImportHelper):
 
 class SelectReferenceImageByImage(bpy.types.Operator):
     bl_idname = "bas.select_reference_image_by_image"
-    bl_label = "Select References By Bl Image"
+    bl_label = "Select Reference By Bl Image"
     bl_translation_context = OPS_TCTX
     bl_options = {"REGISTER"}
 
@@ -100,7 +100,7 @@ class SelectReferenceImageByImage(bpy.types.Operator):
 
 class ReplaceReferenceImage(bpy.types.Operator):
     bl_idname = "bas.replace_reference_image"
-    bl_label = "Replace References"
+    bl_label = "Replace Reference Image"
     bl_translation_context = OPS_TCTX
     bl_options = {"REGISTER"}
 
@@ -140,7 +140,6 @@ class ReplaceReferenceImage(bpy.types.Operator):
                     col.operator(
                         self.bl_idname,
                         icon="RESTRICT_SELECT_OFF",
-                        text=bpy.app.translations.pgettext_iface("Replace References"),
                     ).index = self.index
                 else:
                     i.preview_ensure()
@@ -148,7 +147,7 @@ class ReplaceReferenceImage(bpy.types.Operator):
 
 class RemoveReferenceImage(bpy.types.Operator):
     bl_idname = "bas.remove_reference_image"
-    bl_label = "Remove References"
+    bl_label = "Remove Reference Image"
     bl_options = {"REGISTER"}
 
     index: bpy.props.IntProperty()
@@ -161,7 +160,7 @@ class RemoveReferenceImage(bpy.types.Operator):
 
 class ClipboardPasteReferenceImage(bpy.types.Operator):
     bl_idname = "bas.clipboard_paste_reference_image"
-    bl_label = "Paste References"
+    bl_label = "Paste Reference Image"
     bl_options = {"REGISTER"}
 
     @classmethod
