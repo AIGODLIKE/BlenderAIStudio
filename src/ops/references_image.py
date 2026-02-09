@@ -1,10 +1,12 @@
+import time
 from pathlib import Path
 
 import bpy
 from bpy_extras.io_utils import ImportHelper
 
+from .. import logger
 from ..i18n.translations.zh_HANS import OPS_TCTX
-from ..utils import png_name_suffix, refresh_image_preview
+from ..utils import png_name_suffix, refresh_image_preview, get_temp_folder
 
 
 def add_reference_image(context, image, image_name=False):
@@ -154,4 +156,49 @@ class RemoveReferenceImage(bpy.types.Operator):
     def execute(self, context):
         ai = context.scene.blender_ai_studio_property
         ai.reference_images.remove(self.index)
+        return {"FINISHED"}
+
+
+class ClipboardPasteReferenceImage(bpy.types.Operator):
+    bl_idname = "bas.clipboard_paste_reference_image"
+    bl_label = "Paste References"
+    bl_options = {"REGISTER"}
+
+    @classmethod
+    def poll(cls, context):
+        is_image_editor = context.area.type = "IMAGE_EDITOR"
+        try:
+            return bpy.ops.image.clipboard_paste.poll() and is_image_editor
+        except Exception:
+            return is_image_editor
+
+    def execute(self, context):
+        # 直接新建窗口并设为 Image Editor
+        if not context.space_data:
+            return {"CANCELLED"}
+
+        old_image = context.space_data.image
+        region = context.region
+
+        if not region:
+            logger.warning("Paste image: no valid Image Editor region")
+            return {"FINISHED"}
+        try:
+            with bpy.context.temp_override():
+                result = bpy.ops.image.clipboard_paste()
+            if result != {"FINISHED"}:
+                logger.warning("Paste image failed: %s", result)
+                return {"FINISHED"}
+        except Exception as e:
+            logger.error(e)
+            return {"FINISHED"}
+        new_image = context.space_data.image
+        if new_image != old_image:
+            image_save_path = get_temp_folder(prefix="paste_image")
+            image_name = f"paste_image_{time.time()}.png"
+            image_path = Path(image_save_path).joinpath(image_name).as_posix()
+
+            new_image.save(filepath=image_path)
+            context.space_data.image = old_image
+            add_reference_image(context, new_image)
         return {"FINISHED"}

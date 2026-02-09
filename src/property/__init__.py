@@ -474,8 +474,12 @@ class SceneProperty(bpy.types.PropertyGroup, GeneralProperty, DynamicEnumeration
                 )
         if alert:
             rr.label(text="", icon="ERROR")
-        rr = row.row()
+        rr = row.row(align=True)
         rr.alignment = "RIGHT"
+        rr.operator("bas.clipboard_paste_reference_image", text="",
+                    emboss=False,
+                    icon="PASTEDOWN"
+                    )
         rr.operator("bas.select_reference_image_by_image", text="",
                     emboss=False,
                     icon_value=get_custom_icon("select_references_by_bl_image")
@@ -508,7 +512,7 @@ class SceneProperty(bpy.types.PropertyGroup, GeneralProperty, DynamicEnumeration
                     lay = ly.column(align=True)
                 lay.operator("bas.remove_reference_image", text="", icon="X",
                              ).index = i
-                lay.operator("bas.replace_reference_image", text="", icon="FILE_REFRESH",
+                lay.operator("bas.replace_reference_image", text="", icon="RESTRICT_SELECT_OFF",
                              ).index = i
         if rl == 0:
             box.label(text="Click top right ops to reference")
