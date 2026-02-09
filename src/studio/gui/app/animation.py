@@ -1,5 +1,7 @@
 import time
-from typing import Any, Callable, List, Optional, Protocol, TypeVar, Self
+from typing import Any, Callable, List, Optional, Protocol, TypeVar, TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Self
 
 T = TypeVar("T", bound="Tween")
 G = TypeVar("G", bound="AnimationGroup")
@@ -143,7 +145,7 @@ class AnimationGroup:
         self.is_finished = False
         self.on_complete_callback: Optional[Callable[[], None]] = None
 
-    def on_complete(self: Self, callback: Callable[[], None]) -> Self:
+    def on_complete(self: "Self", callback: Callable[[], None]) -> "Self":
         self.on_complete_callback = callback
         return self
 
@@ -202,7 +204,7 @@ class AnimationSystem:
         return cls._INSTANCE
 
     @classmethod
-    def get_instance(cls) -> Self:
+    def get_instance(cls) -> "Self":
         if cls._INSTANCE is None:
             cls._INSTANCE = cls()
         return cls._INSTANCE

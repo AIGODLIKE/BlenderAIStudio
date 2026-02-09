@@ -5,7 +5,9 @@ import webbrowser
 from copy import deepcopy
 from pathlib import Path
 from threading import Thread
-from typing import Self
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Self
 
 import requests
 from bpy.app.translations import pgettext as _T
@@ -154,7 +156,7 @@ class Account:
     # ==================== 单例和初始化 ====================
 
     @classmethod
-    def get_instance(cls) -> Self:
+    def get_instance(cls) -> "Self":
         if cls._INSTANCE is None:
             cls._INSTANCE = cls()
         return cls._INSTANCE
