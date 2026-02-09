@@ -214,7 +214,7 @@ class AIStudioImagePanel(bpy.types.Panel):
 
     @staticmethod
     def draw_prompt(ai, layout: bpy.types.UILayout):
-        layout.label(text="AI Edit Prompt", icon="TEXT")
+        layout.label(text="Edit Prompt", icon="TEXT")
         row = layout.row(align=True)
         row.prop(ai, "prompt", text="")
         row.operator("bas.prompt_edit", text="", icon="FILE_TEXT")

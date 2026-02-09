@@ -23,7 +23,8 @@ class MaskImageProperty(bpy.types.PropertyGroup):
     """
     图片属性
     """
-    origin_image: bpy.props.PointerProperty(type=bpy.types.Image, name="原图图片")
+    origin_image: bpy.props.PointerProperty(type=bpy.types.Image, name="原图图片 可以用于生成的图或是遮罩的图")
+    generate_image: bpy.props.PointerProperty(type=bpy.types.Image, name="生成图图片")
     is_mask_image: bpy.props.BoolProperty(name="Is Mask Image", default=False)
 
 

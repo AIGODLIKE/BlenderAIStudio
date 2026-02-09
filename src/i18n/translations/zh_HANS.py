@@ -246,7 +246,7 @@ translations = (
     ("1k resolution", "1k 分辨率", None),
     ("2k resolution", "2k 分辨率", None),
     ("4k resolution", "4k 分辨率", None),
-    ("AI Edit Prompt", "AI编辑提示词", None),
+    ("Edit Prompt", "编辑提示词", None),
     ("No image", "无图像", None),
     ("NANO API key not set, Enter it in addon preferences", "NANO Api密钥未设置,请在偏好设置中输入", None),
     ("Enter ai edit prompt or select reference images", "输入AI编辑提示词 或 选择参考图", None),
