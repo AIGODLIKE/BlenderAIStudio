@@ -120,9 +120,9 @@ class UniversalModelTask(Task):
                     self.params.update(mapped_result)
 
                     logger.info(f"InputProcessor {processor_name}:{group_name} 完成，映射结果: {mapped_result}")
-                except CancelledError:
+                except CancelledError as e:
                     logger.info(f"InputProcessor {processor_name}:{group_name} 被取消")
-                    return False, CancelledError("InputProcessor 被取消")
+                    return False, e
                 except Exception as e:
                     logger.error(f"InputProcessor {processor_name}:{group_name} 失败: {e}")
                     return False, e
