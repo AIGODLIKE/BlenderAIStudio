@@ -47,7 +47,7 @@ error_translations = (
     ("Can't load auth file", "加载账户信息失败", None),
     ("Can't create auth directory", "创建账户目录失败", None),
     ("Scene Camera Not Found", "场景相机未找到", None),
-    ("Scene Camera Not Found", "场景相机未找到", None),
+    ("Render Failed: Scene Camera Not Found", "场景相机未找到", None),
     ("Task is submitting, please wait...", "任务提交中，请稍后...", None),
     ("Cache folder not find, please change...", "缓存文件夹未找到，请修改...", None),
     ("Render Canceled", "渲染取消", None),
