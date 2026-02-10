@@ -57,6 +57,7 @@ error_translations = (
     ("Unknown action: '{action}'.", "未知操作: '{action}'。", None),
     ("Builder '{name}' not registered.", "构建器 '{name}' 未注册。", None),
     ("Generate Timeout, will refresh automatically.", "生成超时，即将自动刷新。", None),
+    ("Model ID not found. Please Check Login Status or Contact Developer", "模型ID未找到，请检查登录状态或联系开发者", None),
 )
 
 studio_panel_translations = (

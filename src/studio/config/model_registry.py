@@ -623,7 +623,8 @@ class ModelRegistry:
     def get_model_by_id(self, auth_mode: str, model_id: str) -> ModelConfig:
         model_name = self.resolve_model_name(auth_mode, model_id)
         if not model_name:
-            error_msg = f"Model ID '{model_id}' not found."
+            # 检查登录状态或联系开发者
+            error_msg = "Model ID not found. Please Check Login Status or Contact Developer"
             logger.error(error_msg)
             raise ValueError(error_msg)
         return self.get_model(model_name)

@@ -321,8 +321,12 @@ class UniversalClient(StudioClient):
                 "modelId": model_id,
                 "size": resolution,
             }
-        for _ in range(self.batch_count):
-            self._add_task_one(account, credentials, params)
+        try:
+            for _ in range(self.batch_count):
+                self._add_task_one(account, credentials, params)
+        except Exception as e:
+            logger.exception("提交任务时发生错误")
+            self.push_error(e)
 
     def _add_task_one(self, account: "Account", credentials, params):
         task = UniversalModelTask(
