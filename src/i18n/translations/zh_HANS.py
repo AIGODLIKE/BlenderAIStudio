@@ -5,7 +5,6 @@ STUDIO_TCTX = "BlenderAIStudioSTUDIOTCTX"
 
 error_translations = (
     ("Network connection failed", "网络连接失败", None),
-    ("Folder cannot be written to", "无法写入文件夹", None),
     ("Output Cache Directory Not Writable", "输出缓存目录不可写入", None),
     ("Please change the output cache directory to a writable directory", "请将输出缓存目录更改为可写目录", None),
     ("Redeem failed", "兑换失败", None),
@@ -343,6 +342,7 @@ translations = (
     ("Total image size exceeds the limit of 20MB.", "总图像大小超过20MB限制。", ""),
     ("Credits Refunded", "积分已退回", ""),
     ("Model", "模型", ""),
+    ("Folder cannot be written to", "无法写入文件夹", ""),
     ("Retrieve image again completed", "重新拉取图片完成", ""),
     ("Inspection stage error, points not deducted", "检查阶段错误,未扣除积分", ""),
     ("Generation failed, points not deducted", "生成失败,未扣除积分", ""),

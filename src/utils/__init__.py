@@ -29,6 +29,7 @@ __all__ = [
     "get_temp_folder",
     "debug_time",
     "check_folder_writable_permission",
+    "check_cache_folder_writable_permission",
 ]
 
 
@@ -231,7 +232,7 @@ def debug_time(func, print_time=True):
     return wap
 
 
-def check_folder_writable_permission(folder_path):
+def check_folder_writable_permission(folder_path) -> bool:
     """
     不执行写入操作，仅通过权限检查判断文件夹是否可写
 
@@ -293,18 +294,27 @@ def check_folder_writable_permission(folder_path):
                 print(f"remove error {e}")
 
 
+def check_cache_folder_writable_permission():
+    """
+    检查缓存文件夹是否有写入权限
+    如果无权限则抛出PermissionError错误
+    """
+    folder = get_pref().output_cache_dir
+    if not check_folder_writable_permission(folder):
+        # 不可写入反回错误
+        # error_text = bpy.app.translations.pgettext("Folder cannot be written to","*")
+        error_text = "无法写入文件夹,请尝试更改缓存目录"  # 不能使用bpy.app.translations?
+        text = f"{error_text}:'{folder}'"
+        # logger.error(text)
+        raise PermissionError(text)
+
+
 def get_temp_folder(suffix=None, prefix=None):
     import tempfile
     file_name = os.path.basename(bpy.data.filepath)[:-6] if bpy.data.is_saved else ''  # 'Untitled.blend' -> 'Untitled'
     time_str = time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime())
     folder = get_pref().output_cache_dir
-
-    if not check_folder_writable_permission(folder):
-        # 不可写入反回错误
-        error_text = bpy.app.translations.pgettext_iface("Folder cannot be written to")
-        text = f"{error_text}：{folder}"
-        logger.error(text)
-        raise PermissionError(text)
+    check_cache_folder_writable_permission()
     temp_folder = tempfile.mkdtemp(prefix=f"{file_name}_{time_str}_{prefix}_", suffix=suffix, dir=folder)
     return temp_folder
 

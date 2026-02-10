@@ -19,7 +19,7 @@ from .gemini_prompt import (
     EDIT_BASE_PROMPT,
 )
 from .... import logger
-from ....utils import calc_appropriate_aspect_ratio
+from ....utils import calc_appropriate_aspect_ratio, check_cache_folder_writable_permission
 
 if TYPE_CHECKING:
     from ...config.model_registry import ModelConfig
@@ -75,6 +75,9 @@ class GeminiImageGenerateBuilder(RequestBuilder):
             error_msg: str = _T("Action '{action}' not supported for model '{model_name}'.")
             error_msg = error_msg.format(action=action, model_name=model_config.model_name)
             raise ValueError(error_msg)
+
+        # 验证缓存文件夹是否可写
+        check_cache_folder_writable_permission()
 
         # 2. 构建 URL
         url = model_config.build_api_url(auth_mode)
