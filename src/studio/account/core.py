@@ -164,6 +164,9 @@ class Account:
     def init(self):
         if self.initialized:
             return
+        self.init_force()
+
+    def init_force(self):
         logger.debug("初始化账户")
         self.initialized = True
         self.fetch_credits_price()
@@ -203,6 +206,7 @@ class Account:
                 data: dict = event.get("data", {})
                 self.load_account_info(data)
                 self.save_account_info(data)
+                self.init_force()
                 response = {
                     "type": "send_token_return",
                     "data": {
