@@ -13,7 +13,7 @@ from ..config.model_registry import ModelConfig, ModelRegistry
 from ..tasks import UniversalModelTask, Task, TaskResult
 from ...preferences import AuthMode
 from ...logger import logger
-from ...utils import get_pref, get_temp_folder
+from ...utils import get_pref, get_temp_folder, check_cache_folder_writable_permission
 from ...timer import Timer
 
 
@@ -382,11 +382,11 @@ class UniversalClient(StudioClient):
         load_images_into_blender(outputs)
 
     def _update_history_item_on_complete(
-        self,
-        task_id: str,
-        response_data: list,
-        outputs: list[tuple[str, str]],
-        metadata: Dict[str, Any],
+            self,
+            task_id: str,
+            response_data: list,
+            outputs: list[tuple[str, str]],
+            metadata: Dict[str, Any],
     ):
         item = self.history.find_by_task_id(task_id)
         if not item:
@@ -434,6 +434,12 @@ class UniversalClient(StudioClient):
         if not Path(pref.output_cache_dir).exists():
             self.push_error(_T("Cache folder not find, please change..."))
             return False
+        try:
+            check_cache_folder_writable_permission()
+        except PermissionError as e:
+            self.push_error(e)
+            return False
+
 
         # 检查模型配置
         if not self._model_config:

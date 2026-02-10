@@ -1,10 +1,10 @@
-from bpy.app.translations import pgettext as _T
 import base64
 from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Any, TYPE_CHECKING, List
 
-from ....utils import check_cache_folder_writable_permission
+from bpy.app.translations import pgettext as _T
+
 from .base import RequestBuilder, RequestData
 from .seedream_prompt import (
     GENERATE_RENDER_WITH_REFERENCE,
@@ -32,9 +32,6 @@ class SeedreamImageGenerateBuilder(RequestBuilder):
             error_msg: str = _T("Action '{action}' not supported for model '{model_name}'.")
             error_msg = error_msg.format(action=action, model_name=model_config.model_name)
             raise ValueError(error_msg)
-
-        # 验证缓存文件夹是否可写
-        check_cache_folder_writable_permission()
 
         url = model_config.build_api_url(auth_mode)
         endpoint = model_config.get_endpoint(auth_mode)
