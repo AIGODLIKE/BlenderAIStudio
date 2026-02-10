@@ -82,9 +82,9 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey, Priv
     )
 
     def update_cache_dir(self, context):
-        self.output_cache_dir_not_writable = check_folder_writable_permission(self.output_cache_dir)
+        self.output_cache_dir_not_writable = not check_folder_writable_permission(self.output_cache_dir)
 
-    output_cache_dir_not_writable: bpy.props.BoolProperty()
+    output_cache_dir_not_writable: bpy.props.BoolProperty(default=False)
     output_cache_dir: bpy.props.StringProperty(
         name="Output Cache Directory",
         subtype="DIR_PATH",
@@ -176,7 +176,7 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey, Priv
         layout.prop(self, "ui_offset")
 
         column = layout.column()
-        not_writable = not self.output_cache_dir_not_writable
+        not_writable = self.output_cache_dir_not_writable
         if not_writable:
             column.alert = True
         column.prop(self, "output_cache_dir")
