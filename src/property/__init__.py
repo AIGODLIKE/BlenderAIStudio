@@ -13,6 +13,10 @@ from ..utils import get_custom_icon, time_diff_to_str, get_pref
 from ..utils.area import find_ai_image_editor_space_data
 from ..utils.property import get_bl_property, set_bl_property
 
+translation_context = {}
+
+if bpy.app.version >= (4, 0, 0):
+    translation_context["translation_context"] = PROP_TCTX
 
 class ImageItem(bpy.types.PropertyGroup):
     """集合使用的项,需要使用PropertyGroup包装一下才能被CollectionProperty使用"""
@@ -352,7 +356,7 @@ class DynamicEnumeration:
         items=get_aspect_ratio_items,
         get=get_aspect_ratio,
         set=set_aspect_ratio,
-        translation_context=PROP_TCTX,
+        **translation_context,
     )
 
 
