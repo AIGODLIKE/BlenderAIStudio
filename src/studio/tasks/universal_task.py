@@ -66,7 +66,7 @@ class UniversalModelTask(Task):
                 logger.error(f"取消 InputProcessor 失败: {e}")
         return super().cancel()
 
-    def prepare(self) -> bool:
+    def prepare(self) -> tuple[bool, Optional[Exception]]:
         """准备任务
 
         执行流程：
@@ -89,7 +89,7 @@ class UniversalModelTask(Task):
 
                 # 检查取消
                 if self.is_cancelled():
-                    return False
+                    return False, CancelledError("任务被取消")
 
                 # 为每个 (processor, group) 组合创建独立的实例
                 # 这样同一个 processor 可以被多次调用
@@ -122,7 +122,10 @@ class UniversalModelTask(Task):
                     logger.info(f"InputProcessor {processor_name}:{group_name} 完成，映射结果: {mapped_result}")
                 except CancelledError:
                     logger.info(f"InputProcessor {processor_name}:{group_name} 被取消")
-                    return False
+                    return False, CancelledError("InputProcessor 被取消")
+                except Exception as e:
+                    logger.error(f"InputProcessor {processor_name}:{group_name} 失败: {e}")
+                    return False, e
 
             # 清理所有已处理的输入参数（在所有处理器完成后统一清理）
             # TODO 添加是否需要清理的配置项
@@ -134,7 +137,7 @@ class UniversalModelTask(Task):
 
             # 检查取消
             if self.is_cancelled():
-                return False
+                return False, CancelledError("任务被取消")
 
             # 2. 创建 Provider
             self.provider = UniversalProvider(
@@ -147,19 +150,19 @@ class UniversalModelTask(Task):
             # 3. 验证认证模式
             if not self.model_config.supports_auth_mode(self.auth_mode):
                 self.update_progress(0, f"模型不支持 {self.auth_mode} 模式")
-                return False
+                return False, ValueError(f"模型不支持 {self.auth_mode} 模式")
 
             # 4. 验证必需参数
             if not self._validate_parameters():
-                return False
+                return False, ValueError("缺少必需参数")
 
             self.update_progress(2, "准备完成")
-            return True
+            return True, None
 
         except Exception as e:
             self.update_progress(0, f"任务准备失败: {str(e)}")
             logger.error(f"任务准备失败: {e}")
-            return False
+            return False, e
 
     def _apply_output_mapping(self, result: Dict[str, Any], output_mapping: Dict[str, str]) -> Dict[str, Any]:
         """应用输出映射

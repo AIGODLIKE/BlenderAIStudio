@@ -3,6 +3,7 @@ from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
 from requests.exceptions import ReadTimeout
 from .history import StudioHistory, StudioHistoryItem
 from ..account import Account
+from ..exception import TaskPrepareException
 from ..tasks import TaskManager, TaskState, Task, TaskResult
 from ..wrapper import BaseAdapter
 from ... import logger
@@ -123,8 +124,11 @@ class StudioClient(BaseAdapter):
 
         account = Account.get_instance()
         is_account_mode = account.auth_mode == AuthMode.ACCOUNT.value
-
-        if is_network_error and is_account_mode:
+        if isinstance(result.error, TaskPrepareException):
+            # 任务准备失败
+            item.status = StudioHistoryItem.STATUS_FAILED
+            item.error_message = result.error_message or str(result.error or "")
+        elif is_network_error and is_account_mode:
             # 网络异常且为账号模式，标记为待确认状态
             item.status = StudioHistoryItem.STATUS_UNKNOWN
             item.error_message = "Network error, syncing task status in background..."

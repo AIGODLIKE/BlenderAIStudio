@@ -33,6 +33,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, Future
+from ..exception import TaskPrepareException
 
 
 # ============================================================================
@@ -213,7 +214,7 @@ class Task(ABC):
     # ------------------------------------------------------------------------
 
     @abstractmethod
-    def prepare(self) -> bool:
+    def prepare(self) -> tuple[bool, Optional[Exception]]:
         """
         执行前准备
 
@@ -412,9 +413,11 @@ class Task(ABC):
 
             # 准备阶段
             self.set_state(TaskState.PREPARING)
-            if not self.prepare():
+            prepare_finished, prepare_err = self.prepare()
+            if not prepare_finished:
                 self.set_state(TaskState.FAILED)
-                result = TaskResult.failure_result(Exception("Task preparation failed"), "任务准备失败")
+                prepare_err = TaskPrepareException(prepare_err) or TaskPrepareException("Task preparation failed")
+                result = TaskResult.failure_result(prepare_err, "任务准备失败")
                 self._trigger_callback("failed", {"task": self, "result": result})
                 return result
 
