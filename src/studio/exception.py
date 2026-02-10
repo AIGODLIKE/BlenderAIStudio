@@ -14,6 +14,12 @@ class ParameterValidationException(StudioException):
     """
 
 
+class TaskPrepareException(StudioException):
+    """
+    Raised when the task prepare failed.
+    """
+
+
 class RedeemCodeException(StudioException):
     """
     Raised when the redeem code is invalid.
