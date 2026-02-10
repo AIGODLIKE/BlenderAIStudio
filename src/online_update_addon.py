@@ -359,8 +359,8 @@ class OnlineUpdateAddon(bpy.types.Operator, UpdateService):
         """
         后台新开一个Blender安装更新包  x
         使用bpy.ops.preferences.addon_install安装  x
+        "${this.blenderPath}" --background --python-expr "" x
         暂时使用zip直接解包覆盖安装
-        "${this.blenderPath}" --background --python-expr ""
         TODO 还没处理插件的安装目录不一致时处理 e.g BlenderAIStu dio ,BlenderAIStudio-0
         """
         try:
