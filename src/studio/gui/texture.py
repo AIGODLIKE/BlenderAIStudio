@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 ICON_PATH = Path(__file__).parent.joinpath("icons")
-
+NONE_ICON_PATH = ICON_PATH.joinpath("none.png")
 
 class TexturePool:
     TEXTURE_MAP: dict[str, gpu.types.GPUTexture] = {}
@@ -15,15 +15,29 @@ class TexturePool:
 
     @staticmethod
     def read_image_to_tex(file_path):
+        try:
+            return TexturePool.try_laod_image_to_tex(file_path)
+        except Exception as e:
+            print(f"Failed to load texture: {file_path}")
+            print(e)
+            return TexturePool.try_laod_image_to_tex(NONE_ICON_PATH)
+
+    @staticmethod
+    def try_laod_image_to_tex(file_path):
         file_path = Path(file_path)
         if not file_path.exists():
             file_path = ICON_PATH.joinpath(f"{file_path}.png")
         if not file_path.exists():
-            file_path = ICON_PATH.joinpath("none.png")
+            file_path = NONE_ICON_PATH
         mime_type = mimetypes.guess_type(file_path.name)[0]
         if not mime_type or not mime_type.startswith("image/"):
-            file_path = ICON_PATH.joinpath("none.png")
+            file_path = NONE_ICON_PATH
         buf = oiio.ImageBuf(file_path.as_posix())
+        if buf.has_error:
+            # 返回默认紫色
+            gpu_buf = gpu.types.Buffer("FLOAT", (1, 1, 4), np.array([[[255, 0, 255, 255]]], dtype=np.float32))
+            gpu_tex = gpu.types.GPUTexture(gpu_buf.dimensions[:2], format="RGBA8", data=gpu_buf)
+            return gpu_tex
         spec = buf.spec()
         pixels = buf.get_pixels(oiio.FLOAT)
         gpu_buf = gpu.types.Buffer("FLOAT", (spec.width, spec.height, spec.nchannels), pixels)
