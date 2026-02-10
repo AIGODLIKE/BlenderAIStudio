@@ -357,15 +357,31 @@ class OnlineUpdateAddon(bpy.types.Operator, UpdateService):
 
     def background_install_update(self, zip_file_path):
         """
-        后台新开一个Blender安装更新包
+        后台新开一个Blender安装更新包  x
+        使用bpy.ops.preferences.addon_install安装  x
+        暂时使用zip直接解包覆盖安装
         "${this.blenderPath}" --background --python-expr ""
         """
         try:
             self.push_info("Start installing updates")
             close_logger()  # 安装更新前要取消日志文件占用
-            target = self.get_install_target(bpy.context)
-            logger.info(f"{target} {zip_file_path}")
-            bpy.ops.preferences.addon_install("EXEC_DEFAULT", filepath=zip_file_path, overwrite=True, target=target)
+
+            import addon_utils
+            addon_utils.modules(refresh=True)
+
+            from zipfile import ZipFile
+            from .. import __file__ as addon_path
+            install_folder = pathlib.Path(addon_path).parent.parent.absolute()
+            with ZipFile(zip_file_path, mode="r") as z:
+                print(f"zip_file_path -> {zip_file_path}")
+                print(f"install_folder -> {install_folder}")
+                z.extractall(path=install_folder)
+
+            addon_utils.modules_refresh()
+            addon_utils.modules(refresh=True)
+            bpy.ops.extensions.repo_refresh_all()
+            addon_utils.extensions_refresh()
+            bpy.utils.refresh_script_paths()
 
             # 安装完成
             bpy.context.window_manager.progress_update(4)
@@ -413,23 +429,6 @@ class OnlineUpdateAddon(bpy.types.Operator, UpdateService):
         else:
             logger.info(iface(text))
         cls.update_info.append({"text": text, "level": level})
-
-    @staticmethod
-    def get_install_target(context):
-        # scripts\startup\bl_operators\userpref.py L:672
-        # bpy.types.PREFERENCES_OT_addon_install._target_path_items
-        default_target = 'DEFAULT'
-        from .. import __file__ as addon_path
-        paths = context.preferences.filepaths
-        absolute_addon = pathlib.Path(addon_path).parent.parent.parent.absolute()
-        print("addon_path", addon_path)
-        print("absolute_addon", absolute_addon)
-        for index, item in enumerate(paths.script_directories):
-            print("item.directory", item.directory, pathlib.Path(item.directory).absolute())
-            if pathlib.Path(item.directory).absolute() == absolute_addon:
-                print("absolute_addon", absolute_addon)
-                return item.name
-        return default_target
 
 
 class Restart(bpy.types.Operator):
