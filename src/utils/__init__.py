@@ -298,15 +298,15 @@ def check_cache_folder_writable_permission():
     """
     检查缓存文件夹是否有写入权限
     如果无权限则抛出PermissionError错误
+    # 不能使用bpy.app.translations? 需要 with bpy.context.temp_override()
     """
     folder = get_pref().output_cache_dir
     if not check_folder_writable_permission(folder):
         # 不可写入反回错误
-        # error_text = bpy.app.translations.pgettext("Folder cannot be written to","*")
-        error_text = "无法写入文件夹,请尝试更改缓存目录"  # 不能使用bpy.app.translations?
-        text = f"{error_text}:'{folder}'"
-        # logger.error(text)
-        raise PermissionError(text)
+        with bpy.context.temp_override():
+            error_text = bpy.app.translations.pgettext("Folder cannot be written to","*")
+            text = f"{error_text}:'{folder}'"
+            raise PermissionError(text)
 
 
 def get_temp_folder(suffix=None, prefix=None):

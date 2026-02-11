@@ -351,7 +351,7 @@ class BlenderRenderHelper:
         scene: bpy.types.Scene = context["scene"]
 
         if not scene.camera:
-            raise ValueError("Scene Camera Not Found")
+            raise ValueError("Scene Camera Not Found, Please add a camera and try again")
 
         render_agent = RenderAgent()
         self.is_rendering = True
@@ -383,7 +383,7 @@ class BlenderRenderHelper:
         scene: bpy.types.Scene = context["scene"]
 
         if not scene.camera:
-            raise ValueError("Scene Camera Not Found")
+            raise ValueError("Scene Camera Not Found, Please add a camera and try again")
 
         render_agent = RenderAgent()
         self.is_rendering = True
@@ -415,7 +415,7 @@ class BlenderRenderHelper:
         scene: bpy.types.Scene = context["scene"]
 
         if not scene.camera:
-            raise ValueError("Scene Camera Not Found")
+            raise ValueError("Scene Camera Not Found, Please add a camera and try again")
 
         Timer.wait_run(render_scene_viewport_opengl_to_png)(context, output_path)
         time.sleep(1)  # 给用户反应时间
