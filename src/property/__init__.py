@@ -7,6 +7,7 @@ import bpy
 
 from .. import logger
 from ..i18n import PROP_TCTX
+from ..preferences import AuthMode
 from ..studio.account import Account, TaskStatus
 from ..studio.config.model_registry import ModelRegistry
 from ..utils import get_custom_icon, time_diff_to_str, get_pref
@@ -17,6 +18,7 @@ translation_context = {}
 
 if bpy.app.version >= (4, 0, 0):
     translation_context["translation_context"] = PROP_TCTX
+
 
 class ImageItem(bpy.types.PropertyGroup):
     """集合使用的项,需要使用PropertyGroup包装一下才能被CollectionProperty使用"""
@@ -82,14 +84,15 @@ class HistoryFailedCheck:
     @property
     def is_have_failed_check(self) -> bool:
         """是需要错误检查的"""
-        if self.running_state == "failed":  # 生成状态是错误
-            if self.failed_check_state != "COMPLETED":  # 没检查完成 ,就需要一直检查
-                return True
+        if not self.is_api_mode:  # 是帐户模式才需要检查
+            if self.running_state == "failed":  # 生成状态是错误
+                if self.failed_check_state != "COMPLETED":  # 没检查完成 ,就需要一直检查
+                    return True
         return False
 
     def draw_failed_check(self, layout: bpy.types.UILayout):
         column = layout.column()
-        if self.is_refund_points:
+        if self.is_refund_points and not self.is_api_mode:
             column.label(text="Credits Refunded")
         if self.failed_check_message:
             for j in self.failed_check_message.split("\n"):
@@ -104,6 +107,16 @@ class EditHistory(HistoryState, GeneralProperty, HistoryFailedCheck, bpy.types.P
     generation_model: bpy.props.StringProperty(name="生成用的模型")
 
     expand_history: bpy.props.BoolProperty(default=False)
+
+    account_auth_mode: bpy.props.EnumProperty(
+        name="Account Auth Mode",
+        items=[(item.value, item.display_name, "") for item in AuthMode],
+        **translation_context,
+    )
+
+    @property
+    def is_api_mode(self):
+        return self.account_auth_mode.lower() == "api"
 
     def add_generated_image(self, image):
         gih = self.generated_images.add()
@@ -259,6 +272,7 @@ class EditHistory(HistoryState, GeneralProperty, HistoryFailedCheck, bpy.types.P
             column.label(text=f"is_have_failed_check:{self.is_have_failed_check}")
             column.prop(self, "is_refund_points")
             column.prop(self, "running_state")
+            column.prop(self, "account_auth_mode")
 
 
 class DynamicEnumeration:
@@ -410,6 +424,10 @@ class SceneFailedCheck:
                                     image.preview.reload()
                                 else:
                                     image.preview_ensure()
+
+                                origin_image = match_history.origin_image
+                                image.blender_ai_studio_property.origin_image = origin_image
+                                origin_image.blender_ai_studio_property.generate_image = image  # 暂时只处理一张图片
 
                                 space_data_list = find_ai_image_editor_space_data()  # 将图片加载到图片编辑器中
                                 for space_data in space_data_list:

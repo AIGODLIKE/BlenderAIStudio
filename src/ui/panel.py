@@ -54,6 +54,24 @@ class AIStudioImagePanel(bpy.types.Panel):
         col.separator(factor=3)
         self.draw_ai_edit_layout(context, col)
         self.draw_task_layout(context, layout)
+        self.draw_image_switch(context, layout)
+
+    @staticmethod
+    def draw_image_switch(context, layout: bpy.types.UILayout):
+        image = context.space_data.image
+
+        column = layout.column(align=True)
+        ai = image.blender_ai_studio_property
+        icon_size = 1
+        for text, i in (
+                ("View Generated Image", ai.generate_image),
+                ("View Origin Image", ai.origin_image),
+        ):
+            if i:
+                row = column.row()
+                row.context_pointer_set("image", i)
+                row.template_icon(i.preview.icon_id, scale=icon_size)
+                row.operator("bas.view_image", text=text)
 
     @staticmethod
     def draw_mask(context, layout: bpy.types.UILayout):

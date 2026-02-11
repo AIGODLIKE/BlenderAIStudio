@@ -18,7 +18,7 @@ def get_history_by_task_id(task_id):
 
 
 def add_callback(task, temp_folder, generate_image_name):
-    from ..studio.tasks import UniversalModelTask, TaskManager, TaskResult, TaskState, Task
+    from ..studio.tasks import TaskResult, TaskState, Task
     task_id = task.task_id
 
     # 2. 注册回调
@@ -93,10 +93,15 @@ def add_callback(task, temp_folder, generate_image_name):
                 edit_history.running_state = "completed"
                 edit_history.running_message = "Running completed"
 
+                origin_image = edit_history.origin_image
+
                 if gi := bpy.data.images.load(str(save_file), check_existing=False):
                     try:
                         gi.preview_ensure()
                         gi.name = generate_image_name
+
+                        gi.blender_ai_studio_property.origin_image = origin_image
+                        origin_image.blender_ai_studio_property.generate_image = gi  # 暂时只处理一张图片
 
                         space_data_list = find_ai_image_editor_space_data()  # 将图片加载到图片编辑器中
                         for space_data in space_data_list:
@@ -277,7 +282,7 @@ class ApplyAiEditImage(bpy.types.Operator):
                    generate_image_name,
                    ):
 
-        from ..studio.tasks import UniversalModelTask, TaskManager, TaskResult, TaskState, Task
+        from ..studio.tasks import UniversalModelTask, TaskManager
         from ..studio.account import Account
         from ..studio.config.model_registry import ModelRegistry
 
@@ -302,6 +307,8 @@ class ApplyAiEditImage(bpy.types.Operator):
         edit_history.mask_index = oii.mask_index
         edit_history.running_state = "running"
         edit_history.running_progress = 0.1
+        edit_history.account_auth_mode = pref.account_auth_mode
+
         for mi in mask_images:
             m = edit_history.mask_images.add()
             m.image = mi.image
