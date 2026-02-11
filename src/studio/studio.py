@@ -1620,51 +1620,63 @@ class RedeemPanel:
 
 
 class Bubble:
+    LERP_SPEED = 10.0  # y 位置插值速度
+
     def __init__(
         self,
         anim_system: AnimationSystem,
         text: str,
-        pos: tuple[float, float] = (0, 0),
         duration: float = 15,
         icon: str = "account_warning",
+        highlight_color: tuple[float, float, float] = (1.0, 1.0, 1.0),
     ) -> None:
         self.text = text
         self.icon = icon
-        self.x = pos[0]
-        self.y = pos[1]
+        self.highlight_color = highlight_color
+        self.x = 0.0
+        self.y = 0.0
+        self.target_y = 0.0
         self.duration = duration
         self.alpha = 1.0
+        self.highlight = 0.0  # 高亮强度 0~1
         self.shake_x = 0.0
+        self.height = 0.0  # 由 draw 计算后缓存，供布局使用
         self.is_alive = True
+        self._last_time = time.time()
 
-        # 使用 Parallel 组合多个并行效果
-        # 1. 位置持续向上
-        anim_system.add(
-            Sequence(
-                [
-                    Tween(0, 0, duration=self.duration * 0.7),
-                    Tween(
-                        self.y,
-                        self.y - 120,
-                        duration=self.duration * 0.3,
-                        easing=Easing.ease_out_quad,
-                        on_update=lambda v: setattr(self, "y", v),
-                    ),
-                ]
-            )
-        )
-
-        # 2. 初始抖动效果
+        # 1. 初始抖动效果
         def apply_shake(t: float) -> None:
             self.shake_x = math.sin(time.time() * 40) * 5 * (1 - t)
 
         anim_system.add(Tween(0, 1, duration=self.duration * 0.2, on_update=apply_shake))
 
+        # 2. 出现时高亮闪烁: 0 -> 1 -> 0
+        anim_system.add(
+            Sequence(
+                [
+                    Tween(
+                        0.0,
+                        1.0,
+                        duration=0.15,
+                        easing=Easing.ease_out_quad,
+                        on_update=lambda v: setattr(self, "highlight", v),
+                    ),
+                    Tween(
+                        1.0,
+                        0.0,
+                        duration=0.4,
+                        easing=Easing.ease_in_quad,
+                        on_update=lambda v: setattr(self, "highlight", v),
+                    ),
+                ]
+            )
+        )
+
         # 3. 延迟后淡出并销毁
         anim_system.add(
             Sequence(
                 [
-                    Tween(0, 0, duration=self.duration * 0.7),  # 等待 1.2 秒
+                    Tween(0, 0, duration=self.duration * 0.7),
                     Tween(
                         1.0,
                         0.0,
@@ -1684,12 +1696,21 @@ class Bubble:
         if not self.is_alive:
             return
 
+        # 平滑插值 y 到 target_y
+        now = time.time()
+        dt = min(now - self._last_time, 0.05)  # 限制 dt 防止跳变
+        self._last_time = now
+        self.y += (self.target_y - self.y) * min(1.0, self.LERP_SPEED * dt)
+
         wp = imgui.get_style().window_padding
         lh = imgui.get_text_line_height_with_spacing()
         text_size = imgui.calc_text_size(self.text)
         icon_size = text_size[1]
         spacing = lh * 0.5
         content_size = icon_size + spacing + text_size[0], text_size[1]
+
+        # 缓存高度供 BubbleLogger 布局使用
+        self.height = content_size[1] + wp[1] * 2
 
         x = self.x + (app.screen_width - content_size[0]) / 2 + self.shake_x
         y = self.y + app.screen_height - lh * 2
@@ -1704,8 +1725,14 @@ class Bubble:
         p_max = (x + content_size[0] + wp[0], y + content_size[1] + wp[1])
 
         rounding = imgui.get_style().frame_rounding
-        # 绘制背景和边框
+        # 绘制背景
         dl.add_rect_filled(p_min, p_max, bg_col, rounding=rounding)
+
+        # 高亮叠加层（闪烁效果）
+        if self.highlight > 0.001:
+            r, g, b = self.highlight_color
+            hl_col = imgui.get_color_u32((r, g, b, self.highlight * 0.15 * self.alpha))
+            dl.add_rect_filled(p_min, p_max, hl_col, rounding=rounding)
 
         icon = TexturePool.get_tex_id(self.icon)
         p_min = x, y + (content_size[1] - icon_size) / 2
@@ -1716,19 +1743,28 @@ class Bubble:
 
 
 class BubbleMessage:
+    # warning: 暖橙色, info: 冷蓝色
+    HIGHLIGHT_COLORS = {
+        "warning": (1.0, 0.6, 0.2),
+        "info": (0.3, 0.7, 1.0),
+    }
+
     def __init__(self, text: str, icon: str = "warning") -> None:
         self.text = text
         self.icon = icon
 
     def make_bubble(self, app: "AIStudio") -> Bubble:
-        return Bubble(app.animation_system, self.text, icon=self.icon)
+        color = self.HIGHLIGHT_COLORS.get(self.icon, (1.0, 1.0, 1.0))
+        return Bubble(app.animation_system, self.text, icon=self.icon, highlight_color=color)
 
 
 class BubbleLogger:
+    BUBBLE_GAP = 6.0  # 气泡之间的间距
+
     def __init__(self, app: "AIStudio") -> None:
         self.app = app
         self.animation_system = app.animation_system
-        self.bubbles: dict[str, Bubble] = {}
+        self.bubbles: dict[BubbleMessage, Bubble] = {}
         self.messages: list[BubbleMessage] = []
 
     def push_error_message(self, message: str):
@@ -1740,14 +1776,20 @@ class BubbleLogger:
         self.messages.append(bubble)
 
     def draw_and_update(self):
+        # 弹出待处理消息
         while self.messages:
             msg = self.messages.pop()
             self.bubbles[msg] = msg.make_bubble(self.app)
+
+        # 动态计算每个气泡的 target_y，从底部向上堆叠
+        offset_y = 0.0
         for message, bubble in list(self.bubbles.items()):
-            if bubble.is_alive:
-                bubble.draw(self.app)
-            else:
+            if not bubble.is_alive:
                 self.bubbles.pop(message)
+                continue
+            bubble.target_y = offset_y
+            offset_y -= (bubble.height + self.BUBBLE_GAP)
+            bubble.draw(self.app)
 
 
 class AIStudio(AppHud):
