@@ -30,8 +30,12 @@ class MaskImageProperty(bpy.types.PropertyGroup):
     图片属性
     """
     origin_image: bpy.props.PointerProperty(type=bpy.types.Image, name="原图图片 可以用于生成的图或是遮罩的图")
-    generate_image: bpy.props.PointerProperty(type=bpy.types.Image, name="生成图图片")
+    generated_images: bpy.props.CollectionProperty(type=ImageItem, name="生成的图片")
     is_mask_image: bpy.props.BoolProperty(name="Is Mask Image", default=False)
+
+    def add_generated_image(self, image):
+        gi = self.generated_images.add()
+        gi.image = image
 
 
 class GeneralProperty:
@@ -427,7 +431,7 @@ class SceneFailedCheck:
 
                                 origin_image = match_history.origin_image
                                 image.blender_ai_studio_property.origin_image = origin_image
-                                origin_image.blender_ai_studio_property.generate_image = image  # 暂时只处理一张图片
+                                origin_image.blender_ai_studio_property.add_generated_image(image)  # 处理多张图片
 
                                 space_data_list = find_ai_image_editor_space_data()  # 将图片加载到图片编辑器中
                                 for space_data in space_data_list:

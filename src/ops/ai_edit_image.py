@@ -101,7 +101,7 @@ def add_callback(task, temp_folder, generate_image_name):
                         gi.name = generate_image_name
 
                         gi.blender_ai_studio_property.origin_image = origin_image
-                        origin_image.blender_ai_studio_property.generate_image = gi  # 暂时只处理一张图片
+                        origin_image.blender_ai_studio_property.add_generated_image(gi)  # 处理多张图片
 
                         space_data_list = find_ai_image_editor_space_data()  # 将图片加载到图片编辑器中
                         for space_data in space_data_list:

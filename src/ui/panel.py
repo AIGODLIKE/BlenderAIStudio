@@ -63,10 +63,11 @@ class AIStudioImagePanel(bpy.types.Panel):
         column = layout.column(align=True)
         ai = image.blender_ai_studio_property
         icon_size = 1
-        for text, i in (
-                ("View Generated Image", ai.generate_image),
-                ("View Origin Image", ai.origin_image),
-        ):
+        items = [
+            *(("View Generated Image", i.image) for i in ai.generated_images) ,
+            ("View Origin Image", ai.origin_image),
+        ]
+        for text, i in items:
             if i:
                 row = column.row()
                 row.context_pointer_set("image", i)
