@@ -829,16 +829,25 @@ class StudioHistoryViewer:
                 bh = h1 / 2 - style.cell_padding[1] * 2 - style.frame_padding[1]
                 imgui.table_next_column()
                 if CustomWidgets.icon_label_button("image_edit", _T("Edit"), "LEFT", (0, bh)):
-                    image = item.get_output_file_image()
-                    meta = item.stringify()
-                    context = bpy.context.copy()
-                    Timer.put((edit_image_with_meta_and_context, image, meta, context))
+                    img = item.get_output_file_image()
+                    if Path(img).exists():
+                        image = item.get_output_file_image()
+                        meta = item.stringify()
+                        context = bpy.context.copy()
+                        Timer.put((edit_image_with_meta_and_context, image, meta, context))
+                    else:
+                        self.app.push_info_message(_T("Image not found! Edit Failed!"))
                 if imgui.is_item_hovered():
                     imgui.set_next_window_size((720, 0))
                     AppHelperDraw.draw_tips_with_title(self.app, [_T("Open image editor and edit current image.")], _T("Edit Image"))
                 imgui.table_next_column()
                 if CustomWidgets.icon_label_button("image_export", _T("Save"), "LEFT", (0, bh)):
-                    self.export_image(item.get_output_file_image())
+
+                    img = item.get_output_file_image()
+                    if Path(img).exists():
+                        self.export_image(item.get_output_file_image())
+                    else:
+                        self.app.push_info_message(_T("Image not found! Export Failed!"))
                 if imgui.is_item_hovered():
                     imgui.set_next_window_size((720, 0))
                     AppHelperDraw.draw_tips_with_title(self.app, [_T("Click to export the image to disk.")], _T("Export Image"))
