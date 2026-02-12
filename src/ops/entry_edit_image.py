@@ -19,5 +19,8 @@ class EntryEditImage(bpy.types.Operator):
             space_date.show_region_ui = True
         for region in context.area.regions:
             if region.type == "UI":
-                region.active_panel_category = AIStudioImagePanel.bl_category
+                try:
+                    region.active_panel_category = AIStudioImagePanel.bl_category
+                except AttributeError as _:
+                    ...
         return {"FINISHED"}
