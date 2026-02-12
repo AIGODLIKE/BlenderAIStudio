@@ -151,6 +151,7 @@ studio_panel_translations = (
     ("Batch Count", "生成数量", PROP_TCTX),
     ("(%s/use)", "(%s/次)", None),
     ("AI Edit", "AI编辑", None),
+    ("Entry Edit Image", "进入编辑图片", OPS_TCTX),
     ("Image Copied!", "图片已复制到剪贴板！", None),
     ("Image not found! Copy Failed!", "图像无法找到! 无法被复制!可能被删除/移动", None),
     ("Image not found! Export Failed!", "图像无法找到! 无法被导出!可能被删除/移动", None),

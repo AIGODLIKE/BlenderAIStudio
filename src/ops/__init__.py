@@ -27,6 +27,7 @@ from .references_image import (
 )
 from .privacy_tips import PrivacyTips
 from .update_tips import UpdateTips
+from .entry_edit_image import EntryEditImage
 
 class_list = [
     ApplyAiEditImage,
@@ -58,6 +59,8 @@ class_list = [
     PrivacyTips,
 
     UpdateTips,
+
+    EntryEditImage,
 ]
 
 register_class, unregister_class = bpy.utils.register_classes_factory(class_list)

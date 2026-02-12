@@ -23,11 +23,21 @@ def draw_ai_studio_button(self, context):
     col.operator(AIStudioEntry.bl_idname, text="", icon_value=get_icon("ai"))
 
 
+def draw_ai_studio_edit_button(self, context):
+    from ..ops.entry_edit_image import EntryEditImage
+
+    layout = self.layout
+    col = layout.column()
+    col.operator(EntryEditImage.bl_idname, text="", icon_value=get_icon("ai"))
+
+
 def register():
     register_classes()
     bpy.types.VIEW3D_HT_header.append(draw_ai_studio_button)
+    bpy.types.IMAGE_HT_header.append(draw_ai_studio_edit_button)
 
 
 def unregister():
     bpy.types.VIEW3D_HT_header.remove(draw_ai_studio_button)
+    bpy.types.IMAGE_HT_header.remove(draw_ai_studio_edit_button)
     unregister_classes()
