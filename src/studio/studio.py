@@ -23,7 +23,6 @@ from .gui.app.renderer import imgui
 from .gui.app.style import Const
 from .gui.texture import TexturePool
 from .gui.widgets import CustomWidgets, with_child
-from .tasks import TaskState
 from .wrapper import BaseAdapter, WidgetDescriptor, DescriptorFactory
 from ..i18n import STUDIO_TCTX
 from ..preferences import AuthMode, PricingStrategy
@@ -76,6 +75,10 @@ def open_dir(path):
     except Exception as e:
         print(e.args)
         print_exc()
+
+
+def _exceptions_equal(e1: Exception, e2: Exception) -> bool:
+    return type(e1) is type(e2) and e1.args == e2.args
 
 
 class AppHelperDraw:
@@ -842,7 +845,6 @@ class StudioHistoryViewer:
                     AppHelperDraw.draw_tips_with_title(self.app, [_T("Open image editor and edit current image.")], _T("Edit Image"))
                 imgui.table_next_column()
                 if CustomWidgets.icon_label_button("image_export", _T("Save"), "LEFT", (0, bh)):
-
                     img = item.get_output_file_image()
                     if Path(img).exists():
                         self.export_image(item.get_output_file_image())
@@ -1797,12 +1799,13 @@ class BubbleLogger:
                 self.bubbles.pop(message)
                 continue
             bubble.target_y = offset_y
-            offset_y -= (bubble.height + self.BUBBLE_GAP)
+            offset_y -= bubble.height + self.BUBBLE_GAP
             bubble.draw(self.app)
 
 
 class AIStudio(AppHud):
     CACHED_CLIENT = {}
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.active_panel = AIStudioPanelType.GENERATION
@@ -1821,8 +1824,8 @@ class AIStudio(AppHud):
 
         # 初始化 active_client 为默认模型 Name
         self.active_client = ""
+        self._last_exception: Exception = None
         self.refresh_client()
-
 
     def create_client_with_cache(self) -> "UniversalClient":
         self.CACHED_CLIENT.setdefault(bpy.context.area, UniversalClient())
@@ -1875,7 +1878,13 @@ class AIStudio(AppHud):
         self.state.add_task_ids_to_fetch_status_now([task_id])
 
     def handler_draw(self, _area: bpy.types.Area):
-        self.draw_studio_panel()
+        try:
+            self.draw_studio_panel()
+        except Exception as e:
+            if not _exceptions_equal(self._last_exception, e):
+                self._last_exception = e
+                logger.error(e)
+            raise e
 
     def draw_studio_panel(self):
         window_size = 540, 1359

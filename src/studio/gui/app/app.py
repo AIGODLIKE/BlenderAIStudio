@@ -1,4 +1,3 @@
-import platform
 import time
 import traceback
 from collections.abc import Callable
@@ -15,6 +14,7 @@ from mathutils import Matrix, Vector
 from .animation import AnimationSystem
 from .event import Event
 from .renderer import Renderer as ImguiRenderer, imgui
+from .safeguard import ImguiSafeGuard
 from ....logger import logger, DEBUG
 from .....External.input_method_hook import input_manager
 
@@ -72,6 +72,7 @@ class App:
         self.context: bpy.types.Context | FakeContext | None = FakeContext(bpy.context)
         self._id = uuid4().hex
         self._gui_time = None
+        self._safeguard = ImguiSafeGuard(imgui)
 
         self.event_queue: Queue[Event] = Queue()
         self.ime_enabled = False
@@ -280,7 +281,12 @@ class App:
 
         # 4. 绘制回调
         self._draw_prepare()
-        self._draw_callbacks(area)
+
+        self._safeguard.install()
+        try:
+            self._draw_callbacks(area)
+        finally:
+            self._safeguard.uninstall()
 
         # 1. 变换更新
         self.backend.set_mvp_matrix(self.M, self.V, self.P)
@@ -303,6 +309,11 @@ class App:
                 cb(area)
             except ReferenceError:
                 invalid_callback.append(cb)
+            except Exception:
+                try:
+                    self._safeguard.recover()
+                except Exception:
+                    traceback.print_exc()
         for cb in invalid_callback:
             self.draw_call_remove(cb)
 
