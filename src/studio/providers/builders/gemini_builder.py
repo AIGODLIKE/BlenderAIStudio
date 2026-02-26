@@ -216,8 +216,8 @@ class GeminiImageGenerateBuilder(RequestBuilder):
         total_image_size_limit = 20 * 1024 * 1024
         total_image_size = 0
         all_image_paths = ref_images_path + ([image_path] if image_path else [])
-        for image_path in all_image_paths:
-            total_image_size += Path(image_path).stat().st_size
+        for _image_path in all_image_paths:
+            total_image_size += Path(_image_path).stat().st_size
         if total_image_size > total_image_size_limit:
             raise ValueError("Total image size exceeds the limit of 20MB.")
 
