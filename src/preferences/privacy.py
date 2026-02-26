@@ -75,7 +75,11 @@ class Privacy:
         column.label(
             text="Check this box and we will collect your plugin version, Blender version, and hardware information")
         column.label(text="to better serve you")
-        column.separator(type="LINE")
+
+        spt = {}
+        if bpy.app.version >= (4, 2, 0):
+            spt["type"] = "LINE"
+        column.separator(**spt)
         # column.prop(self, "save_generated_images_to_cloud")
         # column.label(text="When using Stable Mode to generate images")
         # column.label(text="we will retain a copy of the generated image in the cloud to prevent image file loss")

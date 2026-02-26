@@ -443,39 +443,38 @@ def register():
 def unregister():
     bpy.app.handlers.load_post.remove(reset_render_status)
 
-
-if __name__ == "__main__":
-    render_agent = RenderAgent()
-
-
-    def on_complete(sce):
-        print("on_complete", sce)
-
-
-    def on_post(sce):
-        print("on_post", sce)
-
-
-    def on_write(sce):
-        print("Render Finished")
-
-
-    def on_cancel(sce):
-        print("Render Cancel")
-
-
-    bpy.app.handlers.render_cancel.append(on_cancel)
-    bpy.app.handlers.render_complete.append(on_complete)
-    bpy.app.handlers.render_post.append(on_post)
-    bpy.app.handlers.render_write.append(on_write)
-
-    render_agent.on_complete(on_complete)
-    render_agent.on_post(on_post)
-    render_agent.on_write(on_write)
-    render_agent.on_cancel(on_write)
-
-    render_agent.attach()
-    bpy.context.scene.render.engine = "CYCLES"
-    bpy.context.scene.render.filepath = Path.home().joinpath("Desktop/output/test.png").as_posix()
-    bpy.ops.render.render("INVOKE_DEFAULT", write_still=True)
-    # render_agent.detach()
+# if __name__ == "__main__":
+#     render_agent = RenderAgent()
+#
+#
+#     def on_complete(sce):
+#         print("on_complete", sce)
+#
+#
+#     def on_post(sce):
+#         print("on_post", sce)
+#
+#
+#     def on_write(sce):
+#         print("Render Finished")
+#
+#
+#     def on_cancel(sce):
+#         print("Render Cancel")
+#
+#
+#     bpy.app.handlers.render_cancel.append(on_cancel)
+#     bpy.app.handlers.render_complete.append(on_complete)
+#     bpy.app.handlers.render_post.append(on_post)
+#     bpy.app.handlers.render_write.append(on_write)
+#
+#     render_agent.on_complete(on_complete)
+#     render_agent.on_post(on_post)
+#     render_agent.on_write(on_write)
+#     render_agent.on_cancel(on_write)
+#
+#     render_agent.attach()
+#     bpy.context.scene.render.engine = "CYCLES"
+#     bpy.context.scene.render.filepath = Path.home().joinpath("Desktop/output/test.png").as_posix()
+#     bpy.ops.render.render("INVOKE_DEFAULT", write_still=True)
+#     # render_agent.detach()

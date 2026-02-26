@@ -272,7 +272,12 @@ class EditHistory(HistoryState, GeneralProperty, HistoryFailedCheck, bpy.types.P
             column = layout.box().column(align=True)
             column.label(text=self.task_id)
             column.prop(self, "failed_check_state")
-            column.separator(type="LINE")
+
+            spt = {}
+            if bpy.app.version >= (4, 2, 0):
+                spt["type"] = "LINE"
+            column.separator(**spt)
+
             column.label(text=f"is_have_failed_check:{self.is_have_failed_check}")
             column.prop(self, "is_refund_points")
             column.prop(self, "running_state")

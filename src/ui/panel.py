@@ -64,7 +64,7 @@ class AIStudioImagePanel(bpy.types.Panel):
         ai = image.blender_ai_studio_property
         icon_size = 1
         items = [
-            *(("View Generated Image", i.image) for i in ai.generated_images) ,
+            *(("View Generated Image", i.image) for i in ai.generated_images),
             ("View Origin Image", ai.origin_image),
         ]
         for text, i in items:
@@ -203,7 +203,11 @@ class AIStudioImagePanel(bpy.types.Panel):
         row = column.row(align=True)
         row.prop(ai, "model_name")
         pref.have_input_api_key(context, column)
-        column.separator(type="LINE")
+
+        spt = {}
+        if bpy.app.version >= (4, 2, 0):
+            spt["type"] = "LINE"
+        column.separator(**spt)
 
         try:
             model = model_register.get_model(ai.model_name)

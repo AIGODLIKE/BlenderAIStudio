@@ -6,13 +6,17 @@ def get_bl_property(self, key, default):
         pass
     if value := getattr(self, key, None):
         return value
-    try:
-        properties = self.bl_system_properties_get()
-        if key in properties:
-            return properties[key]
-    except Exception as e:
-        print(e.args)
-        print("get_bl_property error", self, key, e.args)
+    if "bl_system_properties_get" in dir(self):
+        try:
+            properties = self.bl_system_properties_get()
+            if key in properties:
+                return properties[key]
+        except Exception as e:
+            print(e.args)
+            print("get_bl_property error", self, key, e.args)
+            import traceback
+            traceback.print_exc()
+            traceback.print_stack()
     return default
 
 
@@ -22,6 +26,10 @@ def set_bl_property(self, key, value):
         self[key] = value
         setattr(self, key, value)
     except Exception as e:
-        properties = self.bl_system_properties_get()
-        properties[key] = value
+        if "bl_system_properties_get" in dir(self):
+            properties = self.bl_system_properties_get()
+            properties[key] = value
         print("set_bl_property error", self, key, value, e.args)
+        import traceback
+        traceback.print_exc()
+        traceback.print_stack()
