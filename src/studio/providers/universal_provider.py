@@ -4,6 +4,7 @@ from .base import BaseProvider
 from .builders import BuilderRegistry
 from .parsers import ParserRegistry
 from ..config.model_registry import ModelConfig
+from ... import logger
 from ...preferences import AuthMode
 
 
@@ -42,10 +43,12 @@ class UniversalProvider(BaseProvider):
 
         # 动态加载构建器
         self.request_builder = self._get_builder(model_config.request_builder)
+        logger.debug(f"Using request builder: {self.request_builder}")
 
         # 动态加载觧析器（优先从 endpoint 配置中获取）
         endpoint = model_config.get_endpoint(auth_mode)
         parser_name = endpoint.get("response_parser") or model_config.response_parser
+        logger.debug(f"parser_name:{parser_name}")
         self.response_parser = self._get_parser(parser_name)
 
     def _get_builder(self, builder_name: str):

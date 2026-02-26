@@ -1,4 +1,3 @@
-import base64
 from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Any, TYPE_CHECKING
@@ -19,7 +18,7 @@ from .gemini_prompt import (
     EDIT_BASE_PROMPT,
 )
 from .... import logger
-from ....utils import calc_appropriate_aspect_ratio
+from ....utils import calc_appropriate_aspect_ratio, image_file_to_base64
 
 if TYPE_CHECKING:
     from ...config.model_registry import ModelConfig
@@ -233,19 +232,14 @@ class GeminiImageGenerateBuilder(RequestBuilder):
         full_prompt += f"\n\nCRITICAL OUTPUT SETTING: Generate image EXACTLY at {width}x{height} pixels."
 
         parts = [{"text": full_prompt}]
+
         # Build parts array
         if image_path:
-            with open(image_path, "rb") as f:
-                image_base64 = base64.b64encode(f.read()).decode("utf-8")
-            part = {"inline_data": {"mime_type": "image/png", "data": image_base64}}
-            parts.append(part)
+            parts.append(image_file_to_base64(image_path))
 
         # Add reference image (Style) - SECOND image
         for reference_image_path in ref_images_path:
-            with open(reference_image_path, "rb") as f:
-                reference_base64 = base64.b64encode(f.read()).decode("utf-8")
-            part = {"inline_data": {"mime_type": "image/png", "data": reference_base64}}
-            parts.append(part)
+            parts.append(image_file_to_base64(reference_image_path))
 
         # Map resolution to string format expected by API
         image_size = "1K"
@@ -294,24 +288,15 @@ class GeminiImageGenerateBuilder(RequestBuilder):
             has_mask=bool(mask_image_path),
             has_reference=bool(ref_images_path[1:]),
         )
-        parts = [{"text": prompt}]
 
-        def add_part(image_file_path):
-            with open(image_file_path, "rb") as f:
-                image_base64 = base64.b64encode(f.read()).decode("utf-8")
-            part = {"inline_data": {"mime_type": "image/png", "data": image_base64}}
-            parts.append(part)
-            base64_size_mb = round(len(image_base64) / (1024 * 1024), 2)
+        parts = [{"text": prompt}, image_file_to_base64(image_path)]
 
-            logger.info(f"add_part\tbase64_size_mb:{base64_size_mb}\tpath:{image_file_path}")
-
-        add_part(image_path)  # 添加主图
         # 遮罩默认在第一张参考图片位置
         for ref_path in ref_images_path:
             # mask为空时过滤掉
             if not ref_path:
                 continue
-            add_part(ref_path)
+            parts.append(image_file_to_base64(ref_path))
 
         image_config = {}
         if self.is_pro:

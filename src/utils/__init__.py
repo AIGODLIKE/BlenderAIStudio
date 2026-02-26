@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import os
 import sys
@@ -30,6 +31,7 @@ __all__ = [
     "debug_time",
     "check_folder_writable_permission",
     "check_cache_folder_writable_permission",
+    "image_file_to_base64",
 ]
 
 
@@ -304,7 +306,7 @@ def check_cache_folder_writable_permission():
     if not check_folder_writable_permission(folder):
         # 不可写入反回错误
         with bpy.context.temp_override():
-            error_text = bpy.app.translations.pgettext("Folder cannot be written to","*")
+            error_text = bpy.app.translations.pgettext("Folder cannot be written to", "*")
             text = f"{error_text}:'{folder}'"
             raise PermissionError(text)
 
@@ -357,6 +359,17 @@ def start_blender(step=1):
     ))
 
     subprocess.Popen(args)
+
+
+def image_file_to_base64(image_file_path):
+    """图片写入文件并且转为base64"""
+    with open(image_file_path, "rb") as f:
+        image_base64 = base64.b64encode(f.read()).decode("utf-8")
+    part = {"inline_data": {"mime_type": "image/png", "data": image_base64}}
+    base64_size_mb = round(len(image_base64) / (1024 * 1024), 2)
+    text = f"To base64 base64_size_mb:{base64_size_mb} path:{image_file_path}"
+    logger.info(text)
+    return part
 
 
 modules = [
