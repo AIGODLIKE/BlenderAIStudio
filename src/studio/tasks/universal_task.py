@@ -63,7 +63,7 @@ class UniversalModelTask(Task):
             try:
                 processor.cancel()
             except Exception as e:
-                logger.error(f"取消 InputProcessor 失败: {e}")
+                logger.error(f"Task {self.task_id} 取消 InputProcessor 失败: {e}")
         return super().cancel()
 
     def prepare(self) -> tuple[bool, Optional[Exception]]:
@@ -124,7 +124,7 @@ class UniversalModelTask(Task):
                     logger.info(f"InputProcessor {processor_name}:{group_name} 被取消")
                     return False, e
                 except Exception as e:
-                    logger.error(f"InputProcessor {processor_name}:{group_name} 失败: {e}")
+                    logger.error(f"Task {self.task_id} InputProcessor {processor_name}:{group_name} 失败: {e}")
                     return False, e
 
             # 清理所有已处理的输入参数（在所有处理器完成后统一清理）
@@ -161,7 +161,7 @@ class UniversalModelTask(Task):
 
         except Exception as e:
             self.update_progress(0, f"任务准备失败: {str(e)}")
-            logger.error(f"任务准备失败: {e}")
+            logger.error(f"Task {self.task_id} 任务准备失败: {e}")
             return False, e
 
     def _apply_output_mapping(self, result: Dict[str, Any], output_mapping: Dict[str, str]) -> Dict[str, Any]:
@@ -294,7 +294,7 @@ class UniversalModelTask(Task):
             try:
                 processor.cleanup()
             except Exception as e:
-                logger.error(f"清理 InputProcessor 失败: {e}")
+                logger.error(f"Task {self.task_id} 清理 InputProcessor 失败: {e}")
 
         self.input_processors.clear()
         self.provider = None
