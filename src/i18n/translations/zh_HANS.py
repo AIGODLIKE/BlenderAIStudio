@@ -227,7 +227,7 @@ translations = (
     ("Size Config", "尺寸设置", PROP_TCTX),
     ("Auto", "自适应", PROP_TCTX),
     ("Disable System Prompt", "禁用系统提示词", PROP_TCTX),
-    ("After disabling, it is necessary to manually specify the reference image, such as Figure 1 being the reference image and Figure 2 being the main image.", "禁用后需要手动指定参考图,如:图1是参考图,图2是主图", PROP_TCTX),
+    ("After disabling, it is necessary to manually specify the reference image, such as Figure 1 being the reference image and Figure 2 being the main image", "禁用后需要手动指定参考图,如:图1是参考图,图2是主图", None),
     ("Resolution", "分辨率", PROP_TCTX),
     ("UI Pre Scale Factor", "UI 预缩放倍数", PROP_TCTX),
     ("UI Offset", "UI 偏移", PROP_TCTX),
