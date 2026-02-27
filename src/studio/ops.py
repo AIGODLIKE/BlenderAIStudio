@@ -87,7 +87,7 @@ class FileImporter(bpy.types.Operator, ImportHelper):
     bl_idname = "bas.file_importer"
     bl_label = "Import File"
 
-    filter_glob: bpy.props.StringProperty(default="*.png;*.jpg;*.jpeg;*.bmp;*.tiff;", options={"HIDDEN"})
+    filter_glob: bpy.props.StringProperty(default="*.png;*.jpg;*.jpeg;", options={"HIDDEN"})
     filepath: bpy.props.StringProperty(subtype="FILE_PATH")
     callback_id: bpy.props.StringProperty()
 
