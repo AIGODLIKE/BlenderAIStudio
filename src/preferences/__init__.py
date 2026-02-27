@@ -190,6 +190,7 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey, Priv
             column.alert = True
             column.label(text="Output Cache Directory Not Writable", icon="ERROR")
             column.label(text="Please change the output cache directory to a writable directory")
+        column.prop(self, "disable_system_prompt")
 
         self.draw_service(layout.box())
 
