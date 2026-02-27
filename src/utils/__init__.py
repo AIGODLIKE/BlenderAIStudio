@@ -3,6 +3,8 @@ import hashlib
 import os
 import sys
 import time
+import uuid
+from functools import cache
 from typing import TYPE_CHECKING
 
 import bpy
@@ -234,6 +236,7 @@ def debug_time(func, print_time=True):
     return wap
 
 
+@cache
 def check_folder_writable_permission(folder_path) -> bool:
     """
     不执行写入操作，仅通过权限检查判断文件夹是否可写
@@ -253,7 +256,7 @@ def check_folder_writable_permission(folder_path) -> bool:
         print(f"错误：'{folder_path}' 不是一个有效的文件夹")
         return False
 
-    temp_filename = f"_permission_check_{int(time.time() * 1000)}_{os.getpid()}.tmp"
+    temp_filename = f"_permission_check_{uuid.uuid4()}_{os.getpid()}.tmp"
     temp_filepath = os.path.join(folder_path, temp_filename)
 
     # 核心：尝试以写入模式打开文件（真正的权限验证）
