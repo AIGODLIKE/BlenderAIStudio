@@ -247,18 +247,19 @@ class ApplyAiEditImage(bpy.types.Operator):
 
         print("temp", temp_folder)
         try:
-            self.task_start(
-                context, resolution,
-                aspect_ratio,
-                origin_image,
-                origin_image_file_path,
-                oii.reference_images,
-                reference_images_path,
-                oii.mask_images,
-                mask_image_path,
-                temp_folder,
-                generate_image_name,
-            )
+            for i in range(oii.batch_count):
+                self.task_start(
+                    context, resolution,
+                    aspect_ratio,
+                    origin_image,
+                    origin_image_file_path,
+                    oii.reference_images,
+                    reference_images_path,
+                    oii.mask_images,
+                    mask_image_path,
+                    temp_folder,
+                    generate_image_name,
+                )
         except Exception as e:
             self.cancel(context)
             logger.error(str(e))
