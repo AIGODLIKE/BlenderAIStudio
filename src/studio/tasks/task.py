@@ -500,7 +500,7 @@ class TaskManager:
         self._shutdown = False
 
     @classmethod
-    def get_instance(cls, max_concurrent: int = 10) -> "TaskManager":
+    def get_instance(cls, max_concurrent: int = 16) -> "TaskManager":
         """
         获取单例实例
 
