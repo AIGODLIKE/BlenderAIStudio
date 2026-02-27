@@ -100,7 +100,7 @@ class UniversalModelTask(Task):
                 processor = self.input_processors[processor_key]
 
                 # 执行输入处理
-                logger.info(f"执行 InputProcessor: {processor_name} (group: {group_name})")
+                logger.info(f"Task {self.task_id} 执行 InputProcessor: {processor_name} (group: {group_name})")
                 try:
                     result = processor.process(input_params, self.context)
 
@@ -119,9 +119,9 @@ class UniversalModelTask(Task):
                     # 合并映射后的结果到参数中
                     self.params.update(mapped_result)
 
-                    logger.info(f"InputProcessor {processor_name}:{group_name} 完成，映射结果: {mapped_result}")
+                    logger.info(f"Task {self.task_id} InputProcessor {processor_name}:{group_name} 完成，映射结果: {mapped_result}")
                 except CancelledError as e:
-                    logger.info(f"InputProcessor {processor_name}:{group_name} 被取消")
+                    logger.info(f"Task {self.task_id} InputProcessor {processor_name}:{group_name} 被取消")
                     return False, e
                 except Exception as e:
                     logger.error(f"Task {self.task_id} InputProcessor {processor_name}:{group_name} 失败: {e}")
