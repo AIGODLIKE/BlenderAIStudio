@@ -17,7 +17,7 @@ from .seedream_prompt import (
     EDIT_WITH_REFERENCES,
     EDIT_BASE_PROMPT,
 )
-from ....utils import calc_appropriate_aspect_ratio, image_file_to_base64, get_pref
+from ....utils import get_pref
 
 if TYPE_CHECKING:
     from ...config.model_registry import ModelConfig
