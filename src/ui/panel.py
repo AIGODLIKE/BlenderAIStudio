@@ -215,7 +215,7 @@ class AIStudioImagePanel(bpy.types.Panel):
                 name = param.get("name", None)
                 if draw_func := getattr(AIStudioImagePanel, f"draw_{name}", None):
                     draw_func(ai, column)
-                AIStudioImagePanel.draw_batch_count(ai, column)
+            AIStudioImagePanel.draw_batch_count(ai, column)
         except ValueError:
             ...
 
@@ -223,7 +223,7 @@ class AIStudioImagePanel(bpy.types.Panel):
     def draw_batch_count(ai, layout: bpy.types.UILayout):
         """绘制批量数量"""
         row = layout.row(align=True)
-        row.label(text="", icon_value=get_custom_icon("aspect_ratio"))
+        # row.label(text="", icon_value=get_custom_icon("aspect_ratio"))
         row.prop(ai, "batch_count", text="")
 
     @staticmethod
