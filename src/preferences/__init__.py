@@ -107,6 +107,12 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey, Priv
         ],
         **translation_context,
     )
+    disable_system_prompt: bpy.props.BoolProperty(
+        name="Disable System Prompt",
+        description="After disabling, it is necessary to manually specify the reference image, such as Figure 1 being the reference image and Figure 2 being the main image",
+        default=False,
+        **translation_context,
+    )
 
     @property
     def is_backup_mode(self):  # 是稳定模式

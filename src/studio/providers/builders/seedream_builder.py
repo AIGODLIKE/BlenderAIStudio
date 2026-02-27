@@ -5,6 +5,7 @@ from typing import Dict, Any, TYPE_CHECKING, List
 
 from bpy.app.translations import pgettext as _T
 
+from src.utils import get_pref
 from .base import RequestBuilder, RequestData
 from .seedream_prompt import (
     GENERATE_RENDER_WITH_REFERENCE,
@@ -214,6 +215,8 @@ class SeedreamImageGenerateBuilder(RequestBuilder):
         IMAGE 2 (mask - colored area)
         IMAGE OTHER (reference)
         """
+        if get_pref().disable_system_prompt:
+            return user_prompt
 
         if user_prompt == "[智能修复]":  # 智能修复的提示词
             base_prompt = EDIT_SMART_REPAIR
@@ -240,6 +243,9 @@ class SeedreamImageGenerateBuilder(RequestBuilder):
             has_reference: bool = False,
             is_color_render: bool = False,
     ) -> str:
+        if get_pref().disable_system_prompt:
+            return user_prompt
+
         if is_color_render:
             if has_reference:
                 base_prompt = GENERATE_RENDER_WITH_REFERENCE
