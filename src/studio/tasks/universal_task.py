@@ -1,6 +1,6 @@
 from traceback import print_exc
 from typing import Dict, Any, Optional
-
+from requests.exceptions import ReadTimeout
 from .task import Task, TaskResult
 from ..config.model_registry import ModelRegistry
 from ..providers import UniversalProvider
@@ -282,7 +282,8 @@ class UniversalModelTask(Task):
             return TaskResult.success_result(data=parsed_data, metadata=metadata)
 
         except Exception as e:
-            print_exc()
+            if not isinstance(e, ReadTimeout):
+                print_exc()
             error_msg = str(e)
             self.update_progress(message=error_msg)
             return TaskResult.failure_result(e, error_msg)
