@@ -331,6 +331,7 @@ translations = (
     ("Fetching...", "获取中...", "Operator"),
     ("No history - use 'Render' first", "无历史 - 请先进行'渲染'", ""),
     ("Re-rendering with previous settings...", "使用上一次的设置重新渲染...", ""),
+    ("Token is empty, please login first", "Token是空的,请先登录", ""),
     ("Can't save image", "无法保存图片", ""),
     ("Can't save reference image", "无法保存参考图片", ""),
     ("Pricing Strategy", "模型策略", None),
