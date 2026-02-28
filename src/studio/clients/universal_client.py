@@ -466,6 +466,11 @@ class UniversalClient(StudioClient):
 
         return True
 
+def clamp_client_image_count(client: StudioClient, prop: str):
+    # 数量限制
+    config = client.get_meta(prop)
+    limit = config.get("limit") or 10
+    client.get_value(prop)[:] = client.get_value(prop)[:limit]
 
 def upload_image(client: StudioClient, prop: str):
     def upload_image_callback(files_path: list[str]):
@@ -474,7 +479,7 @@ def upload_image(client: StudioClient, prop: str):
         for file_path in files_path:
             if file_path not in l:
                 l.append(file_path)
-        client.get_value(prop)[:] = client.get_value(prop)[:10]
+        clamp_client_image_count(client, prop)
 
     from ..ops import FileCallbackRegistry
 
@@ -551,5 +556,6 @@ def paste_image(client: StudioClient, prop: str):
             image.save(filepath=image_path)
             bpy.data.images.remove(image)
             client.get_value(prop).append(image_path)
+            clamp_client_image_count(client, prop)
 
     Timer.put(paste_image_callback)
