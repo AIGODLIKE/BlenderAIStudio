@@ -345,7 +345,7 @@ translations = (
     ("Dev API Base URL", "开发API", PROP_TCTX),
     ("Dev Login URL", "登录URL", PROP_TCTX),
     ("Dev Token", "Token", PROP_TCTX),
-    ("BLenderAiStudio Update Tips", "BLenderAiStudio 更新提示", "Operator"),
+    ("BLenderAiStudio Update Tips", "BLenderAiStudio 更新提示", ""),
     ("Total image size exceeds the limit of 20MB.", "总图像大小超过20MB限制。", ""),
     ("Credits Refunded", "积分已退回", ""),
     ("Model", "模型", ""),
