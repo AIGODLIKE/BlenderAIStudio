@@ -6,6 +6,8 @@ from .ai_edit_image import (
     SmartFixImage,
     ReRenderImage,
 )
+from .entry_edit_image import EntryEditImage
+from .error_report import UploadErrorReport
 from .history import (
     ViewImage,
     RestoreHistory,
@@ -14,6 +16,7 @@ from .history import (
     ClearHistory,
 )
 from .mask_image import DrawImageMask, ApplyImageMask, SelectMask
+from .privacy_tips import PrivacyTips
 from .prompt_edit import (
     PromptEdit,
     PromptSave,
@@ -25,9 +28,7 @@ from .references_image import (
     SelectReferenceImageByImage,
     ClipboardPasteReferenceImage,
 )
-from .privacy_tips import PrivacyTips
 from .update_tips import UpdateTips
-from .entry_edit_image import EntryEditImage
 
 class_list = [
     ApplyAiEditImage,
@@ -61,6 +62,8 @@ class_list = [
     UpdateTips,
 
     EntryEditImage,
+
+    UploadErrorReport,
 ]
 
 register_class, unregister_class = bpy.utils.register_classes_factory(class_list)

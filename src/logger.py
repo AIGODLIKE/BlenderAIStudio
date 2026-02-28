@@ -1,4 +1,7 @@
 import logging
+import sys
+import threading
+from collections import deque
 from logging import handlers
 from pathlib import Path
 
@@ -18,6 +21,71 @@ FMTDICT = {
     'ERROR': ["[31m", "ERR"],
     'CRITICAL': ["[35m", "CRT"],
 }
+
+_LOG_CAPTURE_LIMIT = 2000
+_CONSOLE_CAPTURE_LIMIT = 4000
+_capture_lock = threading.Lock()
+_logger_lines = deque(maxlen=_LOG_CAPTURE_LIMIT)
+_console_lines = deque(maxlen=_CONSOLE_CAPTURE_LIMIT)
+_console_capture_installed = False
+
+
+def _append_console_text(text: str):
+    if not text:
+        return
+    with _capture_lock:
+        for line in text.splitlines():
+            if line.strip():
+                _console_lines.append(line)
+
+
+class ConsoleTee:
+    """保留原有输出行为，并缓存控制台文本"""
+
+    def __init__(self, stream):
+        self._stream = stream
+
+    def write(self, text):
+        _append_console_text(text)
+        return self._stream.write(text)
+
+    def flush(self):
+        return self._stream.flush()
+
+    def isatty(self):
+        return self._stream.isatty()
+
+    def fileno(self):
+        return self._stream.fileno()
+
+    def __getattr__(self, item):
+        return getattr(self._stream, item)
+
+
+class MemoryLogHandler(logging.Handler):
+    """缓存 logger 文本，供错误上报使用"""
+
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+            with _capture_lock:
+                _logger_lines.append(msg)
+        except Exception:
+            self.handleError(record)
+
+
+def _install_console_capture():
+    global _console_capture_installed
+    if _console_capture_installed:
+        return
+    try:
+        if sys.stdout and not isinstance(sys.stdout, ConsoleTee):
+            sys.stdout = ConsoleTee(sys.stdout)
+        if sys.stderr and not isinstance(sys.stderr, ConsoleTee):
+            sys.stderr = ConsoleTee(sys.stderr)
+        _console_capture_installed = True
+    except Exception:
+        ...
 
 
 class Handler(logging.StreamHandler):
@@ -91,11 +159,15 @@ class Logger(logging.Logger):
 
 def getLogger(name="CLOG", level=logging.INFO, fmt='[%(name)s-%(levelname)s]: %(message)s',
               fmt_date="%H:%M:%S") -> Logger:
-    fmter = logging.Formatter('[%(levelname)s]:%(filename)s>%(lineno)s: %(message)s')
+    file_fmter = logging.Formatter('[%(levelname)s]:%(filename)s>%(lineno)s: %(message)s')
     # 按 D/H/M 天时分 保存日志, backupcount 为保留数量
     dfh = handlers.TimedRotatingFileHandler(filename=LOGFILE, when='D', backupCount=2)
     dfh.setLevel(logging.DEBUG)
-    dfh.setFormatter(fmter)
+    dfh.setFormatter(file_fmter)
+    # 内存缓存
+    mh = MemoryLogHandler()
+    mh.setLevel(logging.DEBUG)
+    mh.setFormatter(file_fmter)
     # 命令行打印
     filter = Filter()
     fmter = logging.Formatter(fmt, fmt_date)
@@ -110,7 +182,9 @@ def getLogger(name="CLOG", level=logging.INFO, fmt='[%(name)s-%(levelname)s]: %(
     if not logger.hasHandlers():
         # 注意添加顺序, ch有filter, 如果fh后添加 则会默认带上ch的filter
         logger.addHandler(dfh)
+        logger.addHandler(mh)
         logger.addHandler(ch)
+        _install_console_capture()
     return logger
 
 
@@ -120,3 +194,15 @@ logger = getLogger(NAME, L)
 def close_logger():
     """tips: 关闭日志,在更新插件时日志会占用插件的文件夹"""
     logger.close()
+
+
+def get_recent_logger_text(limit=500) -> str:
+    with _capture_lock:
+        data = list(_logger_lines)[-limit:]
+    return "\n".join(data)
+
+
+def get_recent_console_text(limit=800) -> str:
+    with _capture_lock:
+        data = list(_console_lines)[-limit:]
+    return "\n".join(data)
