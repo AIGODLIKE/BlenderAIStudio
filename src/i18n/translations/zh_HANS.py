@@ -166,6 +166,7 @@ studio_panel_translations = (
     ("Generation Failed!", "提示词&生成内容违规，本次不扣分", None),
     ("Copy Task ID", "复制任务ID", None),
     ("Task ID Copied!", "任务ID已复制到剪贴板！", None),
+    ("File Select Window is Busy, Close it First!", "文件选择窗口被占用, 请关闭后重试！", None),
 )
 
 task_translations = (
