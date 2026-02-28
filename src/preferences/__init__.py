@@ -179,7 +179,13 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey, Priv
 
     def draw_setting(self, layout):
         layout.operator("bas.upload_error_report", icon="URL")
-        layout.prop(self, "disable_system_prompt")
+        box = layout.box()
+        box.prop(self, "disable_system_prompt")
+        box.label(text="Some users may fail to generate images when system prompts are enabled")
+        box.label(text="Disabling system prompts may improve success rates")
+        box.label(text="After disabling system prompts ReRender and Smart Fix in image editing will be unavailable")
+        box.label(text="Reference images must also be selected manually by the user")
+
         layout.prop(self, "ui_pre_scale")
         layout.prop(self, "ui_offset")
 

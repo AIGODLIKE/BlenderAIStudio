@@ -162,11 +162,13 @@ class AIStudioImagePanel(bpy.types.Panel):
             points_consumption = bpy.app.translations.pgettext("(%s/use)") % ai.get_points_consumption(context)
             column.label(text=bpy.app.translations.pgettext("AI Edit") + points_consumption)
 
-        row = column.row(align=True)
-        row.scale_y = 1.2
+        if not pref.disable_system_prompt:
+            # 没禁用才显示这些
+            row = column.row(align=True)
+            row.scale_y = 1.2
 
-        row.operator("bas.rerender_image", icon="RENDER_STILL")
-        row.operator("bas.smart_fix", icon="RENDERLAYERS")
+            row.operator("bas.rerender_image", icon="RENDER_STILL")
+            row.operator("bas.smart_fix", icon="RENDERLAYERS")
 
         row = column.row(align=True)
         row.scale_y = 2
