@@ -52,6 +52,7 @@ models:
         type: STRING
         hide_title: false
         multiline: true
+        resizable: true
         default: ""
 
       - name: reference_images
@@ -165,6 +166,7 @@ models:
         type: STRING
         hide_title: false
         multiline: true
+        resizable: true
         default: ""
 
       - name: reference_images
@@ -261,6 +263,7 @@ models:
         type: STRING
         hide_title: false
         multiline: true
+        resizable: true
         default: ""
 
       - name: reference_images
@@ -341,6 +344,7 @@ models:
         type: STRING
         hide_title: false
         multiline: true
+        resizable: true
         default: ""
 
       - name: reference_images

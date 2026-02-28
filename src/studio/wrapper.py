@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict
@@ -263,11 +264,38 @@ class ComboDescriptor(EnumDescriptor):
 
 class StringDescriptor(WidgetDescriptor):
     ptype: PropertyType = PropertyType.STRING
+    # 存储拖拽状态，key 为 widget_name（临时状态，不需要持久化）
+    _drag_states: Dict[str, bool] = {}
+    _drag_start_y: Dict[str, float] = {}
+    _drag_start_height: Dict[str, float] = {}
+    # 存储高度值，key 为 height_key（内存存储，不持久化）
+    _heights: Dict[str, float] = {}
+
+    def _get_height(self, height_key: str) -> float:
+        """获取指定 widget 的高度值，如果不存在则返回默认值 240"""
+        return self._heights.get(height_key, 240.0)
+
+    def _set_height(self, height_key: str, height: float) -> None:
+        """设置指定 widget 的高度值"""
+        self._heights[height_key] = height
+
+    def _pop_height(self, height_key: str) -> None:
+        """删除指定 widget 的高度值"""
+        self._heights.pop(height_key, None)
 
     def display(self, wrapper, app: App):
         imgui.push_style_color(imgui.Col.FRAME_BG, self.col_bg)
         multiline = self.widget_def.get("multiline", False)
-        child_height = 240 if multiline else 0
+        resizable = self.widget_def.get("resizable", False)
+
+        # 如果 resizable=True，multiline 应该自动为 True
+        if not multiline:
+            resizable = False
+
+        # 获取或初始化高度值
+        height_key = str(id(self.value))
+        child_height = self._get_height(height_key) if multiline else 0
+
         with with_child("##String", (0, child_height), child_flags=self.flags):
             if not self.hide_title:
                 imgui.text(self.display_name)
@@ -289,10 +317,111 @@ class StringDescriptor(WidgetDescriptor):
                 imgui.pop_item_width()
             if changed:
                 self.value = val
+                self._pop_height(height_key)
+                height_key = str(id(self.value))
+                self._set_height(height_key, child_height)
             app.font_manager.pop_font()
             imgui.pop_style_var(3)
             imgui.pop_style_color(5)
+
+            # 如果 resizable=True，绘制并处理控制柄
+            if resizable and multiline:
+                self._draw_resize_grip(height_key, child_height)
+
         imgui.pop_style_color(1)
+
+    def _draw_resize_grip(self, height_key: str, current_height: float):
+        """绘制并处理调整大小的控制柄（右下角三角形，直角处圆角，视觉指向右下）"""
+        # 调整大小控制柄：右下角三角形（带圆角）
+        GRIP_TRIANGLE_SIZE = 24.0   # 三角形边长（直角边长度）
+        GRIP_CORNER_RADIUS = 16.0    # 右下角圆角半径
+        GRIP_MARGIN = 4.0           # 距裁剪区域边缘的最小间距
+        min_height = 100.0
+        size = GRIP_TRIANGLE_SIZE
+        r = min(GRIP_CORNER_RADIUS, size * 0.5)
+        margin = GRIP_MARGIN
+
+        draw_list = imgui.get_window_draw_list()
+        clip_min = draw_list.get_clip_rect_min()
+        clip_max = draw_list.get_clip_rect_max()
+
+        # 三角形锚点：裁剪区域右下角，留 margin
+        right = clip_max[0] - margin
+        bottom = clip_max[1] - margin
+
+        # 确保三角形完整在裁剪区域内
+        right = max(clip_min[0] + size, min(right, clip_max[0]))
+        bottom = max(clip_min[1] + size, min(bottom, clip_max[1]))
+
+        # 像素对齐：对抗锯齿边缘更稳定（减少“台阶感/闪烁”）
+        right = math.floor(right) + 0.5
+        bottom = math.floor(bottom) + 0.5
+
+        grip_min_x = right - size
+        grip_min_y = bottom - size
+
+        mouse_pos = imgui.get_mouse_pos()
+        mouse_x, mouse_y = mouse_pos[0], mouse_pos[1]
+
+        is_hovered = (grip_min_x <= mouse_x <= right and grip_min_y <= mouse_y <= bottom)
+
+        is_dragging = height_key in self._drag_states and self._drag_states[height_key]
+
+        if imgui.is_mouse_clicked(imgui.MouseButton.LEFT) and is_hovered:
+            self._drag_states[height_key] = True
+            self._drag_start_y[height_key] = mouse_y
+            self._drag_start_height[height_key] = current_height
+
+        if is_dragging:
+            if imgui.is_mouse_down(imgui.MouseButton.LEFT):
+                delta_y = mouse_y - self._drag_start_y[height_key]
+                new_height = self._drag_start_height[height_key] + delta_y
+                new_height = max(min_height, new_height)
+                self._set_height(height_key, new_height)
+            else:
+                self._drag_states[height_key] = False
+
+        # 按钮配色：正常 / 悬停 / 激活（拖拽中）
+        if is_dragging:
+            grip_color = imgui.get_color_u32(Const.BUTTON_ACTIVE)
+        elif is_hovered:
+            hover = Const.BUTTON_ACTIVE[0] * 0.8, Const.BUTTON_ACTIVE[1] * 0.8, Const.BUTTON_ACTIVE[2] * 0.8, 1
+            grip_color = imgui.get_color_u32(hover)
+        else:
+            normal = Const.BUTTON_ACTIVE[0] * 0.7, Const.BUTTON_ACTIVE[1] * 0.7, Const.BUTTON_ACTIVE[2] * 0.7, 1
+            grip_color = imgui.get_color_u32(normal)
+
+        style = imgui.get_style()
+        old_aa_fill = style.anti_aliased_fill
+        old_aa_lines = style.anti_aliased_lines
+        old_curve_tol = style.curve_tessellation_tol
+        old_circle_err = style.circle_tessellation_max_error
+        try:
+            style.anti_aliased_fill = True
+            style.anti_aliased_lines = True
+            # 更细的曲线细分（仅在本次绘制期间临时调低误差）
+            style.curve_tessellation_tol = min(old_curve_tol, 1.0)
+            style.circle_tessellation_max_error = min(old_circle_err, 0.20)
+
+            # 对 90° 圆弧显式加密分段，避免小半径时“折线感”
+            num_segments = max(12, int(r * 2.0))
+
+            def _build_grip_path() -> None:
+                draw_list.path_clear()
+                draw_list.path_line_to((right - size, bottom))
+                draw_list.path_line_to((right - r, bottom))
+                draw_list.path_arc_to((right - r, bottom - r), r, math.pi * 0.5, 0.0, num_segments)
+                draw_list.path_line_to((right, bottom - size))
+
+            _build_grip_path()
+            draw_list.path_fill_convex(grip_color)
+            _build_grip_path()
+            draw_list.path_stroke(grip_color, thickness=1.0)
+        finally:
+            style.anti_aliased_fill = old_aa_fill
+            style.anti_aliased_lines = old_aa_lines
+            style.curve_tessellation_tol = old_curve_tol
+            style.circle_tessellation_max_error = old_circle_err
 
 
 class ImageDescriptor(WidgetDescriptor):

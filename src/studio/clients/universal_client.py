@@ -229,6 +229,8 @@ class UniversalClient(StudioClient):
             # 可选字段
             if "multiline" in param:
                 meta[param_name]["multiline"] = param["multiline"]
+            if "resizable" in param:
+                meta[param_name]["resizable"] = param["resizable"]
             if "default" in param:
                 meta[param_name]["default"] = param["default"]
             if "options" in param:
