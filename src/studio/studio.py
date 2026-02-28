@@ -939,6 +939,9 @@ class StudioHistoryViewer:
         from .ops import FileCallbackRegistry
 
         callback_id = FileCallbackRegistry.register_callback(export_image_callback)
+        if not callback_id:
+            self.app.push_error_message(_T("File Select Window is Busy, Close it First!"))
+            return
         bpy.ops.bas.file_exporter("INVOKE_DEFAULT", callback_id=callback_id)
 
 
