@@ -241,6 +241,7 @@ class StudioHistory:
         if task_history.state.is_success():
             item.status = StudioHistoryItem.STATUS_SUCCESS
             item.finished_at = task_history.finished_at
+            item.timestamp = task_history.finished_at
             item.elapsed_time = item.finished_at - item.started_at
             item.progress = 100.0
             item.error_message = ""
@@ -256,6 +257,7 @@ class StudioHistory:
         elif task_history.state.is_failed():
             item.status = StudioHistoryItem.STATUS_FAILED
             item.finished_at = task_history.finished_at
+            item.timestamp = task_history.finished_at
             item.elapsed_time = item.finished_at - item.started_at
             item.progress = 0.0
             item.error_message = task_history.error_message
