@@ -231,16 +231,14 @@ translations = (
     ("Size Config", "尺寸设置", PROP_TCTX),
     ("Auto", "自适应", PROP_TCTX),
     ("Disable System Prompt", "禁用系统提示词", PROP_TCTX),
-    ("After disabling, it is necessary to manually specify the reference image, such as Figure 1 being the reference image and Figure 2 being the main image",
-     "禁用后需要手动指定参考图,如:图1是参考图,图2是主图", None),
-    ("Some users may fail to generate images when system prompts are enabled",
-     "部分用户在启用系统提示词时可能无法正常生成", None),
-    ("Disabling system prompts may improve success rates",
-     "禁用系统提示词可提高生成成功率", None),
-    ("After disabling system prompts ReRender and Smart Fix in image editing will be unavailable",
-     "禁用系统提示词后将无法使用图像编辑中的重渲染与智能修复", None),
-    ("Reference images must also be selected manually by the user",
-     "参考图也需要用户手动指定", None),
+    ("""Some users may fail to generate images when system prompts are enabled
+Disabling system prompts may improve success rates
+After disabling system prompts ReRender and Smart Fix in image editing will be unavailable
+Reference images must also be selected manually by the user""",
+     """部分用户在启用系统提示词时可能无法正常生成
+禁用系统提示词可提高生成成功率
+禁用系统提示词后将无法使用图像编辑中的重渲染与智能修复
+参考图也需要用户手动指定""", None),
     ("Resolution", "分辨率", PROP_TCTX),
     ("UI Pre Scale Factor", "UI 预缩放倍数", PROP_TCTX),
     ("UI Offset", "UI 偏移", PROP_TCTX),

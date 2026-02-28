@@ -109,7 +109,10 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey, Priv
     )
     disable_system_prompt: bpy.props.BoolProperty(
         name="Disable System Prompt",
-        description="After disabling, it is necessary to manually specify the reference image, such as Figure 1 being the reference image and Figure 2 being the main image",
+        description="""Some users may fail to generate images when system prompts are enabled
+Disabling system prompts may improve success rates
+After disabling system prompts ReRender and Smart Fix in image editing will be unavailable
+Reference images must also be selected manually by the user""",
         default=True,
         **translation_context,
     )
@@ -181,10 +184,6 @@ class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey, Priv
         layout.operator("bas.upload_error_report", icon="URL")
         box = layout.box()
         box.prop(self, "disable_system_prompt")
-        box.label(text="Some users may fail to generate images when system prompts are enabled")
-        box.label(text="Disabling system prompts may improve success rates")
-        box.label(text="After disabling system prompts ReRender and Smart Fix in image editing will be unavailable")
-        box.label(text="Reference images must also be selected manually by the user")
 
         layout.prop(self, "ui_pre_scale")
         layout.prop(self, "ui_offset")
