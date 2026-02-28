@@ -486,6 +486,9 @@ def upload_image(client: StudioClient, prop: str):
     from ..ops import FileCallbackRegistry
 
     callback_id = FileCallbackRegistry.register_callback(upload_image_callback)
+    if not callback_id:
+        client.push_error(_T("File Select Window is Busy, Close it First!"))
+        return
     bpy.ops.bas.file_importer("INVOKE_DEFAULT", callback_id=callback_id)
 
 
@@ -501,6 +504,9 @@ def replace_image(client: StudioClient, prop: str, index: int = -1):
     from ..ops import FileCallbackRegistry
 
     callback_id = FileCallbackRegistry.register_callback(replace_image_callback)
+    if not callback_id:
+        client.push_error(_T("File Select Window is Busy, Close it First!"))
+        return
     bpy.ops.bas.file_importer("INVOKE_DEFAULT", callback_id=callback_id)
 
 

@@ -1,5 +1,6 @@
 from pathlib import Path
 from uuid import uuid4
+from threading import Lock
 
 import bpy
 from bpy_extras.io_utils import ImportHelper, ExportHelper
@@ -63,10 +64,14 @@ class FileCallbackRegistry:
     """管理文件选择回调的注册表"""
 
     _registry = {}
+    _freeze = False
+    _lock = Lock()
 
     @classmethod
     def register_callback(cls, callback, *args, **kwargs):
         """注册回调并返回唯一ID"""
+        if cls.is_frozen():
+            return ""
         callback_id = str(uuid4())
         cls._registry[callback_id] = {"callback": callback, "args": args, "kwargs": kwargs}
         return callback_id
@@ -81,6 +86,21 @@ class FileCallbackRegistry:
             kwargs = data["kwargs"]
             return callback(filepath, *args, **kwargs)
         return None
+
+    @classmethod
+    def is_frozen(cls):
+        with cls._lock:
+            return cls._freeze
+
+    @classmethod
+    def lock(cls):
+        with cls._lock:
+            cls._freeze = True
+
+    @classmethod
+    def unlock(cls):
+        with cls._lock:
+            cls._freeze = False
 
 
 class FileImporter(bpy.types.Operator, ImportHelper):
@@ -103,10 +123,15 @@ class FileImporter(bpy.types.Operator, ImportHelper):
     )
 
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event):
+        FileCallbackRegistry.lock()
         bpy.context.window_manager.fileselect_add(self)
         return {"RUNNING_MODAL"}
 
+    def cancel(self, context: bpy.types.Context) -> None:
+        FileCallbackRegistry.unlock()
+
     def execute(self, context):
+        FileCallbackRegistry.unlock()
         images = []
         for file in self.files:
             img_path = Path(self.directory).joinpath(file.name).as_posix()
