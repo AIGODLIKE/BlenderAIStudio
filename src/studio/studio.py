@@ -344,6 +344,7 @@ class StudioHistoryViewer:
             self._draw_header(item)
             self._draw_content(item)
             self._draw_detail(item)
+            self._draw_detail_copy_id(item)
             imgui.pop_style_color(1)
         imgui.pop_style_var(2)
         imgui.pop_style_color(1)
@@ -896,6 +897,17 @@ class StudioHistoryViewer:
         imgui.image(icon, (h, h))
         imgui.same_line()
         imgui.text(datetime.fromtimestamp(item.timestamp).strftime("%Y-%m-%d %H:%M:%S"))
+
+    def _draw_detail_copy_id(self, item: StudioHistoryItem) -> None:
+        """绘制详情展开区域：提示词文本框与图片元信息。"""
+        if not item.show_detail:
+            return
+        bh = imgui.get_frame_height()
+        isize = bh - 24
+        label = _T("Copy Task ID")
+        if CustomWidgets.icon_label_button("prompt_copy", label, "CENTER", (0, bh), isize=isize):
+            bpy.context.window_manager.clipboard = str(item.task_id)
+            self.app.push_info_message(_T("Task ID Copied!"))
 
     def remove_item(self, item: StudioHistoryItem):
         self.history.remove(item)
