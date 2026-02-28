@@ -164,6 +164,8 @@ studio_panel_translations = (
     ("Click to refresh the task.", "点击刷新任务", None),
     ("Connecting", "重连中", None),
     ("Generation Failed!", "提示词&生成内容违规，本次不扣分", None),
+    ("Copy Task ID", "复制任务ID", None),
+    ("Task ID Copied!", "任务ID已复制到剪贴板！", None),
 )
 
 task_translations = (
