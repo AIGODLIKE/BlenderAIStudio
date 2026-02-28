@@ -182,8 +182,7 @@ Reference images must also be selected manually by the user""",
 
     def draw_setting(self, layout):
         layout.operator("bas.upload_error_report", icon="URL")
-        box = layout.box()
-        box.prop(self, "disable_system_prompt")
+        layout.prop(self, "disable_system_prompt")
 
         layout.prop(self, "ui_pre_scale")
         layout.prop(self, "ui_offset")

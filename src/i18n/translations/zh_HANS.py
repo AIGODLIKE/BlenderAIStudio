@@ -239,7 +239,10 @@ Reference images must also be selected manually by the user""",
      """部分用户在启用系统提示词时可能无法正常生成
 禁用系统提示词可提高生成成功率
 禁用系统提示词后将无法使用图像编辑中的重渲染与智能修复
-参考图也需要用户手动指定""", None),
+
+参考图也需要用户手动指定
+如:将图1中的人物移到图2中
+需要注意的是在编辑模式的顺序为 主图(当前图片),遮罩图片(如果有的话),参考图片""", None),
     ("Resolution", "分辨率", PROP_TCTX),
     ("UI Pre Scale Factor", "UI 预缩放倍数", PROP_TCTX),
     ("UI Offset", "UI 偏移", PROP_TCTX),
