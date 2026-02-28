@@ -285,12 +285,14 @@ class EditHistory(HistoryState, GeneralProperty, HistoryFailedCheck, bpy.types.P
 
 
 class DynamicEnumeration:
-    _model_registry = ModelRegistry.get_instance()
+    @classmethod
+    def get_model_registry(cls):
+        return ModelRegistry.get_instance()
 
     def get_models_name_items(self, context):
         try:
             pref = get_pref()
-            models = self._model_registry.list_models(
+            models = self.get_model_registry().list_models(
                 auth_mode=pref.account_auth_mode,
                 category="IMAGE_GENERATION",  # 目前只显示图像生成模型
             )
@@ -315,7 +317,7 @@ class DynamicEnumeration:
 
     def get_resolution_items(self, context) -> list[(str, str, str),]:
         try:
-            model = self._model_registry.get_model(self.model_name)
+            model = self.get_model_registry().get_model(self.model_name)
             if res := model.get_parameter("resolution"):
                 if options := res.get("options", None):
                     return [(i, i, i) for i in options]
@@ -356,7 +358,7 @@ class DynamicEnumeration:
         ]
         """
         try:
-            model = self._model_registry.get_model(self.model_name)
+            model = self.get_model_registry().get_model(self.model_name)
             if aspect_ratio := model.get_parameter("aspect_ratio"):
                 if options := aspect_ratio.get("options", None):
                     return [(i, i, i) for i in options]

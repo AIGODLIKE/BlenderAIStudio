@@ -591,10 +591,17 @@ class ModelRegistry:
         if "models" not in data:
             raise KeyError("Missing 'models' key in config file")
 
+        is_experimental = False
+        try:
+            from ...utils import get_pref
+            is_experimental = get_pref().enable_experimental_features
+        except Exception as e:
+            logger.warning(f"Failed to get experimental feature preference: {e}")
+
         for model_data in data["models"]:
             try:
                 config = ModelConfig(model_data)
-                if config.model_id in EXCLUDE_MODAL_ID_MANUALLY:
+                if not is_experimental and config.model_id in EXCLUDE_MODAL_ID_MANUALLY:
                     continue
                 self.models[config.model_name] = config
             except KeyError as e:

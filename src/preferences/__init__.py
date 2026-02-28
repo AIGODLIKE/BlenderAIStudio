@@ -173,6 +173,13 @@ Reference images must also be selected manually by the user""",
         **translation_context,
     )
 
+    enable_experimental_features: bpy.props.BoolProperty(
+        name="Experimental Features",
+        description="Enable experimental features that may be unstable, Restart if enabled",
+        default=False,
+        **translation_context,
+    )
+
     def draw(self, context):
         layout = self.layout
         column = layout.column()
@@ -183,6 +190,10 @@ Reference images must also be selected manually by the user""",
     def draw_setting(self, layout):
         layout.operator("bas.upload_error_report", icon="URL")
         layout.prop(self, "disable_system_prompt")
+
+        box = layout.box()
+        box.prop(self, "enable_experimental_features")
+        box.label(text="Enable experimental features that may be unstable, Restart if enabled")
 
         layout.prop(self, "ui_pre_scale")
         layout.prop(self, "ui_offset")
