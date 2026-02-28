@@ -9,6 +9,9 @@ except ImportError:
     logger = logging.getLogger("[ModelRegistry]")
 
 
+EXCLUDE_MODAL_ID_MANUALLY = ["gemini-3.1-flash-image-preview", ]
+
+
 class SimpleYAMLParser:
     """简单的 YAML 解析器
 
@@ -591,6 +594,8 @@ class ModelRegistry:
         for model_data in data["models"]:
             try:
                 config = ModelConfig(model_data)
+                if config.model_id in EXCLUDE_MODAL_ID_MANUALLY:
+                    continue
                 self.models[config.model_name] = config
             except KeyError as e:
                 logger.warning(f"Failed to parse base model: missing field {e}")

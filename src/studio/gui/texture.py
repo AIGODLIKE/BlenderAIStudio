@@ -8,6 +8,7 @@ from pathlib import Path
 ICON_PATH = Path(__file__).parent.joinpath("icons")
 NONE_ICON_PATH = ICON_PATH.joinpath("none.png")
 
+
 class TexturePool:
     TEXTURE_MAP: dict[str, gpu.types.GPUTexture] = {}
     TEXTURE_ID_MAP: dict[int, gpu.types.GPUTexture] = {}
