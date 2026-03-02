@@ -51,6 +51,22 @@ class GeneralProperty:
 
     prompt: bpy.props.StringProperty(name="Prompt", maxlen=10000, )
 
+    def clear_invalid_data(self):
+        while True:
+            is_ok = True
+            for index, mask_image in enumerate(self.mask_images):
+                if not mask_image.image:
+                    self.mask_images.remove(index)
+                    is_ok = False
+                    break
+            for index, ri in enumerate(self.reference_images):
+                if not ri.image:
+                    self.reference_images.remove(index)
+                    is_ok = False
+                    break
+            if is_ok:
+                return
+
 
 class HistoryState:
     running_operator: bpy.props.StringProperty()
@@ -99,6 +115,7 @@ class HistoryFailedCheck:
         if self.is_refund_points and not self.is_api_mode:
             column.label(text="Credits Refunded")
         if self.failed_check_message:
+            column.alert = self.running_state == "failed"
             for j in self.failed_check_message.split("\n"):
                 column.label(text=j)
 

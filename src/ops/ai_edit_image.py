@@ -134,8 +134,12 @@ def add_callback(task, temp_folder, generate_image_name):
                 edit_history.running_state = "failed"
 
                 if not result.success:
-                    edit_history.running_message = str(result.error)
-                    logger.info(edit_history.running_message)
+                    if isinstance(result.error, RuntimeError):
+                        ...
+                        # 超时了
+                    else:
+                        edit_history.running_message = str(result.error)
+                        logger.info(edit_history.running_message)
                 else:
                     edit_history.running_message = "Unknown error" + " " + str(result.data)
                 edit_history.stop_running()
@@ -228,6 +232,7 @@ class ApplyAiEditImage(bpy.types.Operator):
         if not origin_image_file_path:
             self.report({"ERROR"}, "Can't save image")
             return {"CANCELLED"}
+        oii.clear_invalid_data()
         for ri in oii.reference_images:
             if ri.image:
                 if rii := save_image_to_temp_folder(ri.image, temp_folder):
@@ -236,7 +241,7 @@ class ApplyAiEditImage(bpy.types.Operator):
                     self.report({"ERROR"}, "Can't save reference image")
                     return {"CANCELLED"}
             else:
-                self.report({"ERROR"}, "Can't save reference image")
+                self.report({"ERROR"}, "Can't find reference image")
                 return {"CANCELLED"}
         if oii.active_mask:
             if mask_path := save_image_to_temp_folder(oii.active_mask, temp_folder):
