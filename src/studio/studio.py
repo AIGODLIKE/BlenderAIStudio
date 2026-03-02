@@ -324,7 +324,6 @@ class StudioHistoryViewer:
         self.flags |= imgui.ChildFlags.ALWAYS_AUTO_RESIZE
 
     def draw_all(self):
-        self.app.refresh_task_all()
         for item in self.history.items:
             self._draw(item)
 
@@ -1895,6 +1894,7 @@ class AIStudio(AppHud):
     def handler_draw(self, _area: bpy.types.Area):
         try:
             self.draw_studio_panel()
+            self.refresh_task_all()
         except Exception as e:
             if not _exceptions_equal(self._last_exception, e):
                 self._last_exception = e
