@@ -10,14 +10,20 @@ def find_image_editor_areas():
     return areas
 
 
+def check_region_is_ai(region):
+    if region.type == "UI":
+        if region.active_panel_category == "AIStudio":
+            return True
+    return False
+
+
 def find_ai_image_editor_space_data():
     # bpy.context.region.active_panel_category
     panel_data = []
     for area in find_image_editor_areas():
         for region in area.regions:
-            if region.type == "UI":
-                if region.active_panel_category == "AIStudio":
-                    panel_data.append(area.spaces[0])
+            if check_region_is_ai(region):
+                panel_data.append(area.spaces[0])
     return panel_data
 
 

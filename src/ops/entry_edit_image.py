@@ -2,7 +2,7 @@ import bpy
 
 from ..i18n.translations.zh_HANS import OPS_TCTX
 from ..ui import AIStudioImagePanel
-from ..utils.area import find_image_editor_areas
+from ..utils.area import find_image_editor_areas, check_region_is_ai
 
 
 class EntryEditImage(bpy.types.Operator):
@@ -17,9 +17,16 @@ class EntryEditImage(bpy.types.Operator):
         return space_data and space_data.image is not None
 
     def invoke(self, context, event):
+        area = context.area
+
         self.count = 0
         if space_date := context.space_data:
             if space_date.show_region_ui:
+                if area:  # 如果界面是打开的则关闭
+                    for region in area.regions:
+                        if check_region_is_ai(region):
+                            space_date.show_region_ui = False
+                            return {"FINISHED"}
                 return self.execute(context)
             else:
                 space_date.show_region_ui = True
