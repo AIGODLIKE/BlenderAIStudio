@@ -159,7 +159,8 @@ class AIStudioImagePanel(bpy.types.Panel):
         column = layout.box().column(align=True)
 
         if pref.account_auth_mode == AuthMode.ACCOUNT.value:
-            points_consumption = bpy.app.translations.pgettext("(%s/use)") % ai.get_points_consumption(context)
+            points = ai.get_points_consumption(context) * ai.batch_count
+            points_consumption = bpy.app.translations.pgettext("(%s/use)") % points
             column.label(text=bpy.app.translations.pgettext("AI Edit") + points_consumption)
 
         if not pref.disable_system_prompt:
