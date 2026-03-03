@@ -12,6 +12,7 @@ from enum import Enum
 from pathlib import Path
 from shutil import copyfile
 from traceback import print_exc
+from typing import Self
 
 from .account import Account
 from .clients.base import StudioHistoryItem, StudioHistory
@@ -127,42 +128,42 @@ class StudioImagesDescriptor(WidgetDescriptor):
             return avail_x
         return self._stable_content_x
 
-    def display(self, wrapper, app):
-        imgui.push_style_color(imgui.Col.FRAME_BG, self.col_bg)
-        with with_child("##Image", (0, 0), child_flags=self.flags):
-            imgui.text(self.display_name)
-            imgui.push_style_color(imgui.Col.FRAME_BG, self.col_widget)
+    def _calc_window_title(self) -> str:
+        return "##Image"
 
-            with with_child("##Inner", (0, 0), child_flags=self.flags):
-                imgui.push_style_var(imgui.StyleVar.CELL_PADDING, imgui.get_style().item_spacing)
-                imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, (0, 0))
-                imgui.push_style_color(imgui.Col.TABLE_BORDER_STRONG, Const.TRANSPARENT)
-                if imgui.begin_table("##Table", 3, imgui.TableFlags.BORDERS):
-                    for i in range(3):
-                        imgui.table_setup_column(f"##Column{i}", imgui.TableColumnFlags.WIDTH_STRETCH, 0, i)
-                    for i, img in enumerate(self.value):
-                        imgui.table_next_column()
-                        imgui.push_id(f"##Image{i}")
-                        self.display_image_with_close(app, img, i)
-                        imgui.pop_id()
+    def display_content(self, wrapper, app):
+        imgui.text(self.display_name)
+        imgui.push_style_color(imgui.Col.FRAME_BG, self.col_widget)
 
-                    if len(self.value) < self.widget_def.get("limit", 999):
-                        imgui.table_next_column()
-                        imgui.push_id("##Upload")
-                        self.display_upload_image()
-                        imgui.pop_id()
+        with with_child("##Inner", (0, 0), child_flags=self.flags):
+            imgui.push_style_var(imgui.StyleVar.CELL_PADDING, imgui.get_style().item_spacing)
+            imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, (0, 0))
+            imgui.push_style_color(imgui.Col.TABLE_BORDER_STRONG, Const.TRANSPARENT)
+            if imgui.begin_table("##Table", 3, imgui.TableFlags.BORDERS):
+                for i in range(3):
+                    imgui.table_setup_column(f"##Column{i}", imgui.TableColumnFlags.WIDTH_STRETCH, 0, i)
+                for i, img in enumerate(self.value):
+                    imgui.table_next_column()
+                    imgui.push_id(f"##Image{i}")
+                    self.display_image_with_close(app, img, i)
+                    imgui.pop_id()
 
-                        imgui.table_next_column()
-                        imgui.push_id("##Paste")
-                        self.display_paste_image()
-                        imgui.pop_id()
-                    imgui.end_table()
+                if len(self.value) < self.widget_def.get("limit", 999):
+                    imgui.table_next_column()
+                    imgui.push_id("##Upload")
+                    self.display_upload_image()
+                    imgui.pop_id()
 
-                imgui.pop_style_var(2)
-                imgui.pop_style_color(1)
-            imgui.same_line()
-            imgui.pop_style_color()
-        imgui.pop_style_color(1)
+                    imgui.table_next_column()
+                    imgui.push_id("##Paste")
+                    self.display_paste_image()
+                    imgui.pop_id()
+                imgui.end_table()
+
+            imgui.pop_style_var(2)
+            imgui.pop_style_color(1)
+        imgui.same_line()
+        imgui.pop_style_color()
 
     def display_upload_image(self):
         bw = bh = self._get_stable_cell_size()
@@ -2129,10 +2130,9 @@ class AIStudio(AppHud):
                         continue
                     widget.col_bg = Const.WINDOW_BG
                     widget.col_widget = Const.FRAME_BG
-                    widget.display_begin(widget, self)
-                    widget.display(widget, self)
-                    self.draw_wrapper_widget_spec(wrapper, widget)
-                    widget.display_end(widget, self)
+                    widget.custom_display_end = self.custom_widget_display_end
+                    widget.display(wrapper, self)
+                    widget.custom_display_end = None
 
                 # 从 wrapper 获取 client，如果 wrapper 是默认的，则使用 self.client
                 if wrapper.studio_client is not None:
@@ -2594,9 +2594,7 @@ class AIStudio(AppHud):
 
                             widget.col_bg = Const.WINDOW_BG
                             widget.col_widget = Const.WINDOW_BG
-                            widget.display_begin(wrapper, self)
                             widget.display(wrapper, self)
-                            widget.display_end(wrapper, self)
                         imgui.pop_style_var(1)
                     imgui.pop_style_color(1)
             finally:
@@ -2783,7 +2781,7 @@ class AIStudio(AppHud):
             self.queue_shoutdown()
         imgui.pop_style_color(3)
 
-    def draw_wrapper_widget_spec(self, wrapper: StudioWrapper, widget: WidgetDescriptor):
+    def custom_widget_display_end(self, widget: WidgetDescriptor, wrapper: StudioWrapper, app: Self):
         if widget.widget_name == "input_image_type" and imgui.is_item_hovered():
             imgui.set_next_window_size((630, 0))
             title = _T("First Image Mode")
@@ -2795,10 +2793,10 @@ class AIStudio(AppHud):
             AppHelperDraw.draw_tips_with_title(self, tips, title)
             return
         if widget.widget_name == "prompt":
-            wp = imgui.get_style().window_padding
-            psize = imgui.get_item_rect_size()
-            pos = imgui.get_cursor_pos()
-            imgui.set_cursor_pos_y(pos[1] - psize[1])
+            style = imgui.get_style()
+            wp = style.window_padding
+            fp = style.frame_padding
+            imgui.set_cursor_pos_y(fp[1] + style.item_spacing[1])
             imgui.begin_child("##Ovrerlay", (0, imgui.get_text_line_height_with_spacing()))
             lh = imgui.get_text_line_height() * 0.75
             imgui.invisible_button("##FakeButton", (-lh * 1.5 - wp[0], 1))
@@ -2825,7 +2823,6 @@ class AIStudio(AppHud):
                 tip = _T("Enable Prompt Optimization to improve the quality of the generated image and the safety of the content.")
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             imgui.end_child()
-            imgui.set_cursor_pos(pos)
             return
         if widget.widget_name == "aspect_ratio":
             if imgui.is_item_hovered():
