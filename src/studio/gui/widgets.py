@@ -7,6 +7,11 @@ from typing import Optional
 from .texture import TexturePool
 from .app.renderer import imgui
 
+DEFAULT_CHILD_FLAGS = 0
+DEFAULT_CHILD_FLAGS |= imgui.ChildFlags.FRAME_STYLE
+DEFAULT_CHILD_FLAGS |= imgui.ChildFlags.AUTO_RESIZE_Y
+DEFAULT_CHILD_FLAGS |= imgui.ChildFlags.ALWAYS_AUTO_RESIZE
+
 
 # 通用子窗口包装
 @staticmethod

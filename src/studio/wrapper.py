@@ -11,7 +11,7 @@ from slimgui import imgui
 from .gui.app.app import App
 from .gui.app.style import Const
 from .gui.texture import TexturePool
-from .gui.widgets import with_child
+from .gui.widgets import with_child, DEFAULT_CHILD_FLAGS
 from ..logger import logger
 
 
@@ -61,10 +61,7 @@ class WidgetDescriptor:
         self.widget_def = self.adapter.get_meta(self.widget_name)
         self.col_bg = (0.2, 0.2, 0.2, 1.0)
         self.col_widget = (0.4, 0.4, 0.4, 1.0)
-        self.flags = 0
-        self.flags |= imgui.ChildFlags.FRAME_STYLE
-        self.flags |= imgui.ChildFlags.AUTO_RESIZE_Y
-        self.flags |= imgui.ChildFlags.ALWAYS_AUTO_RESIZE
+        self.flags = DEFAULT_CHILD_FLAGS
         self.custom_display_begin: Callable[[], None] = None
         self.custom_display_end: Callable[[], None] = None
 

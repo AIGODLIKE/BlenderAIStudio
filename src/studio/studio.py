@@ -23,7 +23,7 @@ from .gui.app.app import AppHud
 from .gui.app.renderer import imgui
 from .gui.app.style import Const
 from .gui.texture import TexturePool
-from .gui.widgets import CustomWidgets, with_child
+from .gui.widgets import CustomWidgets, with_child, DEFAULT_CHILD_FLAGS
 from .wrapper import BaseAdapter, WidgetDescriptor, DescriptorFactory
 from ..i18n import STUDIO_TCTX
 from ..preferences import AuthMode, PricingStrategy
@@ -319,10 +319,7 @@ class StudioHistoryViewer:
         self.app = app
         self.col_bg = Const.WINDOW_BG
         self.col_widget = Const.FRAME_BG
-        self.flags = 0
-        self.flags |= imgui.ChildFlags.FRAME_STYLE
-        self.flags |= imgui.ChildFlags.AUTO_RESIZE_Y
-        self.flags |= imgui.ChildFlags.ALWAYS_AUTO_RESIZE
+        self.flags = DEFAULT_CHILD_FLAGS
 
     def draw_all(self):
         for item in self.history.items:
@@ -1038,12 +1035,8 @@ class StorePanel:
     def draw_login_panel(self):
         if self.app.state.is_logged_in():
             return
-        flags = 0
-        flags |= imgui.ChildFlags.FRAME_STYLE
-        flags |= imgui.ChildFlags.AUTO_RESIZE_Y
-        flags |= imgui.ChildFlags.ALWAYS_AUTO_RESIZE
 
-        with with_child("##Login", (0, 0), child_flags=flags):
+        with with_child("##Login", (0, 0), child_flags=DEFAULT_CHILD_FLAGS):
             self.app.font_manager.push_h3_font()
             bh = imgui.get_text_line_height_with_spacing() * 2
             if self.app.state.is_waiting_for_login():
@@ -2188,12 +2181,8 @@ class AIStudio(AppHud):
         imgui.pop_style_var(2)
 
     def draw_clients(self):
-        flags = 0
-        flags |= imgui.ChildFlags.FRAME_STYLE
-        flags |= imgui.ChildFlags.AUTO_RESIZE_Y
-        flags |= imgui.ChildFlags.ALWAYS_AUTO_RESIZE
         imgui.push_style_color(imgui.Col.FRAME_BG, Const.WINDOW_BG)
-        with with_child("##Clients", (0, 0), child_flags=flags):
+        with with_child("##Clients", (0, 0), child_flags=DEFAULT_CHILD_FLAGS):
             imgui.push_item_width(-1)
             imgui.push_style_var_x(imgui.StyleVar.FRAME_PADDING, Const.RP_FRAME_P[0])
             imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.RP_FRAME_INNER_R)
@@ -2500,12 +2489,8 @@ class AIStudio(AppHud):
         imgui.pop_style_var(2)
 
     def draw_auth(self):
-        flags = 0
-        flags |= imgui.ChildFlags.FRAME_STYLE
-        flags |= imgui.ChildFlags.AUTO_RESIZE_Y
-        flags |= imgui.ChildFlags.ALWAYS_AUTO_RESIZE
         imgui.push_style_color(imgui.Col.FRAME_BG, Const.WINDOW_BG)
-        with with_child("##Auth", (0, 0), child_flags=flags):
+        with with_child("##Auth", (0, 0), child_flags=DEFAULT_CHILD_FLAGS):
             imgui.push_item_width(-1)
             imgui.push_style_var_x(imgui.StyleVar.FRAME_PADDING, Const.RP_FRAME_P[0])
             imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.RP_FRAME_INNER_R)
@@ -2646,12 +2631,8 @@ class AIStudio(AppHud):
     def draw_pricing_strategy(self):
         if self.state.auth_mode != AuthMode.ACCOUNT.value:
             return
-        flags = 0
-        flags |= imgui.ChildFlags.FRAME_STYLE
-        flags |= imgui.ChildFlags.AUTO_RESIZE_Y
-        flags |= imgui.ChildFlags.ALWAYS_AUTO_RESIZE
         imgui.push_style_color(imgui.Col.FRAME_BG, Const.WINDOW_BG)
-        with with_child("##PricingStrategy", (0, 0), child_flags=flags):
+        with with_child("##PricingStrategy", (0, 0), child_flags=DEFAULT_CHILD_FLAGS):
             imgui.push_item_width(-1)
             imgui.push_style_var_x(imgui.StyleVar.FRAME_PADDING, Const.RP_FRAME_P[0])
             imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.RP_FRAME_INNER_R)
