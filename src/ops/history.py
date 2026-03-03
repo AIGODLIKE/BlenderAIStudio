@@ -6,7 +6,7 @@ import bpy
 from .. import logger
 from ..i18n.translations.zh_HANS import OPS_TCTX
 from ..utils import load_image
-from ..utils.ctypes.window import foreground_image_edit_window
+from ..utils.window import foreground_image_edit_window
 
 
 class ViewImage(bpy.types.Operator):
