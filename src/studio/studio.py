@@ -2123,9 +2123,9 @@ class AIStudio(AppHud):
                         continue
                     widget.col_bg = Const.WINDOW_BG
                     widget.col_widget = Const.FRAME_BG
-                    widget.custom_display_end = self.custom_widget_display_end
+                    widget.add_custom_display_end(self.custom_widget_display_end)
                     widget.display(wrapper, self)
-                    widget.custom_display_end = None
+                    widget.remove_custom_display_end(self.custom_widget_display_end)
 
                 # 从 wrapper 获取 client，如果 wrapper 是默认的，则使用 self.client
                 if wrapper.studio_client is not None:

@@ -62,8 +62,8 @@ class WidgetDescriptor:
         self.col_bg = (0.2, 0.2, 0.2, 1.0)
         self.col_widget = (0.4, 0.4, 0.4, 1.0)
         self.flags = DEFAULT_CHILD_FLAGS
-        self.custom_display_begin: Callable[[], None] = None
-        self.custom_display_end: Callable[[], None] = None
+        self._custom_display_begin: Dict[Callable[[], None], None] = {}
+        self._custom_display_end: Dict[Callable[[], None], None] = {}
 
     @property
     def display_name(self):
@@ -142,6 +142,32 @@ class WidgetDescriptor:
     def _calc_window_title(self) -> str:
         return ""
 
+    def add_custom_display_begin(self, callback):
+        self._custom_display_begin[callback] = None
+
+    def remove_custom_display_begin(self, callback):
+        self._custom_display_begin.pop(callback)
+
+    def call_custom_display_begin(self, wrapper, app: App):
+        try:
+            for cb in self._custom_display_begin:
+                cb(self, wrapper, app)
+        except Exception as e:
+            logger.error(f"Error in custom display begin: {e}")
+
+    def add_custom_display_end(self, callback):
+        self._custom_display_end[callback] = None
+
+    def remove_custom_display_end(self, callback):
+        self._custom_display_end.pop(callback)
+
+    def call_custom_display_end(self, wrapper, app: App):
+        try:
+            for cb in self._custom_display_end:
+                cb(self, wrapper, app)
+        except Exception as e:
+            logger.error(f"Error in custom display end: {e}")
+
     def display_begin(self, wrapper, app: App):
         imgui.push_id(f"{self.title}_{self.widget_name}")
         imgui.push_style_color(imgui.Col.FRAME_BG, self.col_bg)
@@ -151,17 +177,9 @@ class WidgetDescriptor:
         self.display_content_begin(wrapper, app)
 
         with with_child(self._calc_window_title(), self._calc_window_size(), child_flags=self.flags):
-            try:
-                if self.custom_display_begin:
-                    self.custom_display_begin(self, wrapper, app)
-            except Exception as e:
-                logger.error(f"Error in custom display begin: {e}")
+            self.call_custom_display_begin(wrapper, app)
             self.display_content(wrapper, app)
-            try:
-                if self.custom_display_end:
-                    self.custom_display_end(self, wrapper, app)
-            except Exception as e:
-                logger.error(f"Error in custom display end: {e}")
+            self.call_custom_display_end(wrapper, app)
 
         self.display_content_end(wrapper, app)
         self.display_end(wrapper, app)
