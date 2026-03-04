@@ -109,6 +109,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._stable_content_x = None
+        self.add_custom_display_end(self._display_image_tools)
 
     def _get_stable_cell_size(self):
         """返回不随滚动条显隐变化的内容宽度，避免滚动条出现时布局抖动。"""
@@ -153,17 +154,74 @@ class StudioImagesDescriptor(WidgetDescriptor):
                     imgui.push_id("##Upload")
                     self.display_upload_image()
                     imgui.pop_id()
-
-                    imgui.table_next_column()
-                    imgui.push_id("##Paste")
-                    self.display_paste_image()
-                    imgui.pop_id()
                 imgui.end_table()
 
             imgui.pop_style_var(2)
             imgui.pop_style_color(1)
         imgui.same_line()
         imgui.pop_style_color()
+
+    def _display_image_tools(self, _, wrapper, app: "AIStudio"):
+        if len(self.value) >= self.widget_def.get("limit", 999):
+            return
+        advanced_options = {
+            "image_paste": "image_paste",
+            "image_fast_render": "image_camera",
+            "image_three_view_drawing": "image_three_view_drawing",
+            "image_line_art": "image_line_art",
+        }
+        imgui.dummy((0, 0))
+        imgui.push_style_color(imgui.Col.FRAME_BG, Const.FRAME_BG)
+        imgui.push_style_var_y(imgui.StyleVar.FRAME_PADDING, 0)
+        with with_child("##Inner2", (-1, 0), child_flags=DEFAULT_CHILD_FLAGS):
+            if imgui.begin_table("##Table", len(advanced_options)):
+                for i in range(len(advanced_options)):
+                    imgui.table_setup_column(f"##Column{i}", imgui.TableColumnFlags.WIDTH_STRETCH, 0, i)
+                for option, img in advanced_options.items():
+                    imgui.table_next_column()
+                    imgui.push_id(f"##Image_{option}")
+                    icon = TexturePool.get_tex_id(img)
+                    tex = TexturePool.get_tex(icon)
+
+                    cell = imgui.get_content_region_avail()[0]
+                    imgui.begin_group()
+                    imgui.set_next_item_allow_overlap()
+                    imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
+                    imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
+                    imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
+                    if imgui.button(f"##{img}", (cell, cell)):
+                        self._process_image_tools_button(option, img)
+                    pmin = imgui.get_item_rect_min()
+                    pmax = imgui.get_item_rect_max()
+                    dl = imgui.get_window_draw_list()
+                    if tex and tex.width > 0 and tex.height > 0:
+                        max_dim = float(max(tex.width, tex.height))
+                        img_w = cell * (float(tex.width) / max_dim)
+                        img_h = cell * (float(tex.height) / max_dim)
+                        cx = (pmin[0] + pmax[0]) * 0.5
+                        cy = (pmin[1] + pmax[1]) * 0.5
+                        img_min = (cx - img_w * 0.5, cy - img_h * 0.5)
+                        img_max = (cx + img_w * 0.5, cy + img_h * 0.5)
+                        dl.add_image(icon, img_min, img_max)
+                    imgui.pop_style_color(3)
+                    imgui.end_group()
+                    imgui.pop_id()
+                imgui.end_table()
+        imgui.same_line()
+        imgui.pop_style_var(1)
+        imgui.pop_style_color()
+
+    def _process_image_tools_button(self, option: str, img: str):
+        if option == "image_paste":
+            pos = imgui.get_mouse_pos()
+            imgui.set_next_window_pos((pos[0] - 40, pos[1] + 50), cond=imgui.Cond.ALWAYS)
+            self.adapter.on_image_action(self.widget_name, "paste_image")
+        if option == "image_fast_render":
+            print("image_fast_render")
+        if option == "image_three_view_drawing":
+            print("image_three_view_drawing")
+        if option == "image_line_art":
+            print("image_line_art")
 
     def display_upload_image(self):
         bw = bh = self._get_stable_cell_size()
@@ -2114,7 +2172,8 @@ class AIStudio(AppHud):
             item_spacing = imgui.get_style().item_spacing
             gen_btn_height = 79
             imgui.push_style_color(imgui.Col.FRAME_BG, (48 / 255, 48 / 255, 48 / 255, 1))
-            with with_child("Outer", (0, -(gen_btn_height + item_spacing[1])), flags):
+            always_vscroll = imgui.WindowFlags.ALWAYS_VERTICAL_SCROLLBAR
+            with with_child("Outer", (0, -(gen_btn_height + item_spacing[1])), flags, window_flags=always_vscroll):
                 wrapper = self.client_wrapper
                 wrapper.load(self.client)  # TODO: 性能改进
 
@@ -2774,6 +2833,51 @@ class AIStudio(AppHud):
             AppHelperDraw.draw_tips_with_title(self, tips, title)
             return
         if widget.widget_name == "prompt":
+            advanced_options = {
+                "camera_info": "prompt_camera",
+                "light_info": "prompt_light",
+                "prompt_reverse": "prompt_reverse",
+                "": "image_new",
+            }
+            imgui.push_style_color(imgui.Col.FRAME_BG, Const.FRAME_BG)
+            imgui.push_style_var_y(imgui.StyleVar.FRAME_PADDING, 0)
+            with with_child("##Inner", (0, 0), child_flags=DEFAULT_CHILD_FLAGS):
+                if imgui.begin_table("##Table", len(advanced_options)):
+                    for i in range(len(advanced_options)):
+                        imgui.table_setup_column(f"##Column{i}", imgui.TableColumnFlags.WIDTH_STRETCH, 0, i)
+                    for option, img in advanced_options.items():
+                        imgui.table_next_column()
+                        imgui.push_id(f"##Image_{option}")
+
+                        imgui.begin_group()
+                        imgui.set_next_item_allow_overlap()
+                        imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
+                        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
+                        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
+                        icon = TexturePool.get_tex_id(img)
+                        tex = TexturePool.get_tex(icon)
+                        cell = imgui.get_content_region_avail()[0]
+                        if imgui.button(f"##{img}", (cell, cell)):
+                            self._process_prompt_options(widget, wrapper, option)
+                        pmin = imgui.get_item_rect_min()
+                        pmax = imgui.get_item_rect_max()
+                        dl = imgui.get_window_draw_list()
+                        if option and tex and tex.width > 0 and tex.height > 0:
+                            max_dim = float(max(tex.width, tex.height))
+                            img_w = cell * (float(tex.width) / max_dim)
+                            img_h = cell * (float(tex.height) / max_dim)
+                            cx = (pmin[0] + pmax[0]) * 0.5
+                            cy = (pmin[1] + pmax[1]) * 0.5
+                            img_min = (cx - img_w * 0.5, cy - img_h * 0.5)
+                            img_max = (cx + img_w * 0.5, cy + img_h * 0.5)
+                            dl.add_image(icon, img_min, img_max)
+                        imgui.pop_style_color(3)
+                        imgui.end_group()
+                        imgui.pop_id()
+                    imgui.end_table()
+            imgui.pop_style_var(1)
+            imgui.pop_style_color()
+
             style = imgui.get_style()
             wp = style.window_padding
             fp = style.frame_padding
@@ -2819,6 +2923,17 @@ class AIStudio(AppHud):
                 tip = _T("Set the image resolution via both image size and aspect ratio, and the larger the resolution, the longer the generation time/resource required.")
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             return
+
+    def _process_prompt_options(self, widget: WidgetDescriptor, wrapper: StudioWrapper, option: str):
+        if option == "camera_info":
+            label_str_flag = "@[camera_info]"
+            widget.value += label_str_flag
+        if option == "light_info":
+            label_str_flag = "@[light_info]"
+            widget.value += label_str_flag
+        if option == "prompt_reverse":
+            label_str_flag = "@[prompt_reverse]"
+            widget.value += label_str_flag
 
     def test_webp_animation(self):
         for i, image in enumerate(Path.home().joinpath("Desktop/webp").glob("*.webp")):
