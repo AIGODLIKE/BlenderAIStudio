@@ -210,17 +210,9 @@ class StudioImagesDescriptor(WidgetDescriptor):
                     # image_fast_render 运行中时，在对应按钮上绘制一个简单的转圈动效（基于 draw_list）
                     model_name = wrapper.model_name
                     if option == "image_fast_render" and wrapper.get_fast_render_running(model_name):
-                        cx = (pmin[0] + pmax[0]) * 0.5
-                        cy = (pmin[1] + pmax[1]) * 0.5
-                        radius = (pmax[0] - pmin[0]) * 0.35
-                        t = imgui.get_time()
-                        start_angle = t * 4.0
-                        end_angle = start_angle + math.pi * 1.5
-                        col = imgui.get_color_u32((1.0, 1.0, 1.0, 0.9))
-                        segments = 32
-                        dl.path_clear()
-                        dl.path_arc_to((cx, cy), radius, start_angle, end_angle, segments)
-                        dl.path_stroke(col, 0, 3.0)
+                        self._display_running_effect()
+                    if option == "image_three_view_drawing" and wrapper.get_three_view_render_running(model_name):
+                        self._display_running_effect()
 
                     imgui.pop_style_color(3)
                     imgui.end_group()
@@ -229,6 +221,22 @@ class StudioImagesDescriptor(WidgetDescriptor):
         imgui.same_line()
         imgui.pop_style_var(1)
         imgui.pop_style_color()
+
+    def _display_running_effect(self):
+        pmin = imgui.get_item_rect_min()
+        pmax = imgui.get_item_rect_max()
+        dl = imgui.get_window_draw_list()
+        cx = (pmin[0] + pmax[0]) * 0.5
+        cy = (pmin[1] + pmax[1]) * 0.5
+        radius = (pmax[0] - pmin[0]) * 0.35
+        t = imgui.get_time()
+        start_angle = t * 4.0
+        end_angle = start_angle + math.pi * 1.5
+        col = imgui.get_color_u32((1.0, 1.0, 1.0, 0.9))
+        segments = 32
+        dl.path_clear()
+        dl.path_arc_to((cx, cy), radius, start_angle, end_angle, segments)
+        dl.path_stroke(col, 0, 3.0)
 
     def _process_image_tools_button(self, wrapper: "StudioWrapper", option: str, img: str):
         if option == "image_paste":
@@ -288,15 +296,13 @@ class StudioImagesDescriptor(WidgetDescriptor):
         if option == "image_three_view_drawing":
             logger.info("StudioImagesDescriptor: image_three_view_drawing clicked")
             model_name = wrapper.model_name
-            if wrapper.get_fast_render_running(model_name):
+            if wrapper.get_three_view_render_running(model_name):
                 logger.info("StudioImagesDescriptor: three_view_drawing is already running, ignore click")
                 return
-            wrapper.set_fast_render_running(model_name, True)
 
             selected_objects = [obj for obj in bpy.context.selected_objects if obj.type == "MESH"]
             if not selected_objects:
                 logger.warning("StudioImagesDescriptor: No objects selected for three-view rendering")
-                wrapper.set_fast_render_running(model_name, False)
                 return
 
             widget_name = self.widget_name
@@ -312,6 +318,8 @@ class StudioImagesDescriptor(WidgetDescriptor):
                 logger.error("StudioImagesDescriptor: 复制上下文失败: %s", e)
                 return
 
+            wrapper.set_three_view_render_running(model_name, True)
+
             def _three_view_job():
                 helper = BlenderRenderHelper()
                 view_paths = None
@@ -320,7 +328,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
                 except Exception as e:
                     logger.error("StudioImagesDescriptor: ThreeViewRender 失败: %s", e)
                 finally:
-                    wrapper.set_fast_render_running(model_name, False)
+                    wrapper.set_three_view_render_running(model_name, False)
 
                 if not view_paths:
                     return
@@ -1130,12 +1138,19 @@ class StudioWrapper:
         self.widgets: dict[str, dict[str, list[WidgetDescriptor]]] = {}
         self.adapter: BaseAdapter = None
         self._fast_render_running: dict[str, bool] = {}
+        self._three_view_render_running: dict[str, bool] = {}
 
     def set_fast_render_running(self, model_name: str, running: bool):
         self._fast_render_running[model_name] = running
 
     def get_fast_render_running(self, model_name: str):
         return self._fast_render_running.get(model_name, False)
+
+    def set_three_view_render_running(self, model_name: str, running: bool):
+        self._three_view_render_running[model_name] = running
+
+    def get_three_view_render_running(self, model_name: str):
+        return self._three_view_render_running.get(model_name, False)
 
     @property
     def title(self):
