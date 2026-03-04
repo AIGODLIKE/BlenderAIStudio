@@ -4,6 +4,7 @@ import math
 import platform
 import re
 import subprocess
+import threading
 import time
 import webbrowser
 from bpy.app.translations import pgettext, pgettext_iface as iface
@@ -31,6 +32,7 @@ from ..preferences import AuthMode, PricingStrategy
 from ..logger import logger
 from ..timer import Timer
 from ..utils import get_addon_version, get_pref
+from ..utils.render import BlenderRenderHelper
 
 
 def _T(msg, ctxt=STUDIO_TCTX):
@@ -218,7 +220,42 @@ class StudioImagesDescriptor(WidgetDescriptor):
             imgui.set_next_window_pos((pos[0] - 40, pos[1] + 50), cond=imgui.Cond.ALWAYS)
             self.adapter.on_image_action(self.widget_name, "paste_image")
         if option == "image_fast_render":
-            print("image_fast_render")
+            # 使用 BlenderRenderHelper 在子线程中进行快速渲染，避免阻塞主线程
+            logger.info("StudioImagesDescriptor: image_fast_render clicked")
+
+            # 复制当前 Blender 上下文（在主线程中完成）
+            try:
+                context_copy = bpy.context.copy()
+            except Exception as e:
+                logger.error("StudioImagesDescriptor: 复制上下文失败: %s", e)
+                return
+
+            widget_name = self.widget_name
+            adapter = self.adapter
+
+            def _fast_render_job():
+                helper = BlenderRenderHelper()
+                try:
+                    image_path = helper.render("FastRender", context_copy)
+                except Exception as e:
+                    logger.error("StudioImagesDescriptor: FastRender 失败: %s", e)
+                    return
+
+                if not image_path:
+                    return
+
+                # 在主线程中更新图片列表
+                def _append_image():
+                    try:
+                        images = adapter.get_value(widget_name)
+                        if image_path not in images:
+                            images.append(image_path)
+                    except Exception as exc:
+                        logger.error("StudioImagesDescriptor: 添加快速渲染结果到 image_list 失败: %s", exc)
+
+                Timer.put(_append_image)
+
+            threading.Thread(target=_fast_render_job, daemon=True).start()
         if option == "image_three_view_drawing":
             print("image_three_view_drawing")
         if option == "image_line_art":
