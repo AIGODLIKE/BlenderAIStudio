@@ -442,7 +442,6 @@ class UniversalClient(StudioClient):
             self.push_error(e)
             return False
 
-
         # 检查模型配置
         if not self._model_config:
             self.push_error(_T("Model configuration not loaded"))
@@ -468,11 +467,13 @@ class UniversalClient(StudioClient):
 
         return True
 
+
 def clamp_client_image_count(client: StudioClient, prop: str):
     # 数量限制
     config = client.get_meta(prop)
     limit = config.get("limit") or 10
     client.get_value(prop)[:] = client.get_value(prop)[:limit]
+
 
 def upload_image(client: StudioClient, prop: str):
     def upload_image_callback(files_path: list[str]):
