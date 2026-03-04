@@ -286,7 +286,58 @@ class StudioImagesDescriptor(WidgetDescriptor):
 
             threading.Thread(target=_fast_render_job, daemon=True).start()
         if option == "image_three_view_drawing":
-            print("image_three_view_drawing")
+            logger.info("StudioImagesDescriptor: image_three_view_drawing clicked")
+            model_name = wrapper.model_name
+            if wrapper.get_fast_render_running(model_name):
+                logger.info("StudioImagesDescriptor: three_view_drawing is already running, ignore click")
+                return
+            wrapper.set_fast_render_running(model_name, True)
+
+            selected_objects = [obj for obj in bpy.context.selected_objects if obj.type == "MESH"]
+            if not selected_objects:
+                logger.warning("StudioImagesDescriptor: No objects selected for three-view rendering")
+                wrapper.set_fast_render_running(model_name, False)
+                return
+
+            widget_name = self.widget_name
+            adapter = self.adapter
+            images: list[str] = adapter.get_value(widget_name)
+            client: StudioClient = adapter
+            config = client.get_meta(widget_name)
+            limit = config.get("limit") or 10
+            # 复制当前 Blender 上下文（在主线程中完成）
+            try:
+                context_copy = bpy.context.copy()
+            except Exception as e:
+                logger.error("StudioImagesDescriptor: 复制上下文失败: %s", e)
+                return
+
+            def _three_view_job():
+                helper = BlenderRenderHelper()
+                view_paths = None
+                try:
+                    view_paths = helper.render_three_views(context_copy, selected_objects)
+                except Exception as e:
+                    logger.error("StudioImagesDescriptor: ThreeViewRender 失败: %s", e)
+                finally:
+                    wrapper.set_fast_render_running(model_name, False)
+
+                if not view_paths:
+                    return
+
+                def _append_images():
+                    try:
+                        for p in view_paths:
+                            if p in images:
+                                continue
+                            images.append(p)
+                        images[:] = images[:limit]
+                    except Exception as exc:
+                        logger.error("StudioImagesDescriptor: 添加三视图结果到 image_list 失败: %s", exc)
+
+                Timer.put(_append_images)
+
+            threading.Thread(target=_three_view_job, daemon=True).start()
         if option == "image_line_art":
             print("image_line_art")
 
