@@ -16,7 +16,7 @@ from traceback import print_exc
 from typing import Self
 
 from .account import Account
-from .clients.base import StudioHistoryItem, StudioHistory
+from .clients.base import StudioHistoryItem, StudioHistory, StudioClient
 from .clients.universal_client import UniversalClient
 from .common import PromptOption
 from .config.model_registry import ModelRegistry
@@ -164,7 +164,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
         imgui.same_line()
         imgui.pop_style_color()
 
-    def _display_image_tools(self, _, wrapper, app: "AIStudio"):
+    def _display_image_tools(self, _, wrapper: "StudioWrapper", app: "AIStudio"):
         if len(self.value) >= self.widget_def.get("limit", 999):
             return
         advanced_options = {
@@ -193,7 +193,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
                     imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
                     imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
                     if imgui.button(f"##{img}", (cell, cell)):
-                        self._process_image_tools_button(option, img)
+                        self._process_image_tools_button(wrapper, option, img)
                     pmin = imgui.get_item_rect_min()
                     pmax = imgui.get_item_rect_max()
                     dl = imgui.get_window_draw_list()
@@ -206,6 +206,22 @@ class StudioImagesDescriptor(WidgetDescriptor):
                         img_min = (cx - img_w * 0.5, cy - img_h * 0.5)
                         img_max = (cx + img_w * 0.5, cy + img_h * 0.5)
                         dl.add_image(icon, img_min, img_max)
+
+                    # image_fast_render 运行中时，在对应按钮上绘制一个简单的转圈动效（基于 draw_list）
+                    model_name = wrapper.model_name
+                    if option == "image_fast_render" and wrapper.get_fast_render_running(model_name):
+                        cx = (pmin[0] + pmax[0]) * 0.5
+                        cy = (pmin[1] + pmax[1]) * 0.5
+                        radius = (pmax[0] - pmin[0]) * 0.35
+                        t = imgui.get_time()
+                        start_angle = t * 4.0
+                        end_angle = start_angle + math.pi * 1.5
+                        col = imgui.get_color_u32((1.0, 1.0, 1.0, 0.9))
+                        segments = 32
+                        dl.path_clear()
+                        dl.path_arc_to((cx, cy), radius, start_angle, end_angle, segments)
+                        dl.path_stroke(col, 0, 3.0)
+
                     imgui.pop_style_color(3)
                     imgui.end_group()
                     imgui.pop_id()
@@ -214,7 +230,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
         imgui.pop_style_var(1)
         imgui.pop_style_color()
 
-    def _process_image_tools_button(self, option: str, img: str):
+    def _process_image_tools_button(self, wrapper: "StudioWrapper", option: str, img: str):
         if option == "image_paste":
             pos = imgui.get_mouse_pos()
             imgui.set_next_window_pos((pos[0] - 40, pos[1] + 50), cond=imgui.Cond.ALWAYS)
@@ -222,6 +238,13 @@ class StudioImagesDescriptor(WidgetDescriptor):
         if option == "image_fast_render":
             # 使用 BlenderRenderHelper 在子线程中进行快速渲染，避免阻塞主线程
             logger.info("StudioImagesDescriptor: image_fast_render clicked")
+            model_name = wrapper.model_name
+            # 同一 AIStudio + 模型 wrapper 维度下，未处理完成前不可再次进入
+            if wrapper is not None:
+                if wrapper.get_fast_render_running(model_name):
+                    logger.info("StudioImagesDescriptor: image_fast_render is already running, ignore click")
+                    return
+                wrapper.set_fast_render_running(model_name, True)
 
             # 复制当前 Blender 上下文（在主线程中完成）
             try:
@@ -232,14 +255,20 @@ class StudioImagesDescriptor(WidgetDescriptor):
 
             widget_name = self.widget_name
             adapter = self.adapter
+            images: list[str] = adapter.get_value(widget_name)
+            client: StudioClient = adapter
+            config = client.get_meta(widget_name)
+            limit = config.get("limit") or 10
 
             def _fast_render_job():
                 helper = BlenderRenderHelper()
+                image_path = None
                 try:
                     image_path = helper.render("FastRender", context_copy)
                 except Exception as e:
                     logger.error("StudioImagesDescriptor: FastRender 失败: %s", e)
-                    return
+                finally:
+                    wrapper.set_fast_render_running(model_name, False)
 
                 if not image_path:
                     return
@@ -247,9 +276,9 @@ class StudioImagesDescriptor(WidgetDescriptor):
                 # 在主线程中更新图片列表
                 def _append_image():
                     try:
-                        images = adapter.get_value(widget_name)
                         if image_path not in images:
                             images.append(image_path)
+                        images[:] = images[:limit]
                     except Exception as exc:
                         logger.error("StudioImagesDescriptor: 添加快速渲染结果到 image_list 失败: %s", exc)
 
@@ -1049,6 +1078,13 @@ class StudioWrapper:
         self.model_name: str = ""
         self.widgets: dict[str, dict[str, list[WidgetDescriptor]]] = {}
         self.adapter: BaseAdapter = None
+        self._fast_render_running: dict[str, bool] = {}
+
+    def set_fast_render_running(self, model_name: str, running: bool):
+        self._fast_render_running[model_name] = running
+
+    def get_fast_render_running(self, model_name: str):
+        return self._fast_render_running.get(model_name, False)
 
     @property
     def title(self):
