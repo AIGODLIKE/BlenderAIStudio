@@ -167,6 +167,8 @@ studio_panel_translations = (
     ("Copy Task ID", "复制任务ID", None),
     ("Task ID Copied!", "任务ID已复制到剪贴板！", None),
     ("File Select Window is Busy, Close it First!", "文件选择窗口被占用, 请关闭后重试！", None),
+    ("No Light in Scene", "场景中未找到灯光", None),
+    ("No Camera in Scene", "场景中未找到相机", None),
 )
 
 task_translations = (
