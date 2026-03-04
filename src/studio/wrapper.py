@@ -322,25 +322,37 @@ class ComboDescriptor(EnumDescriptor):
 class StringDescriptor(WidgetDescriptor):
     ptype: PropertyType = PropertyType.STRING
     # 存储拖拽状态，key 为 widget_name（临时状态，不需要持久化）
-    _drag_states: Dict[str, bool] = {}
-    _drag_start_y: Dict[str, float] = {}
-    _drag_start_height: Dict[str, float] = {}
+    _drag_states: Dict[int, bool] = {}
+    _drag_start_y: Dict[int, float] = {}
+    _drag_start_height: Dict[int, float] = {}
     # 存储高度值，key 为 height_key（内存存储，不持久化）
-    _heights: Dict[str, float] = {}
+    _heights: Dict[int, float] = {}
+
+    @property
+    def value(self):
+        return self.adapter.get_value(self.widget_name)
+
+    @value.setter
+    def value(self, value):
+        old_key = id(self.value)
+        new_key = id(value)
+        self._set_height(new_key, self._get_height(old_key))
+        self._pop_height(old_key)
+        self.adapter.set_value(self.widget_name, value)
 
     def _calc_default_lh(self) -> float:
         line_h = imgui.get_text_line_height()
         pad_y = imgui.get_style().frame_padding[1]
         return line_h * 5 + pad_y * 2
 
-    def _get_height(self, height_key: str) -> float:
+    def _get_height(self, height_key: int) -> float:
         return self._heights.get(height_key, self._calc_default_lh())
 
-    def _set_height(self, height_key: str, height: float) -> None:
+    def _set_height(self, height_key: int, height: float) -> None:
         """设置指定 widget 的高度值"""
         self._heights[height_key] = height
 
-    def _pop_height(self, height_key: str) -> None:
+    def _pop_height(self, height_key: int) -> None:
         """删除指定 widget 的高度值"""
         self._heights.pop(height_key, None)
 
@@ -364,7 +376,7 @@ class StringDescriptor(WidgetDescriptor):
         app.font_manager.push_content_font()
 
         # 获取或初始化高度值
-        height_key = str(id(self.value))
+        height_key = id(self.value)
         imgui.get_font_size()
         imgui.get_text_line_height
         child_height = self._get_height(height_key) if multiline else 0
@@ -377,9 +389,6 @@ class StringDescriptor(WidgetDescriptor):
             imgui.pop_item_width()
         if changed:
             self.value = val
-            self._pop_height(height_key)
-            height_key = str(id(self.value))
-            self._set_height(height_key, child_height)
         app.font_manager.pop_font()
         imgui.pop_style_var(3)
         imgui.pop_style_color(5)
@@ -388,7 +397,7 @@ class StringDescriptor(WidgetDescriptor):
         if resizable and multiline:
             self._draw_resize_grip(height_key, child_height)
 
-    def _draw_resize_grip(self, height_key: str, child_height: float):
+    def _draw_resize_grip(self, height_key: int, child_height: float):
         """绘制并处理调整大小的控制柄（右下角三角形，直角处圆角，视觉指向右下）"""
         # 调整大小控制柄：右下角三角形（带圆角）
         GRIP_TRIANGLE_SIZE = 24.0   # 三角形边长（直角边长度）
