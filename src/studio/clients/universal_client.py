@@ -7,10 +7,13 @@ from typing import Iterable, Dict, Any, List
 
 from .base import StudioClient, StudioHistoryItem
 from .progress_estimator import TaskProgressEstimator
-from ..utils import save_mime_typed_datas_to_temp_files, load_images_into_blender
 from ..account import Account
+from ..common import PromptOption
 from ..config.model_registry import ModelConfig, ModelRegistry
 from ..tasks import UniversalModelTask, Task, TaskResult
+from ..utils import save_mime_typed_datas_to_temp_files, load_images_into_blender
+from ...utils.camear_info import get_camera_info
+from ...utils.light_info import get_light_info
 from ...preferences import AuthMode
 from ...logger import logger
 from ...utils import get_pref, get_temp_folder, check_cache_folder_writable_permission
@@ -426,6 +429,16 @@ class UniversalClient(StudioClient):
 
         params["__use_internal_prompt"] = self.use_internal_prompt
 
+        # 处理插桩提示词
+        if "prompt" in params:
+            # 1. light info
+            if PromptOption.LIGHT_INFO.value in params["prompt"]:
+                light_info = get_light_info(bpy.context)
+                params["prompt"] = params["prompt"].replace(PromptOption.LIGHT_INFO.value, light_info)
+            # 2. camera info
+            if PromptOption.CAMERA_INFO.value in params["prompt"]:
+                camera_info = get_camera_info(bpy.context)
+                params["prompt"] = params["prompt"].replace(PromptOption.CAMERA_INFO.value, camera_info)
         return params
 
     def _validate_before_submit(self, account: "Account") -> bool:

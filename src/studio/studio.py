@@ -17,6 +17,7 @@ from typing import Self
 from .account import Account
 from .clients.base import StudioHistoryItem, StudioHistory
 from .clients.universal_client import UniversalClient
+from .common import PromptOption
 from .config.model_registry import ModelRegistry
 from .gui.app.animation import AnimationSystem, Easing, Tween, Sequence
 from .gui.app.app import AppHud
@@ -2834,10 +2835,10 @@ class AIStudio(AppHud):
             return
         if widget.widget_name == "prompt":
             advanced_options = {
-                "camera_info": "prompt_camera",
-                "light_info": "prompt_light",
-                "prompt_reverse": "prompt_reverse",
-                "": "image_new",
+                PromptOption.CAMERA_INFO: "prompt_camera",
+                PromptOption.LIGHT_INFO: "prompt_light",
+                PromptOption.PROMPT_REVERSE: "prompt_reverse",
+                PromptOption.TODO: "prompt_todo",
             }
             imgui.push_style_color(imgui.Col.FRAME_BG, Const.FRAME_BG)
             imgui.push_style_var_y(imgui.StyleVar.FRAME_PADDING, 0)
@@ -2862,7 +2863,7 @@ class AIStudio(AppHud):
                         pmin = imgui.get_item_rect_min()
                         pmax = imgui.get_item_rect_max()
                         dl = imgui.get_window_draw_list()
-                        if option and tex and tex.width > 0 and tex.height > 0:
+                        if option.value and tex and tex.width > 0 and tex.height > 0:
                             max_dim = float(max(tex.width, tex.height))
                             img_w = cell * (float(tex.width) / max_dim)
                             img_h = cell * (float(tex.height) / max_dim)
@@ -2924,15 +2925,15 @@ class AIStudio(AppHud):
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             return
 
-    def _process_prompt_options(self, widget: WidgetDescriptor, wrapper: StudioWrapper, option: str):
-        if option == "camera_info":
-            label_str_flag = "@[camera_info]"
+    def _process_prompt_options(self, widget: WidgetDescriptor, wrapper: StudioWrapper, option: PromptOption):
+        if option == PromptOption.CAMERA_INFO:
+            label_str_flag = option.value
             widget.value += label_str_flag
-        if option == "light_info":
-            label_str_flag = "@[light_info]"
+        if option == PromptOption.LIGHT_INFO:
+            label_str_flag = option.value
             widget.value += label_str_flag
-        if option == "prompt_reverse":
-            label_str_flag = "@[prompt_reverse]"
+        if option == PromptOption.PROMPT_REVERSE:
+            label_str_flag = option.value
             widget.value += label_str_flag
 
     def test_webp_animation(self):
