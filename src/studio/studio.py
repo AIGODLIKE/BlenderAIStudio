@@ -26,6 +26,8 @@ from .gui.app.renderer import imgui
 from .gui.app.style import Const
 from .gui.texture import TexturePool
 from .gui.widgets import CustomWidgets, with_child, DEFAULT_CHILD_FLAGS
+from .tasks import TaskResult
+from .utils import save_mime_typed_datas_to_temp_files
 from .wrapper import BaseAdapter, WidgetDescriptor, DescriptorFactory
 from ..i18n import STUDIO_TCTX
 from ..preferences import AuthMode, PricingStrategy
@@ -193,7 +195,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
                     imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
                     imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
                     if imgui.button(f"##{img}", (cell, cell)):
-                        self._process_image_tools_button(wrapper, option, img)
+                        self._process_image_tools_button(wrapper, app, option, img)
                     pmin = imgui.get_item_rect_min()
                     pmax = imgui.get_item_rect_max()
                     dl = imgui.get_window_draw_list()
@@ -212,6 +214,8 @@ class StudioImagesDescriptor(WidgetDescriptor):
                     if option == "image_fast_render" and wrapper.get_fast_render_running(model_name):
                         self._display_running_effect()
                     if option == "image_three_view_drawing" and wrapper.get_three_view_render_running(model_name):
+                        self._display_running_effect()
+                    if option == "image_line_art" and wrapper.get_line_art_render_running(model_name):
                         self._display_running_effect()
 
                     imgui.pop_style_color(3)
@@ -238,7 +242,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
         dl.path_arc_to((cx, cy), radius, start_angle, end_angle, segments)
         dl.path_stroke(col, 0, 3.0)
 
-    def _process_image_tools_button(self, wrapper: "StudioWrapper", option: str, img: str):
+    def _process_image_tools_button(self, wrapper: "StudioWrapper", app: "AIStudio", option: str, img: str):
         if option == "image_paste":
             pos = imgui.get_mouse_pos()
             imgui.set_next_window_pos((pos[0] - 40, pos[1] + 50), cond=imgui.Cond.ALWAYS)
@@ -347,7 +351,58 @@ class StudioImagesDescriptor(WidgetDescriptor):
 
             threading.Thread(target=_three_view_job, daemon=True).start()
         if option == "image_line_art":
-            print("image_line_art")
+            self._process_line_art_button(wrapper, app)
+
+    def _process_line_art_button(self, wrapper: "StudioWrapper", app: "AIStudio"):
+        widget_name = self.widget_name
+        logger.info("StudioImagesDescriptor: image_line_art clicked")
+        model_name = wrapper.model_name
+        if wrapper.get_line_art_render_running(model_name):
+            app.push_info_message(_T("Line art is already running"))
+            logger.info("StudioImagesDescriptor: line_art is already running, ignore click")
+            return
+
+        wrapper.set_line_art_render_running(model_name, True)
+        adapter = self.adapter
+        images: list[str] = adapter.get_value(widget_name)
+        client: StudioClient = adapter
+        config = client.get_meta(widget_name)
+        limit = config.get("limit") or 10
+        prompt = get_pref().line_art_prompt
+        wrapper.studio_client.current_model_name = "NanoBananaPro"
+        item, task = wrapper.studio_client.add_line_art_task(prompt, app.state)
+        wrapper.studio_client.current_model_name = model_name
+
+        def _line_art_job(event_data):
+            result: TaskResult = event_data["result"]
+            parsed_data: list[tuple[str, str | bytes]] = result.data
+            image_path = item.get_output_file_image()
+            if image_path:
+                images.append(image_path)
+                images[:] = images[:limit]
+                return
+            # 保存结果文件
+            try:
+                outputs = save_mime_typed_datas_to_temp_files(parsed_data)
+                for output in outputs:
+                    if not output[0].startswith("image/"):
+                        continue
+                    images.append(output[1])
+                    images[:] = images[:limit]
+                    break
+            except Exception:
+                logger.exception("处理线稿结果时发生错误")
+                app.push_error_message("处理线稿结果时发生错误, 请查看控制台日志, 并与开发者联系")
+                print_exc()
+        task.register_callback("completed", _line_art_job)
+
+        # 定时轮询任务状态 判定已完成(成功/失败/取消)
+        def _poll_line_art_job():
+            if not item.is_finished():
+                return 1.0
+            wrapper.set_line_art_render_running(model_name, False)
+
+        bpy.app.timers.register(_poll_line_art_job)
 
     def display_upload_image(self):
         bw = bh = self._get_stable_cell_size()
@@ -1139,6 +1194,7 @@ class StudioWrapper:
         self.adapter: BaseAdapter = None
         self._fast_render_running: dict[str, bool] = {}
         self._three_view_render_running: dict[str, bool] = {}
+        self._line_art_render_running: dict[str, bool] = {}
 
     def set_fast_render_running(self, model_name: str, running: bool):
         self._fast_render_running[model_name] = running
@@ -1151,6 +1207,12 @@ class StudioWrapper:
 
     def get_three_view_render_running(self, model_name: str):
         return self._three_view_render_running.get(model_name, False)
+
+    def set_line_art_render_running(self, model_name: str, running: bool):
+        self._line_art_render_running[model_name] = running
+
+    def get_line_art_render_running(self, model_name: str):
+        return self._line_art_render_running.get(model_name, False)
 
     @property
     def title(self):
