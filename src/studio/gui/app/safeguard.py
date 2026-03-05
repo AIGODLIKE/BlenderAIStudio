@@ -95,6 +95,7 @@ class ImguiSafeGuard:
         self._call_stack: list[StackEntry] = []
         self._originals: dict[str, object] = {}
         self._installed: bool = False
+        self._active: bool = False
         self._pair_registry: list[PairConfig] = PAIR_REGISTRY
 
     # ------------------------------------------------------------------
@@ -110,39 +111,53 @@ class ImguiSafeGuard:
             conditional: If False, should_call is always True (unconditional).
                          If True, should_call is derived from the return value.
         """
-        call_stack = self._call_stack
+        guard = self
 
         @functools.wraps(original)
         def wrapper(*args, **kwargs):
             result = original(*args, **kwargs)
 
+            if not guard._active:
+                return result
+
             if conditional:
-                # Return may be a plain bool or a tuple whose first element is bool
                 should_call = result[0] if isinstance(result, tuple) else bool(result)
             else:
                 should_call = True
 
-            call_stack.append(StackEntry(end_func_name=end_name, should_call=should_call))
+            guard._call_stack.append(StackEntry(end_func_name=end_name, should_call=should_call))
             return result
 
         return wrapper
 
     def _make_end_wrapper(self, original: Callable, end_name: str) -> Callable:
-        """Create a wrapper for an end function.
+        """Create a wrapper for an end/pop function.
 
         Pops the most recent matching entry from the call stack.
+        Respects the ``count`` parameter (positional or keyword) for
+        pop_style_color / pop_style_var.
         """
-        call_stack = self._call_stack
+        guard = self
+        has_count = end_name in _POP_WITH_COUNT
 
         @functools.wraps(original)
         def wrapper(*args, **kwargs):
             result = original(*args, **kwargs)
 
-            # Pop the last matching entry (search from the top)
-            for i in range(len(call_stack) - 1, -1, -1):
-                if call_stack[i].end_func_name == end_name:
-                    call_stack.pop(i)
-                    break
+            if not guard._active:
+                return result
+
+            if has_count:
+                count = args[0] if args else kwargs.get("count", 1)
+            else:
+                count = 1
+            call_stack = guard._call_stack
+
+            for _ in range(count):
+                for i in range(len(call_stack) - 1, -1, -1):
+                    if call_stack[i].end_func_name == end_name:
+                        call_stack.pop(i)
+                        break
 
             return result
 
@@ -154,13 +169,17 @@ class ImguiSafeGuard:
         Pushes a StackEntry with appropriate pop_kwargs (e.g. count=1 for
         pop_style_color / pop_style_var).
         """
-        call_stack = self._call_stack
+        guard = self
         pop_kwargs: dict = {"count": 1} if pop_name in _POP_WITH_COUNT else {}
 
         @functools.wraps(original)
         def wrapper(*args, **kwargs):
             result = original(*args, **kwargs)
-            call_stack.append(
+
+            if not guard._active:
+                return result
+
+            guard._call_stack.append(
                 StackEntry(
                     end_func_name=pop_name,
                     should_call=True,
@@ -171,39 +190,8 @@ class ImguiSafeGuard:
 
         return wrapper
 
-    def _make_pop_wrapper(self, original: Callable, pop_name: str) -> Callable:
-        """Create a wrapper for a pop function.
-
-        Pops the most recent matching entry from the call stack.
-        Respects the ``count`` parameter for pop_style_color / pop_style_var.
-        """
-        call_stack = self._call_stack
-        has_count = pop_name in _POP_WITH_COUNT
-
-        @functools.wraps(original)
-        def wrapper(*args, **kwargs):
-            result = original(*args, **kwargs)
-
-            # Determine how many stack entries to remove
-            if has_count:
-                count = kwargs.get("count", args[0] if args else 1)
-            else:
-                count = 1
-
-            removed = 0
-            for _ in range(count):
-                for i in range(len(call_stack) - 1, -1, -1):
-                    if call_stack[i].end_func_name == pop_name:
-                        call_stack.pop(i)
-                        removed += 1
-                        break
-
-            return result
-
-        return wrapper
-
     # ------------------------------------------------------------------
-    # Lifecycle methods (to be implemented in subsequent tasks)
+    # Lifecycle methods
     # ------------------------------------------------------------------
 
     def install(self) -> None:
@@ -212,30 +200,27 @@ class ImguiSafeGuard:
             return
 
         mod = self._imgui_module
+        installed_ends: set[str] = set()
 
         for pair in self._pair_registry:
             begin_name = pair.begin_name
             end_name = pair.end_name
 
-            # --- begin / push side ---
             orig_begin = getattr(mod, begin_name, None)
             if orig_begin is None:
                 log.warning("imgui module has no attribute %r – skipping pair", begin_name)
                 continue
 
-            # --- end / pop side ---
             orig_end = getattr(mod, end_name, None)
             if orig_end is None:
                 log.warning("imgui module has no attribute %r – skipping pair", end_name)
                 continue
 
-            # Store originals (only first encounter wins – some end names are shared)
             if begin_name not in self._originals:
                 self._originals[begin_name] = orig_begin
             if end_name not in self._originals:
                 self._originals[end_name] = orig_end
 
-            # Create and install wrappers for the begin/push side
             if pair.pair_type == PairType.UNCONDITIONAL_BEGIN_END:
                 setattr(mod, begin_name, self._make_begin_wrapper(self._originals[begin_name], end_name, conditional=False))
             elif pair.pair_type == PairType.CONDITIONAL_BEGIN_END:
@@ -243,11 +228,9 @@ class ImguiSafeGuard:
             elif pair.pair_type == PairType.PUSH_POP:
                 setattr(mod, begin_name, self._make_push_wrapper(self._originals[begin_name], end_name))
 
-            # Create and install wrappers for the end/pop side
-            if pair.pair_type == PairType.PUSH_POP:
-                setattr(mod, end_name, self._make_pop_wrapper(self._originals[end_name], end_name))
-            else:
+            if end_name not in installed_ends:
                 setattr(mod, end_name, self._make_end_wrapper(self._originals[end_name], end_name))
+                installed_ends.add(end_name)
 
         self._installed = True
 
@@ -256,6 +239,7 @@ class ImguiSafeGuard:
         if not self._installed:
             return
 
+        self._active = False
         mod = self._imgui_module
 
         for name, original in self._originals.items():
@@ -268,27 +252,61 @@ class ImguiSafeGuard:
         self._call_stack.clear()
         self._installed = False
 
+    def activate(self) -> None:
+        """Enable call-stack tracking (wrappers must already be installed)."""
+        self._call_stack.clear()
+        self._active = True
+
+    def deactivate(self) -> None:
+        """Disable call-stack tracking without removing wrappers."""
+        self._active = False
+        self._call_stack.clear()
+
     def recover(self) -> None:
-        """Walk the call stack in reverse, calling end/pop to restore imgui state."""
-        while self._call_stack:
-            entry = self._call_stack.pop()
+        """Walk the call stack in reverse, calling original end/pop functions
+        to restore imgui state.
 
-            if not entry.should_call:
-                continue
+        When an end/pop call fails (e.g. ``end_child`` fails because an inner
+        ``end_table`` has not been called yet), the failed entry is deferred and
+        retried after the remaining (inner) entries have been processed.  If a
+        retry round makes no progress the remaining entries are dropped.
+        """
+        self._active = False
 
-            end_func = self._originals.get(entry.end_func_name)
-            if end_func is None:
-                end_func = getattr(self._imgui_module, entry.end_func_name, None)
+        prev_deferred_count = len(self._call_stack) + 1
+        max_rounds = len(self._call_stack) + 1
 
-            if end_func is None:
-                log.warning("Cannot find end/pop function %r for recovery", entry.end_func_name)
-                continue
+        for _ in range(max_rounds):
+            if not self._call_stack:
+                break
 
-            try:
-                end_func(**entry.pop_kwargs)
-            except Exception:
-                log.warning(
-                    "Exception during recovery call to %r – continuing",
-                    entry.end_func_name,
-                    exc_info=True,
-                )
+            deferred: list[StackEntry] = []
+
+            while self._call_stack:
+                entry = self._call_stack.pop()
+
+                if not entry.should_call:
+                    continue
+
+                end_func = self._originals.get(entry.end_func_name)
+                if end_func is None:
+                    continue
+
+                try:
+                    end_func(**entry.pop_kwargs)
+                except Exception:
+                    deferred.append(entry)
+
+            if not deferred:
+                break
+
+            if len(deferred) >= prev_deferred_count:
+                break
+
+            prev_deferred_count = len(deferred)
+            self._call_stack.extend(reversed(deferred))
+
+        else:
+            self._call_stack.clear()
+
+        self._active = True

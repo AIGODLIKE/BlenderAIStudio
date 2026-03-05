@@ -73,6 +73,7 @@ class App:
         self._id = uuid4().hex
         self._gui_time = None
         self._safeguard = ImguiSafeGuard(imgui)
+        self._safeguard.install()
 
         self.event_queue: Queue[Event] = Queue()
         self.ime_enabled = False
@@ -198,6 +199,7 @@ class App:
         if self._is_closed:
             return
         self._should_exit = True
+        self._safeguard.uninstall()
         self.callbacks.clear()
         if self.handler:
             self.space.draw_handler_remove(self.handler, self.rtype)
@@ -282,11 +284,11 @@ class App:
         # 4. 绘制回调
         self._draw_prepare()
 
-        self._safeguard.install()
+        self._safeguard.activate()
         try:
             self._draw_callbacks(area)
         finally:
-            self._safeguard.uninstall()
+            self._safeguard.deactivate()
 
         # 1. 变换更新
         self.backend.set_mvp_matrix(self.M, self.V, self.P)
@@ -310,10 +312,11 @@ class App:
             except ReferenceError:
                 invalid_callback.append(cb)
             except Exception:
+                logger.error("Draw callback %r raised an exception", cb, exc_info=True)
                 try:
                     self._safeguard.recover()
                 except Exception:
-                    traceback.print_exc()
+                    logger.error("Safeguard recovery failed", exc_info=True)
         for cb in invalid_callback:
             self.draw_call_remove(cb)
 
