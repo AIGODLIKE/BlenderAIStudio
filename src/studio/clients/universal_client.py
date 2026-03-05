@@ -456,14 +456,14 @@ class UniversalClient(StudioClient):
                 if not light_objs:
                     self.push_error(_T("No Light in Scene"))
                     raise Exception(_T("No Light in Scene"))
-                light_info = get_light_info(bpy.context)
+                light_info = get_light_info(bpy.context) + ","
                 params["prompt"] = params["prompt"].replace(PromptOption.LIGHT_INFO.value, light_info)
             # 2. camera info
             if PromptOption.CAMERA_INFO.value in params["prompt"]:
                 if not bpy.context.scene.camera:
                     self.push_error(_T("No Camera in Scene"))
                     raise Exception(_T("No Camera in Scene"))
-                camera_info = get_camera_info(bpy.context)
+                camera_info = get_camera_info(bpy.context) + ","
                 params["prompt"] = params["prompt"].replace(PromptOption.CAMERA_INFO.value, camera_info)
         return params
 
