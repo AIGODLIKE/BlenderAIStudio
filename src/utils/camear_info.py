@@ -182,8 +182,8 @@ def get_camera_info(context):
                 v = get_bl_property(camera, key, None)
                 if v is not None and v:
                     show_opts.append(label)
-            if show_opts:
-                items.append("显示开:%s" % ",".join(show_opts))
+            # if show_opts:
+            #     items.append("显示开:%s" % ",".join(show_opts))
 
             # 立体
             stereo = get_bl_property(camera, "stereo", None)

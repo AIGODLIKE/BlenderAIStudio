@@ -47,19 +47,19 @@ def _format_light(light_obj, light):
         if cutoff is not None:
             items.append("自定义衰减距离%.2fm" % cutoff)
 
-    # 系数
-    diff = get_bl_property(light, "diffuse_factor", None)
-    spec = get_bl_property(light, "specular_factor", None)
-    trans = get_bl_property(light, "transmission_factor", None)
-    vol = get_bl_property(light, "volume_factor", None)
-    if diff is not None:
-        items.append("漫反射系数%.2f" % diff)
-    if spec is not None:
-        items.append("高光系数%.2f" % spec)
-    if trans is not None:
-        items.append("透射系数%.2f" % trans)
-    if vol is not None:
-        items.append("体积系数%.2f" % vol)
+    # # 系数
+    # diff = get_bl_property(light, "diffuse_factor", None)
+    # spec = get_bl_property(light, "specular_factor", None)
+    # trans = get_bl_property(light, "transmission_factor", None)
+    # vol = get_bl_property(light, "volume_factor", None)
+    # if diff is not None:
+    #     items.append("漫反射系数%.2f" % diff)
+    # if spec is not None:
+    #     items.append("高光系数%.2f" % spec)
+    # if trans is not None:
+    #     items.append("透射系数%.2f" % trans)
+    # if vol is not None:
+    #     items.append("体积系数%.2f" % vol)
 
     # 阴影
     use_shadow = get_bl_property(light, "use_shadow", None)
@@ -140,7 +140,8 @@ def get_light_info(context):
     灯光Light,类型太阳光,位置(4.076,1.005,5.904),旋转(37.26°,3.16°,106.94°),缩放(1.000,1.000,1.000),功率1000.00W,漫反射系数1.00,高光系数1.00,透射系数1.00,体积系数1.00,阴影开,色温7580K,软阴影(尺寸0.1000),阴影滤波1.00,太阳角度15.92°;
     灯光Light.001,类型聚光,位置(1.003,-1.942,6.335),旋转(-20.76°,-9.77°,143.45°),缩放(1.000,1.000,1.000),功率1000.00W,漫反射系数1.00,高光系数1.00,透射系数1.00,体积系数1.00,阴影开,色温7580K,软阴影(尺寸0.6600),阴影滤波1.00,锥角16.30°;
     灯光Light.002,类型点光,位置(2.711,-0.697,5.553),旋转(37.26°,3.16°,106.94°),缩放(1.000,1.000,1.000),功率1000.00W,漫反射系数1.00,高光系数1.00,透射系数1.00,体积系数1.00,阴影开,色温7580K,软阴影(尺寸0.1000),阴影滤波1.00;
-    灯光Light.003,类型面光,位置(3.176,0.102,5.976),旋转(37.26°,3.16°,106.94°),缩放(1.000,1.000,1.000),功率1000.00W,漫反射系数1.00,高光系数1.00,透射系数1.00,体积系数1.00,阴影开,色温7580K,软阴影(尺寸0.1000),阴影滤波1.00,形状矩形,尺寸0.100×0.100,扩散角180.00°],共有4个灯光'
+    灯光Light.003,类型面光,位置(3.176,0.102,5.976),旋转(37.26°,3.16°,106.94°),缩放(1.000,1.000,1.000),功率1000.00W,漫反射系数1.00,高光系数1.00,透射系数1.00,体积系数1.00,阴影开,色温7580K,软阴影(尺寸0.1000),阴影滤波1.00,形状矩形,尺寸0.100×0.100,扩散角180.00°],
+    共有4个灯光'
     """
     light_objs = [o for o in context.scene.objects if o.type == "LIGHT"]
     if not light_objs:
