@@ -117,6 +117,12 @@ Reference images must also be selected manually by the user""",
         **translation_context,
     )
 
+    line_art_prompt: bpy.props.StringProperty(
+        name="Line Art Prompt",
+        default="提取线稿、深度图和色稿",
+        **translation_context,
+    )
+
     @property
     def is_backup_mode(self):  # 是稳定模式
         return self.account_auth_mode == AuthMode.ACCOUNT.value
@@ -190,6 +196,7 @@ Reference images must also be selected manually by the user""",
     def draw_setting(self, layout):
         layout.operator("bas.upload_error_report", icon="URL")
         layout.prop(self, "disable_system_prompt")
+        layout.prop(self, "line_art_prompt")
 
         box = layout.box()
         box.prop(self, "enable_experimental_features")

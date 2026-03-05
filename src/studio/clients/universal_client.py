@@ -315,16 +315,6 @@ class UniversalClient(StudioClient):
         # 构建原始参数（不包含 image_path，由 Task 渲染）
         params = self._build_raw_params()
 
-        credentials = self.get_credentials(account)
-
-        try:
-            for _ in range(self.batch_count):
-                self._add_task_one(account, credentials, params)
-        except Exception as e:
-            logger.exception("提交任务时发生错误")
-            self.push_error(e)
-
-    def get_credentials(self, account: "Account") -> Dict[str, Any]:
         # 获取凭证
         model_id = self.model_id
         if account.auth_mode == AuthMode.API.value:
@@ -336,9 +326,14 @@ class UniversalClient(StudioClient):
                 "modelId": model_id,
                 "size": resolution,
             }
-        return credentials
+        try:
+            for _ in range(self.batch_count):
+                self._add_task_one(account, credentials, params)
+        except Exception as e:
+            logger.exception("提交任务时发生错误")
+            self.push_error(e)
 
-    def _add_task_one(self, account: "Account", credentials, params) -> UniversalModelTask:
+    def _add_task_one(self, account: "Account", credentials, params):
         task = UniversalModelTask(
             model_id=self.model_id,
             auth_mode=account.auth_mode,
