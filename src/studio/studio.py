@@ -417,35 +417,18 @@ class StudioImagesDescriptor(WidgetDescriptor):
         item, task = wrapper.studio_client.add_line_art_task(prompt, app.state)
         wrapper.studio_client.current_model_name = model_name
 
-        def _line_art_job(event_data):
-            result: TaskResult = event_data["result"]
-            parsed_data: list[tuple[str, str | bytes]] = result.data
-            image_path = item.get_output_file_image()
-            if image_path:
-                images.append(image_path)
-                images[:] = images[:limit]
-                return
-            # 保存结果文件
-            try:
-                outputs = save_mime_typed_datas_to_temp_files(parsed_data)
-                for output in outputs:
-                    if not output[0].startswith("image/"):
-                        continue
-                    images.append(output[1])
-                    images[:] = images[:limit]
-                    break
-            except Exception:
-                logger.exception("处理线稿结果时发生错误")
-                app.push_error_message("处理线稿结果时发生错误, 请查看控制台日志, 并与开发者联系")
-                print_exc()
-
-        task.register_callback("completed", _line_art_job)
-
         # 定时轮询任务状态 判定已完成(成功/失败/取消)
         def _poll_line_art_job():
             if not item.is_finished():
                 return 1.0
             wrapper.set_line_art_render_running(model_name, False)
+            image_path = item.get_output_file_image()
+            if image_path:
+                images.append(image_path)
+                images[:] = images[:limit]
+            else:
+                logger.error("StudioImagesDescriptor: 线稿结果为空")
+                app.push_error_message("线稿结果为空, 请查看控制台日志, 并与开发者联系")
 
         bpy.app.timers.register(_poll_line_art_job)
 
