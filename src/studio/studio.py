@@ -985,7 +985,7 @@ class StudioHistoryViewer:
             w1 = imgui.get_content_region_avail()[0]
             imgui.table_setup_column("##Ele1", imgui.TableColumnFlags.WIDTH_STRETCH, 0, 0)
             imgui.table_next_column()
-            over_text = _T("Connecting") + "." * round(imgui.get_time() // 0.5 % 4)
+            over_text = _T("Running") + "." * round(imgui.get_time() // 0.5 % 4)
             self.app.font_manager.push_h1_font(24 * 2)
             imgui.push_style_color(imgui.Col.PLOT_HISTOGRAM, Const.SLIDER_NORMAL)
             CustomWidgets.progress_bar_with_overlay(1, (w1, h1), over_text)
