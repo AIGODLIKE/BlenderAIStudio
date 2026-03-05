@@ -107,9 +107,12 @@ def get_orientation_reference_object_info(context, camera_obj):
                 [
                     # "相对于主体距离%s" %ref_obj.name,
                     camera_prompt,
-                    "水平角%.0f" % rel["horizontal"],
-                    "俯仰角%.0f" % rel["vertical"],
-                    "倾斜角%.0f" % rel.get("tilt", 0),
+                    "水平旋转%.0f度" % rel["horizontal"],
+                    "俯仰旋转%.0f度" % rel["vertical"],
+                    "%s旋转%.0f度" % (
+                        ("顺时针" if (t := rel.get("tilt", 0)) > 0 else "逆时针" if t < 0 else ""),
+                        abs(t),
+                    ),
                 ]
             )
     return None
