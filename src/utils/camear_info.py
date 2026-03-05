@@ -1,7 +1,50 @@
+from math import atan2, degrees, sqrt
+
+import bpy
 from bpy.app.translations import pgettext as _T
-from math import degrees
+from mathutils import Vector
 
 from .property import get_bl_property
+
+
+def _compute_relative_angles(camera_obj: bpy.types.Object, ref_obj: bpy.types.Object) -> dict | None:
+    """
+    以活动相机视口为基准，计算主体（参照物）相对相机的方位角和俯仰角。
+    - 方位角(azimuth): 相机视野水平内，0°=正前方，正=右侧，范围约 -180°~180°
+    - 俯仰角(elevation): 相机视野垂直内，正=主体在视线上方，负=下方，范围约 -90°~90°
+    """
+    cam_loc = Vector(camera_obj.matrix_world.translation)
+    ref_loc = ref_obj.matrix_world.translation.copy()
+    cam_matrix = camera_obj.matrix_world.to_3x3()
+    # Blender 相机：-Z 为视线方向，X 为右，Y 为上
+    cam_forward = cam_matrix @ Vector((0, 0, -1))
+    cam_right = cam_matrix @ Vector((1, 0, 0))
+    cam_up = cam_matrix @ Vector((0, 1, 0))
+
+    v = ref_loc - cam_loc  # 从相机指向主体
+    dist = v.length
+    if dist < 1e-6:
+        return None  # 相机与主体重合
+
+    local_x = v @ cam_right
+    local_y = v @ cam_up
+    local_z = v @ cam_forward
+
+    horiz = sqrt(local_x * local_x + local_z * local_z)
+    azimuth = degrees(atan2(local_x, local_z))  # 方位角：主体在相机水平视野中的位置
+    elevation = degrees(atan2(local_y, horiz)) if horiz > 1e-6 else (90.0 if local_y > 0 else -90.0)  # 俯仰角：主体在相机垂直视野中的位置
+
+    return {"distance": dist, "azimuth": azimuth, "elevation": elevation}
+
+
+def get_orientation_reference_object_info(context, camera_obj):
+    ref_obj = getattr(context.scene.blender_ai_studio_property, "orientation_reference_object", None)
+    if ref_obj and ref_obj.name in context.scene.objects:
+        rel = _compute_relative_angles(camera_obj, ref_obj)
+        if rel:
+            return "相对于主体%s距离%.3fm方位角%.2f°俯仰角%.2f°" % (ref_obj.name, rel["distance"], rel["azimuth"],
+                                                                    rel["elevation"])
+    return None
 
 
 def get_camera_info(context):
@@ -20,6 +63,10 @@ def get_camera_info(context):
                     items.append(text % (value.x, value.y, value.z))
                 elif vk == "rotation_euler":
                     items.append(text % (degrees(value.x), degrees(value.y), degrees(value.z)))
+
+        # 若设定了方位参照物，则计算相对方位角、俯仰角和距离
+        if ref_info := get_orientation_reference_object_info(context, camera_obj):
+            items.append(ref_info)
 
         # Camera 数据块（焦距、景深、光圈等）
         camera = get_bl_property(camera_obj, "data", None)
@@ -205,3 +252,22 @@ def get_camera_info(context):
     else:
         raise Exception(_T("No Camera in Scene"))
 
+
+def try_set_camera_orientation_reference(app: "AIStudio"):
+    """尝试设置相机参照的主体"""
+    context = bpy.context
+
+    ao = context.active_object
+    ai = context.scene.blender_ai_studio_property
+    if ao :
+        ai.orientation_reference_object = ao
+        items = [f"已将相机主体参考设置为{ao.name}", ]
+        if camera_obj := context.scene.camera:
+            if ref_info := get_orientation_reference_object_info(context, camera_obj):
+                items.append(ref_info)
+        items.append("您也可以在场景属性中手动指定主体")
+        if app:
+            app.push_info_message(",".join(items))
+    else:
+        if app:
+            app.push_info_message("请选择一个物体作为相机主体")

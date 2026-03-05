@@ -282,7 +282,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
         if option == "image_fast_render":
             self._process_fast_render_button(wrapper)
         if option == "image_three_view_drawing":
-            self._process_three_view_drawing_button(wrapper)
+            self._process_three_view_drawing_button(wrapper, app)
         if option == "image_line_art":
             self._process_line_art_button(wrapper, app)
 
@@ -342,7 +342,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
 
         threading.Thread(target=_fast_render_job, daemon=True).start()
 
-    def _process_three_view_drawing_button(self, wrapper: "StudioWrapper"):
+    def _process_three_view_drawing_button(self, wrapper: "StudioWrapper", app: "AIStudio"):
         logger.info("StudioImagesDescriptor: image_three_view_drawing clicked")
         model_name = wrapper.model_name
         if wrapper.get_three_view_render_running(model_name):
@@ -352,6 +352,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
         selected_objects = [obj for obj in bpy.context.selected_objects if obj.type == "MESH"]
         if not selected_objects:
             logger.warning("StudioImagesDescriptor: No objects selected for three-view rendering")
+            app.push_error_message(_T("Please select at least one object for rendering"))
             return
 
         widget_name = self.widget_name
@@ -1123,7 +1124,8 @@ class StudioHistoryViewer:
                         self.app.push_info_message(_T("Image not found! Edit Failed!"))
                 if imgui.is_item_hovered():
                     imgui.set_next_window_size((720, 0))
-                    AppHelperDraw.draw_tips_with_title(self.app, [_T("Open image editor and edit current image.")], _T("Edit Image"))
+                    AppHelperDraw.draw_tips_with_title(self.app, [_T("Open image editor and edit current image.")],
+                                                       _T("Edit Image"))
                 imgui.table_next_column()
                 if CustomWidgets.icon_label_button("image_export", _T("Save"), "LEFT", (0, bh)):
                     img = item.get_output_file_image()
@@ -1133,7 +1135,8 @@ class StudioHistoryViewer:
                         self.app.push_info_message(_T("Image not found! Export Failed!"))
                 if imgui.is_item_hovered():
                     imgui.set_next_window_size((720, 0))
-                    AppHelperDraw.draw_tips_with_title(self.app, [_T("Click to export the image to disk.")], _T("Export Image"))
+                    AppHelperDraw.draw_tips_with_title(self.app, [_T("Click to export the image to disk.")],
+                                                       _T("Export Image"))
                 imgui.end_table()
             imgui.pop_style_var(1)
             imgui.pop_style_color(1)
@@ -1946,12 +1949,12 @@ class Bubble:
     LERP_SPEED = 10.0  # y 位置插值速度
 
     def __init__(
-        self,
-        anim_system: AnimationSystem,
-        text: str,
-        duration: float = 15,
-        icon: str = "account_warning",
-        highlight_color: tuple[float, float, float] = (1.0, 1.0, 1.0),
+            self,
+            anim_system: AnimationSystem,
+            text: str,
+            duration: float = 15,
+            icon: str = "account_warning",
+            highlight_color: tuple[float, float, float] = (1.0, 1.0, 1.0),
     ) -> None:
         self.text = text
         self.icon = icon
@@ -2523,7 +2526,8 @@ class AIStudio(AppHud):
                 imgui.end_combo()
             if imgui.is_item_hovered():
                 title = _T("Please Select Generation Engine")
-                tip = _T("Select Engine and Fill API, You can use AI in Blender seamlessly. Note: This tool only has the function of connecting to the service. The generated content & fees are subject to the provider.")
+                tip = _T(
+                    "Select Engine and Fill API, You can use AI in Blender seamlessly. Note: This tool only has the function of connecting to the service. The generated content & fees are subject to the provider.")
                 imgui.set_next_window_size((759, 0))
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             imgui.pop_style_color(2)
@@ -3086,6 +3090,7 @@ class AIStudio(AppHud):
                     "tooltips": [
                         "使用当前活动相机的信息",
                         "例如位置、旋转、焦距、景深、光圈",
+                        "(可选择一个活动的物体作为相机的主体,输入相对于主体的距离，方位角，俯仰角)"
                     ],
                 },
                 PromptOption.LIGHT_INFO: {
@@ -3095,7 +3100,7 @@ class AIStudio(AppHud):
                         "使用场景中的灯光信息",
                         "例如: 位置、旋转、强度(功率)、",
                         "类型(点光、聚光)、色温颜色、",
-                        "软硬 (最多10个灯,欧拉旋转)",
+                        "软硬 (欧拉旋转)",
                     ],
                 },
                 PromptOption.PROMPT_REVERSE: {
@@ -3133,7 +3138,7 @@ class AIStudio(AppHud):
                         tex = TexturePool.get_tex(icon)
                         cell = imgui.get_content_region_avail()[0]
                         if imgui.button(f"##{img}", (cell, cell)):
-                            self._process_prompt_options(widget, wrapper, option)
+                            self._process_prompt_options(widget, wrapper, option, app)
                         if imgui.is_item_hovered():
                             imgui.set_next_window_size((400, 0))
                             title = config.get("title")
@@ -3185,7 +3190,8 @@ class AIStudio(AppHud):
             if imgui.is_item_hovered():
                 imgui.set_next_window_size((580, 0))
                 title = _T("Prompt Optimization")
-                tip = _T("Enable Prompt Optimization to improve the quality of the generated image and the safety of the content.")
+                tip = _T(
+                    "Enable Prompt Optimization to improve the quality of the generated image and the safety of the content.")
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             imgui.end_child()
             return
@@ -3200,15 +3206,22 @@ class AIStudio(AppHud):
             if imgui.is_item_hovered():
                 imgui.set_next_window_size((710, 0))
                 title = _T("Image Resolution")
-                tip = _T("Set the image resolution via both image size and aspect ratio, and the larger the resolution, the longer the generation time/resource required.")
+                tip = _T(
+                    "Set the image resolution via both image size and aspect ratio, and the larger the resolution, the longer the generation time/resource required.")
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             return
 
-    def _process_prompt_options(self, widget: WidgetDescriptor, wrapper: StudioWrapper, option: PromptOption):
+    def _process_prompt_options(self, widget: WidgetDescriptor, wrapper: StudioWrapper, option: PromptOption, app: "AIStudio"):
+        """点击事件"""
         if option == PromptOption.CAMERA_INFO:
             label_str_flag = option.value
             widget.value += label_str_flag
+            from ..utils.camear_info import try_set_camera_orientation_reference
+            try_set_camera_orientation_reference(self)
         if option == PromptOption.LIGHT_INFO:
+            light_count = len([o for o in bpy.context.scene.objects if o.type == "LIGHT"])
+            if light_count > 10:
+                app.push_error_message(_T("Too many lights in scene. Large amount of data may increase generation failure rate. It is recommended not to use too many lights."))
             label_str_flag = option.value
             widget.value += label_str_flag
         if option == PromptOption.PROMPT_REVERSE:

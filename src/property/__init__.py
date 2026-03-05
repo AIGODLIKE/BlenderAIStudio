@@ -490,6 +490,11 @@ class SceneProperty(bpy.types.PropertyGroup, GeneralProperty, DynamicEnumeration
     edit_history: bpy.props.CollectionProperty(type=EditHistory, name="这个是编辑的历史记录")
     generate_history: bpy.props.StringProperty(default="[]", name="3d视图的生成记录")
     batch_count: bpy.props.IntProperty(name="Batch Count", default=1, min=1, max=16)
+    orientation_reference_object: bpy.props.PointerProperty(
+        type=bpy.types.Object,
+        name="Orientation Reference Object",
+        description="Reference object for computing camera relative azimuth and elevation. Its position is origin, its forward direction is positive.",
+    )
 
     @property
     def all_references_images(self) -> list[bpy.types.Image]:

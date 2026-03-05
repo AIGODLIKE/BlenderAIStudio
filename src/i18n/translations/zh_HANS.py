@@ -168,7 +168,15 @@ studio_panel_translations = (
     ("Task ID Copied!", "任务ID已复制到剪贴板！", None),
     ("File Select Window is Busy, Close it First!", "文件选择窗口被占用, 请关闭后重试！", None),
     ("No Light in Scene", "场景中未找到灯光", None),
+    ("Please select at least one object for rendering", "请至少选择一个物体以进行渲染", None),
+    ("Too many lights in scene. Large amount of data may increase generation failure rate. It is recommended not to use too many lights.", "灯光数量过多，数据量过多，将会升高生成的失败率，建议不要使用太多灯光", None),
     ("No Camera in Scene", "场景中未找到相机", None),
+    ("Orientation Reference Object", "方位参照物", None),
+    ("Orientation Reference Object", "方位参照物", PROP_TCTX),
+    ("Camera info will use this object as origin and its forward direction as reference for relative azimuth and elevation",
+     "相机信息将以此物体为原点、其朝向为正方向计算相对方位角和俯仰角", None),
+    ("Reference object for computing camera relative azimuth and elevation. Its position is origin, its forward direction is positive.",
+     "用于计算相机相对方位角和俯仰角的参照物，其位置为原点，朝向为正方向", PROP_TCTX),
 )
 
 task_translations = (

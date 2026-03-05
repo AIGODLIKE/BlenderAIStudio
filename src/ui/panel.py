@@ -6,6 +6,7 @@ from ..online_update_addon import UpdateService
 from ..preferences import AuthMode
 from ..studio.config.model_registry import ModelRegistry
 from ..utils import get_custom_icon, get_addon_version_str, get_pref, check_image_is_render_result
+from ..utils.camear_info import get_orientation_reference_object_info
 
 
 def check_is_draw_mask(context):
@@ -253,6 +254,28 @@ class AIStudioImagePanel(bpy.types.Panel):
         row = layout.row(align=True)
         row.prop(ai, "prompt", text="")
         row.operator("bas.prompt_edit", text="", icon="FILE_TEXT")
+
+
+class AIStudioScenePanel(bpy.types.Panel):
+    """场景属性中的 Blender AI Studio 设置"""
+    bl_idname = "SDN_PT_BLENDER_AI_STUDIO_PT_Scene"
+    bl_translation_context = PANEL_TCTX
+    bl_label = "Blender AI Studio"
+    bl_space_type = "PROPERTIES"
+    bl_region_type = "WINDOW"
+    bl_context = "scene"
+
+    def draw(self, context):
+        layout = self.layout
+        ai = context.scene.blender_ai_studio_property
+        layout.prop(ai, "orientation_reference_object", text=iface("Orientation Reference Object"))
+        if ai.orientation_reference_object:
+            layout.label(text=iface(
+                "Camera info will use this object as origin and its forward direction as reference for relative azimuth and elevation"),
+                         icon="INFO")
+            if camera_obj := context.scene.camera:
+                if info := get_orientation_reference_object_info(context, camera_obj):
+                    layout.label(text=info)
 
 
 class AIStudioHistoryPanel(bpy.types.Panel):
