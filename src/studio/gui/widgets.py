@@ -20,8 +20,8 @@ def with_child(str_id: str, size: tuple[float, float] = (0.0, 0.0), child_flags:
     imgui.begin_child(str_id, size, child_flags, window_flags)
     try:
         yield
-    except Exception:
-        print_exc()
+    except Exception as e:
+        raise e
     imgui.end_child()
 
 

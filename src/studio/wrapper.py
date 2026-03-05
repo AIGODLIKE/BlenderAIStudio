@@ -149,11 +149,8 @@ class WidgetDescriptor:
         self._custom_display_begin.pop(callback)
 
     def call_custom_display_begin(self, wrapper, app: App):
-        try:
-            for cb in self._custom_display_begin:
-                cb(self, wrapper, app)
-        except Exception as e:
-            logger.error(f"Error in custom display begin: {e}")
+        for cb in self._custom_display_begin:
+            cb(self, wrapper, app)
 
     def add_custom_display_end(self, callback):
         self._custom_display_end[callback] = None
@@ -162,11 +159,8 @@ class WidgetDescriptor:
         self._custom_display_end.pop(callback)
 
     def call_custom_display_end(self, wrapper, app: App):
-        try:
-            for cb in self._custom_display_end:
-                cb(self, wrapper, app)
-        except Exception as e:
-            logger.error(f"Error in custom display end: {e}")
+        for cb in self._custom_display_end:
+            cb(self, wrapper, app)
 
     def display_begin(self, wrapper, app: App):
         imgui.push_id(f"{self.title}_{self.widget_name}")
