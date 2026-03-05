@@ -91,7 +91,7 @@ def _angles_to_camera_prompt(horizontal: float, vertical: float, distance: float
         dist_label = "远景"
 
     tilt_int = round(tilt)
-    return "%s,%s,%s,zoom:%.1f)" % (h_direction, v_direction, dist_label, zoom)
+    return "%s,%s视角,%s,zoom:%.1f)" % (h_direction, v_direction, dist_label, zoom)
 
 
 def get_orientation_reference_object_info(context, camera_obj):
