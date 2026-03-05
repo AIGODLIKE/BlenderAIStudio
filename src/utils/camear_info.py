@@ -1,4 +1,4 @@
-from math import atan2, degrees, sqrt
+from math import acos, atan2, degrees, sqrt
 
 import bpy
 from bpy.app.translations import pgettext as _T
@@ -9,32 +9,91 @@ from .property import get_bl_property
 
 def _compute_relative_angles(camera_obj: bpy.types.Object, ref_obj: bpy.types.Object) -> dict | None:
     """
-    以活动相机视口为基准，计算主体（参照物）相对相机的方位角和俯仰角。
-    - 方位角(azimuth): 相机视野水平内，0°=正前方，正=右侧，范围约 -180°~180°
-    - 俯仰角(elevation): 相机视野垂直内，正=主体在视线上方，负=下方，范围约 -90°~90°
+    按 ComfyUI-qwenmultiangle 的轨道相机模型计算角度。
+    主体为原点，相机在轨道上绕主体旋转。
+    - 以 -Y 轴为前方基准（0°），Blender 前视图沿 -Y 观测，水平面 XZ 中对应 -Z 为 0°
+    - horizontal (0°~360°): 0°=-Z(正前)，90°=+X(右)，180°=+Z(背)，270°=-X(左)
+    - vertical (-30°~60°): 相机俯仰，负=仰拍，正=俯拍
     """
     cam_loc = Vector(camera_obj.matrix_world.translation)
     ref_loc = ref_obj.matrix_world.translation.copy()
-    cam_matrix = camera_obj.matrix_world.to_3x3()
-    # Blender 相机：-Z 为视线方向，X 为右，Y 为上
-    cam_forward = cam_matrix @ Vector((0, 0, -1))
-    cam_right = cam_matrix @ Vector((1, 0, 0))
-    cam_up = cam_matrix @ Vector((0, 1, 0))
-
-    v = ref_loc - cam_loc  # 从相机指向主体
+    # 从主体指向相机的向量（相机在轨道上的位置）
+    v = cam_loc - ref_loc
     dist = v.length
     if dist < 1e-6:
         return None  # 相机与主体重合
 
-    local_x = v @ cam_right
-    local_y = v @ cam_up
-    local_z = v @ cam_forward
+    # 以 -Y 为 0°：水平角在 XY 平面（绕 Z 轴），俯仰角为 Z 分量（上下）
+    horiz_xy = sqrt(v.x * v.x + v.y * v.y)
+    # 水平角：XY 平面，0°=-Y(正前)，90°=+X(右)，180°=+Y(背)，270°=-X(左)
+    horizontal = degrees(atan2(v.x, -v.y))
+    if horizontal < 0:
+        horizontal += 360
+    # 俯仰角：v.z 为正=相机在上方(俯拍)，负=下方(仰拍)
+    vertical = degrees(atan2(v.z, horiz_xy)) if horiz_xy > 1e-6 else (90.0 if v.z > 0 else -90.0)
 
-    horiz = sqrt(local_x * local_x + local_z * local_z)
-    azimuth = degrees(atan2(local_x, local_z))  # 方位角：主体在相机水平视野中的位置
-    elevation = degrees(atan2(local_y, horiz)) if horiz > 1e-6 else (90.0 if local_y > 0 else -90.0)  # 俯仰角：主体在相机垂直视野中的位置
+    # 镜头倾斜角：世界 Z 轴与相机上方向的夹角，带正负；正=顺时针，负=逆时针
+    cam_matrix = camera_obj.matrix_world.to_3x3()
+    cam_up = cam_matrix @ Vector((0, 1, 0))
+    cam_forward = cam_matrix @ Vector((0, 0, -1))
+    world_z = Vector((0, 0, 1))
+    cross_up_z = cam_up.cross(world_z)
+    dot_val = max(-1, min(1, cam_up.dot(world_z)))
+    angle = degrees(acos(dot_val))
+    sign = 1 if cross_up_z.dot(cam_forward) >= 0 else -1
+    tilt = angle * sign
 
-    return {"distance": dist, "azimuth": azimuth, "elevation": elevation}
+    return {"distance": dist, "horizontal": horizontal, "vertical": vertical, "tilt": tilt}
+
+
+def _angles_to_camera_prompt(horizontal: float, vertical: float, distance: float, tilt: float = 0.0) -> str:
+    """
+    将水平角、俯仰角、倾斜角、距离转换为多角度生成的有效提示词格式（中文）。
+    与 ComfyUI-qwenmultiangle 角度体系一致: horizontal 0-360, vertical -30~60, zoom 0-10
+    """
+    v_clamped = max(-30, min(60, round(vertical)))
+    h_angle_int = round(horizontal) % 360
+    zoom = round(max(0, min(10, 10 - distance / 2)), 1)
+
+    if horizontal < 22.5 or horizontal >= 337.5:
+        h_direction = "正面"
+    elif horizontal < 67.5:
+        h_direction = "右前"
+    elif horizontal < 112.5:
+        h_direction = "右侧"
+    elif horizontal < 157.5:
+        h_direction = "右后"
+    elif horizontal < 202.5:
+        h_direction = "背面"
+    elif horizontal < 247.5:
+        h_direction = "左后"
+    elif horizontal < 292.5:
+        h_direction = "左侧"
+    else:
+        h_direction = "左前"
+
+    if v_clamped < -15:
+        v_direction = "仰拍"
+    elif v_clamped < 15:
+        v_direction = "平视"
+    elif v_clamped < 45:
+        v_direction = "略俯"
+    else:
+        v_direction = "俯拍"
+
+    if distance < 3:
+        dist_label = "特写"
+    elif distance < 8:
+        dist_label = "中景"
+    elif distance < 15:
+        dist_label = "中远景"
+    else:
+        dist_label = "远景"
+
+    tilt_int = round(tilt)
+    return "%s,%s,%s (倾斜角:%d°,景别:%.1f)" % (
+        h_direction, v_direction, dist_label, tilt_int, zoom
+    )
 
 
 def get_orientation_reference_object_info(context, camera_obj):
@@ -42,8 +101,12 @@ def get_orientation_reference_object_info(context, camera_obj):
     if ref_obj and ref_obj.name in context.scene.objects:
         rel = _compute_relative_angles(camera_obj, ref_obj)
         if rel:
-            return "相对于主体%s距离%.3fm方位角%.2f°俯仰角%.2f°" % (ref_obj.name, rel["distance"], rel["azimuth"],
-                                                                    rel["elevation"])
+            camera_prompt = _angles_to_camera_prompt(
+                rel["horizontal"], rel["vertical"], rel["distance"], rel.get("tilt", 0)
+            )
+            return "相对于主体%s距离%.3fm水平角%.0f°,俯仰角%.0f°,倾斜角%.0f°, %s" % (
+                ref_obj.name, rel["distance"], rel["horizontal"], rel["vertical"], rel.get("tilt", 0), camera_prompt
+            )
     return None
 
 

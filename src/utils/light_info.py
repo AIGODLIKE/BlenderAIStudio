@@ -20,13 +20,14 @@ def _format_light(light_obj, light):
     if light_type is not None:
         items.append("类型%s" % light_type_map.get(light_type, light_type))
 
-    # 位置、旋转（欧拉）、缩放
+    # 位置、旋转（欧拉）、缩放（点光全向发光，旋转无影响故不输出）
     loc = get_bl_property(light_obj, "location", None)
     if loc is not None:
         items.append("位置(%.3f,%.3f,%.3f)" % (loc.x, loc.y, loc.z))
-    rot = get_bl_property(light_obj, "rotation_euler", None)
-    if rot is not None:
-        items.append("旋转(%.2f°,%.2f°,%.2f°)" % (degrees(rot.x), degrees(rot.y), degrees(rot.z)))
+    if light_type != "POINT":
+        rot = get_bl_property(light_obj, "rotation_euler", None)
+        if rot is not None:
+            items.append("旋转(%.2f°,%.2f°,%.2f°)" % (degrees(rot.x), degrees(rot.y), degrees(rot.z)))
     scale = get_bl_property(light_obj, "scale", None)
     if scale is not None:
         items.append("缩放(%.3f,%.3f,%.3f)" % (scale.x, scale.y, scale.z))
@@ -61,15 +62,15 @@ def _format_light(light_obj, light):
     # if vol is not None:
     #     items.append("体积系数%.2f" % vol)
 
+    # # 节点着色器
+    # use_nodes = get_bl_property(light, "use_nodes", False)
+    # if use_nodes:
+    #     items.append("使用节点")
+
     # 阴影
     use_shadow = get_bl_property(light, "use_shadow", None)
     if use_shadow is not None:
         items.append("阴影%s" % ("开" if use_shadow else "关"))
-
-    # 节点着色器
-    use_nodes = get_bl_property(light, "use_nodes", False)
-    if use_nodes:
-        items.append("使用节点")
 
     # 色温/颜色
     use_temp = get_bl_property(light, "use_temperature", False)
