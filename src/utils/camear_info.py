@@ -104,28 +104,35 @@ def get_orientation_reference_object_info(context, camera_obj):
             camera_prompt = _angles_to_camera_prompt(
                 rel["horizontal"], rel["vertical"], rel["distance"], rel.get("tilt", 0)
             )
-            return "相对于主体%s距离%.3fm水平角%.0f°,俯仰角%.0f°,倾斜角%.0f°, %s" % (
-                ref_obj.name, rel["distance"], rel["horizontal"], rel["vertical"], rel.get("tilt", 0), camera_prompt
+
+            return ",".join(
+                [
+                    # "相对于主体距离%s" %ref_obj.name,
+                    "水平角%.0f" % rel["horizontal"],
+                    "俯仰角%.0f" % rel["vertical"],
+                    "倾斜角%.0f" % rel.get("tilt", 0),
+                    # camera_prompt,
+                ]
             )
     return None
 
 
 def get_camera_info(context):
     if camera_obj := context.scene.camera:
-        items = ["相机%s" % camera_obj.name]
+        items = []  # "相机%s" % camera_obj.name
 
-        # 活动相机对象本身（位置、旋转、缩放）
-        for (vk, text) in [
-            ("location", "位置(%.3f, %.3f, %.3f)"),
-            ("rotation_euler", "旋转(%.2f°, %.2f°, %.2f°)"),
-            # ("scale", "缩放(%.3f, %.3f, %.3f)"),
-        ]:
-            value = get_bl_property(camera_obj, vk, None)
-            if value is not None:
-                if vk == "location" or vk == "scale":
-                    items.append(text % (value.x, value.y, value.z))
-                elif vk == "rotation_euler":
-                    items.append(text % (degrees(value.x), degrees(value.y), degrees(value.z)))
+        # # 活动相机对象本身（位置、旋转、缩放）
+        # for (vk, text) in [
+        #     ("location", "位置(%.3f, %.3f, %.3f)"),
+        #     ("rotation_euler", "旋转(%.2f°, %.2f°, %.2f°)"),
+        #     # ("scale", "缩放(%.3f, %.3f, %.3f)"),
+        # ]:
+        #     value = get_bl_property(camera_obj, vk, None)
+        #     if value is not None:
+        #         if vk == "location" or vk == "scale":
+        #             items.append(text % (value.x, value.y, value.z))
+        #         elif vk == "rotation_euler":
+        #             items.append(text % (degrees(value.x), degrees(value.y), degrees(value.z)))
 
         # 若设定了方位参照物，则计算相对方位角、俯仰角和距离
         if ref_info := get_orientation_reference_object_info(context, camera_obj):
@@ -143,11 +150,12 @@ def get_camera_info(context):
 
             camera_type = get_bl_property(camera, "type", None)
             if camera_type is not None:
-                items.append("相机类型为%s" % camera_type_map.get(camera_type, camera_type))
+                items.append("%s类型相机" % camera_type_map.get(camera_type, camera_type))
 
             lens_unit = get_bl_property(camera, "lens_unit", None)
-            if lens_unit is not None:
-                items.append("镜头单位为%s" % lens_unit)
+            # if lens_unit is not None:
+            #     lens_unit_map = {"MILLIMETERS": "毫米", "FOV": "视场角"}
+            #     items.append("镜头单位为%s" % lens_unit_map.get(lens_unit, lens_unit))
 
             # sensor_fit_map = {
             #     "AUTO": "自动",
@@ -311,7 +319,7 @@ def get_camera_info(context):
             #     if pivot:
             #         items.append("立体轴心%s" % pivot)
         info = ",".join(items)
-        return f"根据相机信息确认观察者视角,修改观察视角相机信息,相机信息({info})"
+        return f"根据相机信息确认观察者视角,修改观察视角相机信息({info})"
     else:
         raise Exception(_T("No Camera in Scene"))
 
