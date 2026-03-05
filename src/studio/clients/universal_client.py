@@ -315,6 +315,16 @@ class UniversalClient(StudioClient):
         # 构建原始参数（不包含 image_path，由 Task 渲染）
         params = self._build_raw_params()
 
+        credentials = self.get_credentials(account)
+
+        try:
+            for _ in range(self.batch_count):
+                self._add_task_one(account, credentials, params)
+        except Exception as e:
+            logger.exception("提交任务时发生错误")
+            self.push_error(e)
+
+    def get_credentials(self, account: "Account") -> Dict[str, Any]:
         # 获取凭证
         model_id = self.model_id
         if account.auth_mode == AuthMode.API.value:
@@ -326,14 +336,9 @@ class UniversalClient(StudioClient):
                 "modelId": model_id,
                 "size": resolution,
             }
-        try:
-            for _ in range(self.batch_count):
-                self._add_task_one(account, credentials, params)
-        except Exception as e:
-            logger.exception("提交任务时发生错误")
-            self.push_error(e)
+        return credentials
 
-    def _add_task_one(self, account: "Account", credentials, params):
+    def _add_task_one(self, account: "Account", credentials, params) -> tuple[StudioHistoryItem, UniversalModelTask]:
         task = UniversalModelTask(
             model_id=self.model_id,
             auth_mode=account.auth_mode,
@@ -354,6 +359,7 @@ class UniversalClient(StudioClient):
         item.metadata.setdefault("params", {}).update(params)
         self.history.add(item)
         logger.info(f"任务已提交: {self.task_id}")
+        return item, task
 
     def _on_completed(self, event_data):
         task: Task = event_data["task"]
@@ -369,6 +375,19 @@ class UniversalClient(StudioClient):
             print_exc()
 
         Account.get_instance().fetch_credits()
+
+    def add_line_art_task(self, prompt: str, account: "Account") -> tuple[StudioHistoryItem, UniversalModelTask]:
+        params = {
+            "input_image_type": "FastRender",
+            "prompt": prompt,
+            "reference_images": [],
+            "aspect_ratio": "Auto",
+            "resolution": "1K",
+            "__use_internal_prompt": False,
+            "__disable_system_prompt": True,
+        }
+        credentials = self.get_credentials(account)
+        return self._add_task_one(account, credentials, params)
 
     @staticmethod
     def _save_result_file(parsed_data: list[tuple[str, str | bytes]]) -> list[str]:
