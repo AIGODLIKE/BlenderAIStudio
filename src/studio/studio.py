@@ -195,7 +195,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
                     imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
                     imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
                     if imgui.button(f"##{img}", (cell, cell)):
-                        self._process_image_tools_button(wrapper, app, option, img)
+                        self._process_image_tools_button(wrapper, app, option)
                     pmin = imgui.get_item_rect_min()
                     pmax = imgui.get_item_rect_max()
                     dl = imgui.get_window_draw_list()
@@ -242,116 +242,125 @@ class StudioImagesDescriptor(WidgetDescriptor):
         dl.path_arc_to((cx, cy), radius, start_angle, end_angle, segments)
         dl.path_stroke(col, 0, 3.0)
 
-    def _process_image_tools_button(self, wrapper: "StudioWrapper", app: "AIStudio", option: str, img: str):
+    def _process_image_tools_button(self, wrapper: "StudioWrapper", app: "AIStudio", option: str):
         if option == "image_paste":
-            pos = imgui.get_mouse_pos()
-            imgui.set_next_window_pos((pos[0] - 40, pos[1] + 50), cond=imgui.Cond.ALWAYS)
-            self.adapter.on_image_action(self.widget_name, "paste_image")
+            self._process_paste_image_button()
         if option == "image_fast_render":
-            # 使用 BlenderRenderHelper 在子线程中进行快速渲染，避免阻塞主线程
-            logger.info("StudioImagesDescriptor: image_fast_render clicked")
-            model_name = wrapper.model_name
-            # 同一 AIStudio + 模型 wrapper 维度下，未处理完成前不可再次进入
-            if wrapper is not None:
-                if wrapper.get_fast_render_running(model_name):
-                    logger.info("StudioImagesDescriptor: image_fast_render is already running, ignore click")
-                    return
-                wrapper.set_fast_render_running(model_name, True)
-
-            # 复制当前 Blender 上下文（在主线程中完成）
-            try:
-                context_copy = bpy.context.copy()
-            except Exception as e:
-                logger.error("StudioImagesDescriptor: 复制上下文失败: %s", e)
-                return
-
-            widget_name = self.widget_name
-            adapter = self.adapter
-            images: list[str] = adapter.get_value(widget_name)
-            client: StudioClient = adapter
-            config = client.get_meta(widget_name)
-            limit = config.get("limit") or 10
-
-            def _fast_render_job():
-                helper = BlenderRenderHelper()
-                image_path = None
-                try:
-                    image_path = helper.render("FastRender", context_copy)
-                except Exception as e:
-                    logger.error("StudioImagesDescriptor: FastRender 失败: %s", e)
-                finally:
-                    wrapper.set_fast_render_running(model_name, False)
-
-                if not image_path:
-                    return
-
-                # 在主线程中更新图片列表
-                def _append_image():
-                    try:
-                        if image_path not in images:
-                            images.append(image_path)
-                        images[:] = images[:limit]
-                    except Exception as exc:
-                        logger.error("StudioImagesDescriptor: 添加快速渲染结果到 image_list 失败: %s", exc)
-
-                Timer.put(_append_image)
-
-            threading.Thread(target=_fast_render_job, daemon=True).start()
+            self._process_fast_render_button(wrapper)
         if option == "image_three_view_drawing":
-            logger.info("StudioImagesDescriptor: image_three_view_drawing clicked")
-            model_name = wrapper.model_name
-            if wrapper.get_three_view_render_running(model_name):
-                logger.info("StudioImagesDescriptor: three_view_drawing is already running, ignore click")
-                return
-
-            selected_objects = [obj for obj in bpy.context.selected_objects if obj.type == "MESH"]
-            if not selected_objects:
-                logger.warning("StudioImagesDescriptor: No objects selected for three-view rendering")
-                return
-
-            widget_name = self.widget_name
-            adapter = self.adapter
-            images: list[str] = adapter.get_value(widget_name)
-            client: StudioClient = adapter
-            config = client.get_meta(widget_name)
-            limit = config.get("limit") or 10
-            # 复制当前 Blender 上下文（在主线程中完成）
-            try:
-                context_copy = bpy.context.copy()
-            except Exception as e:
-                logger.error("StudioImagesDescriptor: 复制上下文失败: %s", e)
-                return
-
-            wrapper.set_three_view_render_running(model_name, True)
-
-            def _three_view_job():
-                helper = BlenderRenderHelper()
-                view_paths = None
-                try:
-                    view_paths = helper.render_three_views(context_copy, selected_objects)
-                except Exception as e:
-                    logger.error("StudioImagesDescriptor: ThreeViewRender 失败: %s", e)
-                finally:
-                    wrapper.set_three_view_render_running(model_name, False)
-
-                if not view_paths:
-                    return
-
-                def _append_images():
-                    try:
-                        for p in view_paths:
-                            if p in images:
-                                continue
-                            images.append(p)
-                        images[:] = images[:limit]
-                    except Exception as exc:
-                        logger.error("StudioImagesDescriptor: 添加三视图结果到 image_list 失败: %s", exc)
-
-                Timer.put(_append_images)
-
-            threading.Thread(target=_three_view_job, daemon=True).start()
+            self._process_three_view_drawing_button(wrapper)
         if option == "image_line_art":
             self._process_line_art_button(wrapper, app)
+
+    def _process_paste_image_button(self):
+        pos = imgui.get_mouse_pos()
+        imgui.set_next_window_pos((pos[0] - 40, pos[1] + 50), cond=imgui.Cond.ALWAYS)
+        self.adapter.on_image_action(self.widget_name, "paste_image")
+
+    def _process_fast_render_button(self, wrapper: "StudioWrapper"):
+        # 使用 BlenderRenderHelper 在子线程中进行快速渲染，避免阻塞主线程
+        logger.info("StudioImagesDescriptor: image_fast_render clicked")
+        model_name = wrapper.model_name
+        # 同一 AIStudio + 模型 wrapper 维度下，未处理完成前不可再次进入
+        if wrapper is not None:
+            if wrapper.get_fast_render_running(model_name):
+                logger.info("StudioImagesDescriptor: image_fast_render is already running, ignore click")
+                return
+            wrapper.set_fast_render_running(model_name, True)
+
+        # 复制当前 Blender 上下文（在主线程中完成）
+        try:
+            context_copy = bpy.context.copy()
+        except Exception as e:
+            logger.error("StudioImagesDescriptor: 复制上下文失败: %s", e)
+            return
+
+        widget_name = self.widget_name
+        adapter = self.adapter
+        images: list[str] = adapter.get_value(widget_name)
+        client: StudioClient = adapter
+        config = client.get_meta(widget_name)
+        limit = config.get("limit") or 10
+
+        def _fast_render_job():
+            helper = BlenderRenderHelper()
+            image_path = None
+            try:
+                image_path = helper.render("FastRender", context_copy)
+            except Exception as e:
+                logger.error("StudioImagesDescriptor: FastRender 失败: %s", e)
+            finally:
+                wrapper.set_fast_render_running(model_name, False)
+
+            if not image_path:
+                return
+
+            # 在主线程中更新图片列表
+            def _append_image():
+                try:
+                    if image_path not in images:
+                        images.append(image_path)
+                    images[:] = images[:limit]
+                except Exception as exc:
+                    logger.error("StudioImagesDescriptor: 添加快速渲染结果到 image_list 失败: %s", exc)
+
+            Timer.put(_append_image)
+
+        threading.Thread(target=_fast_render_job, daemon=True).start()
+
+    def _process_three_view_drawing_button(self, wrapper: "StudioWrapper"):
+        logger.info("StudioImagesDescriptor: image_three_view_drawing clicked")
+        model_name = wrapper.model_name
+        if wrapper.get_three_view_render_running(model_name):
+            logger.info("StudioImagesDescriptor: three_view_drawing is already running, ignore click")
+            return
+
+        selected_objects = [obj for obj in bpy.context.selected_objects if obj.type == "MESH"]
+        if not selected_objects:
+            logger.warning("StudioImagesDescriptor: No objects selected for three-view rendering")
+            return
+
+        widget_name = self.widget_name
+        adapter = self.adapter
+        images: list[str] = adapter.get_value(widget_name)
+        client: StudioClient = adapter
+        config = client.get_meta(widget_name)
+        limit = config.get("limit") or 10
+        # 复制当前 Blender 上下文（在主线程中完成）
+        try:
+            context_copy = bpy.context.copy()
+        except Exception as e:
+            logger.error("StudioImagesDescriptor: 复制上下文失败: %s", e)
+            return
+
+        wrapper.set_three_view_render_running(model_name, True)
+
+        def _three_view_job():
+            helper = BlenderRenderHelper()
+            view_paths = None
+            try:
+                view_paths = helper.render_three_views(context_copy, selected_objects)
+            except Exception as e:
+                logger.error("StudioImagesDescriptor: ThreeViewRender 失败: %s", e)
+            finally:
+                wrapper.set_three_view_render_running(model_name, False)
+
+            if not view_paths:
+                return
+
+            def _append_images():
+                try:
+                    for p in view_paths:
+                        if p in images:
+                            continue
+                        images.append(p)
+                    images[:] = images[:limit]
+                except Exception as exc:
+                    logger.error("StudioImagesDescriptor: 添加三视图结果到 image_list 失败: %s", exc)
+
+            Timer.put(_append_images)
+
+        threading.Thread(target=_three_view_job, daemon=True).start()
 
     def _process_line_art_button(self, wrapper: "StudioWrapper", app: "AIStudio"):
         widget_name = self.widget_name
