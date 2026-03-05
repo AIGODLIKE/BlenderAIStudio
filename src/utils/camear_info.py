@@ -7,6 +7,19 @@ from mathutils import Vector
 from .property import get_bl_property
 
 
+def _focal_length_descriptor(lens_mm: float) -> str:
+    """根据焦距毫米数返回镜头类型描述词"""
+    if lens_mm < 24:
+        return "超广角"
+    if lens_mm < 35:
+        return "广角"
+    if lens_mm < 85:
+        return "标准"
+    if lens_mm < 135:
+        return "中焦"
+    return "长焦"
+
+
 def _compute_relative_angles(camera_obj: bpy.types.Object, ref_obj: bpy.types.Object) -> dict | None:
     """
     按 ComfyUI-qwenmultiangle 的轨道相机模型计算角度。
@@ -46,14 +59,9 @@ def _compute_relative_angles(camera_obj: bpy.types.Object, ref_obj: bpy.types.Ob
     return {"distance": dist, "horizontal": horizontal, "vertical": vertical, "tilt": tilt}
 
 
-def _angles_to_camera_prompt(horizontal: float, vertical: float, distance: float, tilt: float = 0.0) -> str:
-    """
-    将水平角、俯仰角、倾斜角、距离转换为多角度生成的有效提示词格式（中文）。
-    与 ComfyUI-qwenmultiangle 角度体系一致: horizontal 0-360, vertical -30~60, zoom 0-10
-    """
+def _angles_to_direction_labels(horizontal: float, vertical: float) -> tuple[str, str]:
+    """根据水平角、俯仰角返回方位描述标签（正面/右前/仰拍/略俯等）"""
     v_clamped = max(-30, min(60, round(vertical)))
-    h_angle_int = round(horizontal) % 360
-    zoom = round(max(0, min(10, 10 - distance / 2)), 1)
 
     if horizontal < 22.5 or horizontal >= 337.5:
         h_direction = "正面"
@@ -81,248 +89,115 @@ def _angles_to_camera_prompt(horizontal: float, vertical: float, distance: float
     else:
         v_direction = "俯拍"
 
-    if distance < 3:
-        dist_label = "特写"
-    elif distance < 8:
-        dist_label = "中景"
-    elif distance < 15:
-        dist_label = "中远景"
-    else:
-        dist_label = "远景"
-
-    tilt_int = round(tilt)
-    return "%s,%s视角,%s)" % (h_direction, v_direction, dist_label)
+    return h_direction, v_direction
 
 
-def get_orientation_reference_object_info(context, camera_obj):
+def _get_orientation_rel(context, camera_obj) -> dict | None:
+    """获取相机相对于方位参照物的角度数据，无参照物时返回 None"""
     ref_obj = getattr(context.scene.blender_ai_studio_property, "orientation_reference_object", None)
     if ref_obj and ref_obj.name in context.scene.objects:
-        rel = _compute_relative_angles(camera_obj, ref_obj)
-        if rel:
-            camera_prompt = _angles_to_camera_prompt(
-                rel["horizontal"], rel["vertical"], rel["distance"], rel.get("tilt", 0)
-            )
-
-            return ",".join(
-                [
-                    # "相对于主体距离%s" %ref_obj.name,
-                    camera_prompt,
-                    "水平旋转%.0f度" % rel["horizontal"],
-                    "俯仰旋转%.0f度" % rel["vertical"],
-                    "%s旋转%.0f度" % (
-                        ("顺时针" if (t := rel.get("tilt", 0)) > 0 else "逆时针" if t < 0 else ""),
-                        abs(t),
-                    ),
-                ]
-            )
+        return _compute_relative_angles(camera_obj, ref_obj)
     return None
 
 
+def _format_orientation_display(rel: dict) -> str:
+    """将相对角度格式化为简短 UI 显示字符串"""
+    v = rel["vertical"]
+    v_str = "俯仰%.0f度" % v if abs(v) < 0.5 else "俯仰%s%.0f度" % ("向下" if v > 0 else "向上", abs(v))
+    h = "水平旋转%.0f度" % rel["horizontal"]
+    parts = [v_str]
+    t = rel.get("tilt", 0)
+    if abs(t) >= 0.5:
+        parts.append("%s旋转%.0f度" % ("顺时针" if t > 0 else "逆时针", abs(t)))
+    return ",".join(parts)
+
+
+def get_orientation_reference_object_info(context, camera_obj) -> str | None:
+    """返回方位参照物的简短显示信息，用于 UI；无参照物时返回 None"""
+    rel = _get_orientation_rel(context, camera_obj)
+    return _format_orientation_display(rel) if rel else None
+
+
 def get_camera_info(context):
-    if camera_obj := context.scene.camera:
-        items = []  # "相机%s" % camera_obj.name
-
-        # # 活动相机对象本身（位置、旋转、缩放）
-        # for (vk, text) in [
-        #     ("location", "位置(%.3f, %.3f, %.3f)"),
-        #     ("rotation_euler", "旋转(%.2f°, %.2f°, %.2f°)"),
-        #     # ("scale", "缩放(%.3f, %.3f, %.3f)"),
-        # ]:
-        #     value = get_bl_property(camera_obj, vk, None)
-        #     if value is not None:
-        #         if vk == "location" or vk == "scale":
-        #             items.append(text % (value.x, value.y, value.z))
-        #         elif vk == "rotation_euler":
-        #             items.append(text % (degrees(value.x), degrees(value.y), degrees(value.z)))
-
-        # 若设定了方位参照物，则计算相对方位角、俯仰角和距离
-        if ref_info := get_orientation_reference_object_info(context, camera_obj):
-            items.append(ref_info)
-
-        # Camera 数据块（焦距、景深、光圈等）
-        camera = get_bl_property(camera_obj, "data", None)
-        if camera is not None:
-            camera_type_map = {
-                "PERSP": "透视",
-                "ORTHO": "正交",
-                "PANO": "全景",
-                "CUSTOM": "自定义",
-            }
-
-            camera_type = get_bl_property(camera, "type", None)
-            if camera_type is not None:
-                items.append("%s类型相机" % camera_type_map.get(camera_type, camera_type))
-
-            lens_unit = get_bl_property(camera, "lens_unit", None)
-            # if lens_unit is not None:
-            #     lens_unit_map = {"MILLIMETERS": "毫米", "FOV": "视场角"}
-            #     items.append("镜头单位为%s" % lens_unit_map.get(lens_unit, lens_unit))
-
-            # sensor_fit_map = {
-            #     "AUTO": "自动",
-            #     "HORIZONTAL": "水平",
-            #     "VERTICAL": "垂直",
-            # }
-            # sensor_fit = get_bl_property(camera, "sensor_fit", None)
-            # if sensor_fit is not None:
-            #     items.append("感光器适配%s" % sensor_fit_map.get(sensor_fit, sensor_fit))
-            #
-            # sensor_width = get_bl_property(camera, "sensor_width", None)
-            # sensor_height = get_bl_property(camera, "sensor_height", None)
-            # if sensor_width is not None and sensor_height is not None:
-            #     items.append("感光器尺寸%.2f×%.2fmm" % (sensor_width, sensor_height))
-
-            # clip_start = get_bl_property(camera, "clip_start", None)
-            # clip_end = get_bl_property(camera, "clip_end", None)
-            # if clip_start is not None and clip_end is not None:
-            #     items.append("裁剪范围%.3f~%.3fm" % (clip_start, clip_end))
-
-            # shift_x = get_bl_property(camera, "shift_x", None)
-            # shift_y = get_bl_property(camera, "shift_y", None)
-            # if shift_x is not None and shift_y is not None:
-            #     items.append("镜头偏移(%.3f,%.3f)" % (shift_x, shift_y))
-
-            # display_size = get_bl_property(camera, "display_size", None)
-            # if display_size is not None:
-            #     items.append("视图显示尺寸%.2f" % display_size)
-            #
-            # passepartout_alpha = get_bl_property(camera, "passepartout_alpha", None)
-            # if passepartout_alpha is not None:
-            #     items.append("取景框遮罩透明度%.2f" % passepartout_alpha)
-
-            if camera_type == "ORTHO":
-                ortho_scale = get_bl_property(camera, "ortho_scale", None)
-                if ortho_scale is not None:
-                    items.append("正交缩放%.3f" % ortho_scale)
-            elif lens_unit == "FOV":
-                angle = get_bl_property(camera, "angle", None)
-                if angle is not None:
-                    items.append("视场角%.2f°" % degrees(angle))
-            else:
-                lens = get_bl_property(camera, "lens", None)
-                if lens is not None:
-                    items.append("焦距%.2fmm" % lens)
-
-            dof = get_bl_property(camera, "dof", None)
-            if dof is not None:
-                use_dof = bool(get_bl_property(dof, "use_dof", False))
-                items.append("景深%s" % ("开启" if use_dof else "关闭"))
-
-                if use_dof:
-                    focus_object = get_bl_property(dof, "focus_object", None)
-                    if focus_object is not None:
-                        cam_loc = camera_obj.matrix_world.translation
-                        focus_loc = focus_object.matrix_world.translation
-                        distance = (focus_loc - cam_loc).length
-                        # items.append("景深对焦物体%s" % focus_object.name)
-                        items.append("对焦物体距相机%.3fm" % distance)
-                    else:
-                        focus_distance = get_bl_property(dof, "focus_distance", None)
-                        if focus_distance is not None:
-                            items.append("景深焦距%.3fm" % focus_distance)
-
-                    aperture_fstop = get_bl_property(dof, "aperture_fstop", None)
-                    if aperture_fstop is not None:
-                        items.append("光圈F%.2f" % aperture_fstop)
-
-                    aperture_blades = get_bl_property(dof, "aperture_blades", None)
-                    if aperture_blades is not None:
-                        items.append("光圈叶片%s" % aperture_blades)
-
-                    aperture_rotation = get_bl_property(dof, "aperture_rotation", None)
-                    if aperture_rotation is not None:
-                        items.append("光圈旋转%.2f°" % degrees(aperture_rotation))
-
-                    aperture_ratio = get_bl_property(dof, "aperture_ratio", None)
-                    if aperture_ratio is not None:
-                        items.append("光圈纵横比%.3f" % aperture_ratio)
-
-            # 全景/自定义相机
-            # if camera_type == "PANO":
-            #     pano_map = {
-            #         "EQUIRECTANGULAR": "等距柱状",
-            #         "EQUIANGULAR_CUBEMAP_FACE": "等角立方体贴图",
-            #         "MIRRORBALL": "镜面球",
-            #         "FISHEYE_EQUIDISTANT": "鱼眼等距",
-            #         "FISHEYE_EQUISOLID": "鱼眼等立体",
-            #         "FISHEYE_LENS_POLYNOMIAL": "鱼眼多项式",
-            #         "CENTRAL_CYLINDRICAL": "中心柱面",
-            #     }
-            #     pano_type = get_bl_property(camera, "panorama_type", None)
-            #     if pano_type is not None:
-            #         items.append("全景类型%s" % pano_map.get(pano_type, pano_type))
-            #     fisheye_fov = get_bl_property(camera, "fisheye_fov", None)
-            #     if fisheye_fov is not None:
-            #         items.append("鱼眼视场%.2f°" % degrees(fisheye_fov))
-            #     fisheye_lens = get_bl_property(camera, "fisheye_lens", None)
-            #     if fisheye_lens is not None:
-            #         items.append("鱼眼焦距%.2fmm" % fisheye_lens)
-            #     lat_min = get_bl_property(camera, "latitude_min", None)
-            #     lat_max = get_bl_property(camera, "latitude_max", None)
-            #     if lat_min is not None and lat_max is not None:
-            #         items.append("纬度范围%.2f°~%.2f°" % (degrees(lat_min), degrees(lat_max)))
-            #     lon_min = get_bl_property(camera, "longitude_min", None)
-            #     lon_max = get_bl_property(camera, "longitude_max", None)
-            #     if lon_min is not None and lon_max is not None:
-            #         items.append("经度范围%.2f°~%.2f°" % (degrees(lon_min), degrees(lon_max)))
-
-            # if camera_type == "CUSTOM":
-            #     custom_mode = get_bl_property(camera, "custom_mode", None)
-            #     if custom_mode is not None:
-            #         items.append("自定义模式%s" % ("内部" if custom_mode == "INTERNAL" else "外部"))
-            #     custom_filepath = get_bl_property(camera, "custom_filepath", None)
-            #     if custom_filepath:
-            #         items.append("自定义着色器%s" % custom_filepath)
-
-            # bg_images = get_bl_property(camera, "background_images", None)
-            # if bg_images is not None and len(bg_images) > 0:
-            #     items.append("背景图%d张" % len(bg_images))
-
-            # # 显示选项
-            # show_opts = []
-            # for (key, label) in [
-            #     ("show_background_images", "背景图"),
-            #     ("show_limits", "裁剪限制"),
-            #     ("show_mist", "雾效"),
-            #     ("show_name", "名称"),
-            #     ("show_passepartout", "取景框遮罩"),
-            #     ("show_safe_areas", "安全区"),
-            #     ("show_safe_center", "中心安全区"),
-            #     ("show_sensor", "感光器"),
-            #     ("show_composition_thirds", "三分线"),
-            #     ("show_composition_center", "中心线"),
-            #     ("show_composition_center_diagonal", "对角中心"),
-            #     ("show_composition_golden", "黄金比"),
-            #     ("show_composition_golden_tria_a", "黄金三角A"),
-            #     ("show_composition_golden_tria_b", "黄金三角B"),
-            #     ("show_composition_harmony_tri_a", "和谐三角A"),
-            #     ("show_composition_harmony_tri_b", "和谐三角B"),
-            # ]:
-            #     v = get_bl_property(camera, key, None)
-            #     if v is not None and v:
-            #         show_opts.append(label)
-            # if show_opts:
-            #     items.append("显示开:%s" % ",".join(show_opts))
-
-            # # 立体
-            # stereo = get_bl_property(camera, "stereo", None)
-            # if stereo is not None:
-            #     conv_dist = get_bl_property(stereo, "convergence_distance", None)
-            #     if conv_dist is not None:
-            #         items.append("立体聚交距离%.3f" % conv_dist)
-            #     interoc = get_bl_property(stereo, "interocular_distance", None)
-            #     if interoc is not None:
-            #         items.append("立体瞳距%.4f" % interoc)
-            #     conv_mode = get_bl_property(stereo, "convergence_mode", None)
-            #     if conv_mode:
-            #         items.append("立体聚交模式%s" % conv_mode)
-            #     pivot = get_bl_property(stereo, "pivot", None)
-            #     if pivot:
-            #         items.append("立体轴心%s" % pivot)
-        info = ",".join(items)
-        return f"相机信息({info})"
-    else:
+    """
+    生成符合提示词风格的自然语言相机描述，可直接嵌入「生成一张[场景描述]的图像，...」类提示。
+    示例：使用18毫米广角焦距的透视相机拍摄，水平旋转337度，俯仰向下65度，顺时针旋转30度，
+    浅景深，光圈为f/2.8，焦点清晰地聚焦在1.77米外，背景模糊
+    """
+    if not (camera_obj := context.scene.camera):
         raise Exception(_T("No Camera in Scene"))
+
+    parts = []
+    camera = get_bl_property(camera_obj, "data", None)
+    if camera is None:
+        return "使用透视相机拍摄"
+
+    camera_type = get_bl_property(camera, "type", "PERSP")
+    camera_type_map = {"PERSP": "透视", "ORTHO": "正交", "PANO": "全景", "CUSTOM": "自定义"}
+    cam_type_cn = camera_type_map.get(camera_type, camera_type)
+
+    # 1. 焦距描述（仅透视相机用毫米焦距，FOV 时用视场角）
+    lens_unit = get_bl_property(camera, "lens_unit", "MILLIMETERS")
+    lens_mm = get_bl_property(camera, "lens", None) if camera_type == "PERSP" and lens_unit == "MILLIMETERS" else None
+    if lens_mm is not None:
+        desc = _focal_length_descriptor(lens_mm)
+        parts.append("使用%.0f毫米%s焦距的%s相机拍摄" % (lens_mm, desc, cam_type_cn))
+    elif camera_type == "PERSP" and lens_unit == "FOV":
+        angle_rad = get_bl_property(camera, "angle", None)
+        if angle_rad is not None:
+            parts.append("使用透视相机拍摄，视场角%.1f度" % degrees(angle_rad))
+        else:
+            parts.append("使用%s相机拍摄" % cam_type_cn)
+    elif camera_type == "ORTHO":
+        ortho_scale = get_bl_property(camera, "ortho_scale", None)
+        if ortho_scale is not None:
+            parts.append("使用正交相机拍摄，正交缩放%.3f" % ortho_scale)
+        else:
+            parts.append("使用正交相机拍摄")
+    else:
+        parts.append("使用%s相机拍摄" % cam_type_cn)
+
+    # 2. 水平/俯仰/倾斜（需方位参照物，含方位标签）
+    rel = _get_orientation_rel(context, camera_obj)
+    if rel:
+        h_dir, v_dir = _angles_to_direction_labels(rel["horizontal"], rel["vertical"])
+        # parts.append("水平旋转%.0f度" % rel["horizontal"])
+        v = rel["vertical"]
+        parts.append(f"{h_dir}视角")
+        parts.append(
+            f"{v_dir}%s%.0f度" % ("向下" if v > 0 else ("向上" if v < 0 else ""),
+                                  abs(v) if abs(v) >= 0.5 else 0))
+        t = rel.get("tilt", 0)
+        if abs(t) >= 0.5:
+            parts.append("%s旋转%.0f度" % ("顺时针" if t > 0 else "逆时针", abs(t)))
+
+    # 3. 景深、光圈、对焦距离
+    dof = get_bl_property(camera, "dof", None)
+    use_dof = False
+    focus_distance_m = None
+    aperture_fstop = None
+    if dof is not None:
+        use_dof = bool(get_bl_property(dof, "use_dof", False))
+        if use_dof:
+            focus_obj = get_bl_property(dof, "focus_object", None)
+            if focus_obj is not None:
+                cam_loc = camera_obj.matrix_world.translation
+                focus_loc = focus_obj.matrix_world.translation
+                focus_distance_m = (Vector(focus_loc) - Vector(cam_loc)).length
+            else:
+                focus_distance_m = get_bl_property(dof, "focus_distance", None)
+            aperture_fstop = get_bl_property(dof, "aperture_fstop", None)
+
+    if use_dof:
+        parts.append("浅景深")
+        if aperture_fstop is not None:
+            parts.append("光圈为f/%.1f" % aperture_fstop)
+        # if focus_distance_m is not None:
+        #     parts.append("焦点清晰地聚焦在%.2f米外" % focus_distance_m)
+        parts.append("背景模糊")
+
+    info = ",".join(parts)
+    return f"相机信息({info})"
 
 
 def try_set_camera_orientation_reference(app: "AIStudio"):
@@ -335,9 +210,9 @@ def try_set_camera_orientation_reference(app: "AIStudio"):
         ai.orientation_reference_object = ao
         items = [f"已将相机主体参考设置为{ao.name}", ]
         if camera_obj := context.scene.camera:
-            if ref_info := get_orientation_reference_object_info(context, camera_obj):
+            if ref_info := get_camera_info(context):
                 items.append(ref_info)
-        items.append("您也可以在场景属性中手动指定主体")
+        items.append("您也可以在相机属性中手动指定主体")
         if app:
             app.push_info_message(",".join(items))
     else:

@@ -6,7 +6,7 @@ from ..online_update_addon import UpdateService
 from ..preferences import AuthMode
 from ..studio.config.model_registry import ModelRegistry
 from ..utils import get_custom_icon, get_addon_version_str, get_pref, check_image_is_render_result
-from ..utils.camear_info import get_orientation_reference_object_info
+from ..utils.camear_info import get_camera_info
 
 
 def check_is_draw_mask(context):
@@ -263,7 +263,11 @@ class AIStudioScenePanel(bpy.types.Panel):
     bl_label = "Blender AI Studio"
     bl_space_type = "PROPERTIES"
     bl_region_type = "WINDOW"
-    bl_context = "scene"
+    bl_context = "data"
+
+    @classmethod
+    def poll(cls, context):
+        return context.object and context.object.type == "CAMERA"
 
     def draw(self, context):
         layout = self.layout
@@ -272,10 +276,9 @@ class AIStudioScenePanel(bpy.types.Panel):
         if ai.orientation_reference_object:
             layout.label(text=iface(
                 "Camera info will use this object as origin and its forward direction as reference for relative azimuth and elevation"),
-                         icon="INFO")
-            if camera_obj := context.scene.camera:
-                if info := get_orientation_reference_object_info(context, camera_obj):
-                    layout.label(text=info)
+                icon="INFO")
+            if info := get_camera_info(context):
+                layout.label(text=info)
 
 
 class AIStudioHistoryPanel(bpy.types.Panel):
