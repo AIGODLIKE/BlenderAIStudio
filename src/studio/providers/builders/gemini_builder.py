@@ -267,7 +267,6 @@ class GeminiImageGenerateBuilder(RequestBuilder):
     def _build_edit_payload(self, params: Dict[str, Any]) -> dict:
         """构建图像编辑 payload"""
         image_path = params.get("main_image", "")
-        user_prompt = params.get("user_prompt", "")
         ref_images_path = params.get("reference_images", [""])
         mask_image_path = ref_images_path[0] if ref_images_path else ""
         image_size = params.get("resolution", "1K")
@@ -284,7 +283,7 @@ class GeminiImageGenerateBuilder(RequestBuilder):
                 raise ValueError("Total image size exceeds the limit of 20MB.")
 
         prompt = self._build_edit_prompt(
-            user_prompt,
+            params,
             has_mask=bool(mask_image_path),
             has_reference=bool(ref_images_path[1:]),
         )
@@ -323,14 +322,15 @@ class GeminiImageGenerateBuilder(RequestBuilder):
         """
         return self._build_generate_payload(params)
 
-    def _build_edit_prompt(self, user_prompt: str, has_mask: bool = False, has_reference: bool = False) -> str:
+    def _build_edit_prompt(self, params: dict, has_mask: bool = False, has_reference: bool = False) -> str:
         """Build prompt for image editing
         基础提示词 + 用户输入提示词
         IMAGE 1 (scene with sketch)
         IMAGE 2 (mask - colored area)
         IMAGE OTHER (reference)
         """
-        if get_pref().disable_system_prompt:
+        user_prompt = params.get("user_prompt", "")
+        if self._should_exclude_system_prompt(params):
             return user_prompt
 
         if user_prompt == "[智能修复]":  # 智能修复的提示词
@@ -351,6 +351,9 @@ class GeminiImageGenerateBuilder(RequestBuilder):
             return f"{base_prompt}\n\nUSER'S EDIT INSTRUCTIONS:\n{user_prompt.strip()}"
         else:
             return base_prompt
+
+    def _should_exclude_system_prompt(self, params: Dict[str, Any]) -> bool:
+        return params.get("__disable_system_prompt", False) or get_pref().disable_system_prompt
 
     def _build_generate_prompt(
             self,

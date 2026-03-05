@@ -99,9 +99,8 @@ class SeedreamImageGenerateBuilder(RequestBuilder):
         ref_images_path = params.get("reference_images", [])
         is_color_render = params.get("input_image_type", "") != "CameraDepth"
         model = params.get("model") or model_config.model_id
-        prompt = params.get("prompt", "").strip()
-        full_prompt = self._build_generate_prompt(
-            prompt,
+        prompt = self._build_generate_prompt(
+            params,
             has_reference=bool(ref_images_path),
             is_color_render=is_color_render,
         )
@@ -111,7 +110,7 @@ class SeedreamImageGenerateBuilder(RequestBuilder):
 
         payload: Dict[str, Any] = {
             "model": model,
-            "prompt": full_prompt,
+            "prompt": prompt,
             "size": size,
             "image": images,
             "response_format": "b64_json",
@@ -239,11 +238,12 @@ class SeedreamImageGenerateBuilder(RequestBuilder):
 
     def _build_generate_prompt(
             self,
-            user_prompt: str,
+            params: dict,
             has_reference: bool = False,
             is_color_render: bool = False,
     ) -> str:
-        if get_pref().disable_system_prompt:
+        user_prompt = params.get("prompt", "").strip()
+        if self._should_exclude_system_prompt(params):
             return user_prompt
 
         if is_color_render:
@@ -259,3 +259,6 @@ class SeedreamImageGenerateBuilder(RequestBuilder):
         if user_prompt.strip():
             return f"{base_prompt}\n\n用户的编辑说明: {user_prompt.strip()}"
         return base_prompt
+
+    def _should_exclude_system_prompt(self, params: Dict[str, Any]) -> bool:
+        return params.get("__disable_system_prompt", False) or get_pref().disable_system_prompt
