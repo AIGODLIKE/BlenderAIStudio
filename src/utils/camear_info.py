@@ -211,7 +211,7 @@ def get_camera_info(context):
                         cam_loc = camera_obj.matrix_world.translation
                         focus_loc = focus_object.matrix_world.translation
                         distance = (focus_loc - cam_loc).length
-                        items.append("景深对焦物体%s" % focus_object.name)
+                        # items.append("景深对焦物体%s" % focus_object.name)
                         items.append("对焦物体距相机%.3fm" % distance)
                     else:
                         focus_distance = get_bl_property(dof, "focus_distance", None)
@@ -235,33 +235,33 @@ def get_camera_info(context):
                         items.append("光圈纵横比%.3f" % aperture_ratio)
 
             # 全景/自定义相机
-            if camera_type == "PANO":
-                pano_map = {
-                    "EQUIRECTANGULAR": "等距柱状",
-                    "EQUIANGULAR_CUBEMAP_FACE": "等角立方体贴图",
-                    "MIRRORBALL": "镜面球",
-                    "FISHEYE_EQUIDISTANT": "鱼眼等距",
-                    "FISHEYE_EQUISOLID": "鱼眼等立体",
-                    "FISHEYE_LENS_POLYNOMIAL": "鱼眼多项式",
-                    "CENTRAL_CYLINDRICAL": "中心柱面",
-                }
-                pano_type = get_bl_property(camera, "panorama_type", None)
-                if pano_type is not None:
-                    items.append("全景类型%s" % pano_map.get(pano_type, pano_type))
-                fisheye_fov = get_bl_property(camera, "fisheye_fov", None)
-                if fisheye_fov is not None:
-                    items.append("鱼眼视场%.2f°" % degrees(fisheye_fov))
-                fisheye_lens = get_bl_property(camera, "fisheye_lens", None)
-                if fisheye_lens is not None:
-                    items.append("鱼眼焦距%.2fmm" % fisheye_lens)
-                lat_min = get_bl_property(camera, "latitude_min", None)
-                lat_max = get_bl_property(camera, "latitude_max", None)
-                if lat_min is not None and lat_max is not None:
-                    items.append("纬度范围%.2f°~%.2f°" % (degrees(lat_min), degrees(lat_max)))
-                lon_min = get_bl_property(camera, "longitude_min", None)
-                lon_max = get_bl_property(camera, "longitude_max", None)
-                if lon_min is not None and lon_max is not None:
-                    items.append("经度范围%.2f°~%.2f°" % (degrees(lon_min), degrees(lon_max)))
+            # if camera_type == "PANO":
+            #     pano_map = {
+            #         "EQUIRECTANGULAR": "等距柱状",
+            #         "EQUIANGULAR_CUBEMAP_FACE": "等角立方体贴图",
+            #         "MIRRORBALL": "镜面球",
+            #         "FISHEYE_EQUIDISTANT": "鱼眼等距",
+            #         "FISHEYE_EQUISOLID": "鱼眼等立体",
+            #         "FISHEYE_LENS_POLYNOMIAL": "鱼眼多项式",
+            #         "CENTRAL_CYLINDRICAL": "中心柱面",
+            #     }
+            #     pano_type = get_bl_property(camera, "panorama_type", None)
+            #     if pano_type is not None:
+            #         items.append("全景类型%s" % pano_map.get(pano_type, pano_type))
+            #     fisheye_fov = get_bl_property(camera, "fisheye_fov", None)
+            #     if fisheye_fov is not None:
+            #         items.append("鱼眼视场%.2f°" % degrees(fisheye_fov))
+            #     fisheye_lens = get_bl_property(camera, "fisheye_lens", None)
+            #     if fisheye_lens is not None:
+            #         items.append("鱼眼焦距%.2fmm" % fisheye_lens)
+            #     lat_min = get_bl_property(camera, "latitude_min", None)
+            #     lat_max = get_bl_property(camera, "latitude_max", None)
+            #     if lat_min is not None and lat_max is not None:
+            #         items.append("纬度范围%.2f°~%.2f°" % (degrees(lat_min), degrees(lat_max)))
+            #     lon_min = get_bl_property(camera, "longitude_min", None)
+            #     lon_max = get_bl_property(camera, "longitude_max", None)
+            #     if lon_min is not None and lon_max is not None:
+            #         items.append("经度范围%.2f°~%.2f°" % (degrees(lon_min), degrees(lon_max)))
 
             # if camera_type == "CUSTOM":
             #     custom_mode = get_bl_property(camera, "custom_mode", None)
