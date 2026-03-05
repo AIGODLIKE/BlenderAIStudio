@@ -170,10 +170,38 @@ class StudioImagesDescriptor(WidgetDescriptor):
         if len(self.value) >= self.widget_def.get("limit", 999):
             return
         advanced_options = {
-            "image_paste": "image_paste",
-            "image_fast_render": "image_camera",
-            "image_three_view_drawing": "image_three_view_drawing",
-            "image_line_art": "image_line_art",
+            "image_paste": {
+                "icon": "image_paste",
+                "title": "粘贴图像",
+                "tooltips": [
+                    "粘贴剪切板图像到当前图像列表",
+                ],
+            },
+            "image_fast_render": {
+                "icon": "image_camera",
+                "title": "快速渲染",
+                "tooltips": [
+                    "将当前视口快速渲染为图像",
+                    "并添加到当前图像列表",
+                ],
+            },
+            "image_three_view_drawing": {
+                "icon": "image_three_view_drawing",
+                "title": "三视图渲染",
+                "tooltips": [
+                    "为当前选中物体渲染三视图",
+                    "渲染的模型需要至少一个面",
+                    "(可选多个物体)",
+                ],
+            },
+            "image_line_art": {
+                "icon": "image_line_art",
+                "title": "线稿提取",
+                "tooltips": [
+                    "消耗积分将当前视口使用AI提取线稿",
+                    "并添加到当前图像列表",
+                ],
+            },
         }
         imgui.dummy((0, 0))
         imgui.push_style_color(imgui.Col.FRAME_BG, Const.FRAME_BG)
@@ -182,9 +210,10 @@ class StudioImagesDescriptor(WidgetDescriptor):
             if imgui.begin_table("##Table", len(advanced_options)):
                 for i in range(len(advanced_options)):
                     imgui.table_setup_column(f"##Column{i}", imgui.TableColumnFlags.WIDTH_STRETCH, 0, i)
-                for option, img in advanced_options.items():
+                for option, config in advanced_options.items():
                     imgui.table_next_column()
                     imgui.push_id(f"##Image_{option}")
+                    img = config.get("icon")
                     icon = TexturePool.get_tex_id(img)
                     tex = TexturePool.get_tex(icon)
 
@@ -196,6 +225,11 @@ class StudioImagesDescriptor(WidgetDescriptor):
                     imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
                     if imgui.button(f"##{img}", (cell, cell)):
                         self._process_image_tools_button(wrapper, app, option)
+                    if imgui.is_item_hovered():
+                        imgui.set_next_window_size((400, 0))
+                        title = config.get("title")
+                        tooltips = config.get("tooltips")
+                        AppHelperDraw.draw_tips_with_title(app, tooltips, title)
                     pmin = imgui.get_item_rect_min()
                     pmax = imgui.get_item_rect_max()
                     dl = imgui.get_window_draw_list()
@@ -403,6 +437,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
                 logger.exception("处理线稿结果时发生错误")
                 app.push_error_message("处理线稿结果时发生错误, 请查看控制台日志, 并与开发者联系")
                 print_exc()
+
         task.register_callback("completed", _line_art_job)
 
         # 定时轮询任务状态 判定已完成(成功/失败/取消)
@@ -3045,10 +3080,39 @@ class AIStudio(AppHud):
             return
         if widget.widget_name == "prompt":
             advanced_options = {
-                PromptOption.CAMERA_INFO: "prompt_camera",
-                PromptOption.LIGHT_INFO: "prompt_light",
-                PromptOption.PROMPT_REVERSE: "prompt_reverse",
-                PromptOption.TODO: "prompt_todo",
+                PromptOption.CAMERA_INFO: {
+                    "icon": "prompt_camera",
+                    "title": "活动相机",
+                    "tooltips": [
+                        "使用当前活动相机的信息",
+                        "例如位置、旋转、焦距、景深、光圈",
+                    ],
+                },
+                PromptOption.LIGHT_INFO: {
+                    "icon": "prompt_light",
+                    "title": "光源信息",
+                    "tooltips": [
+                        "使用场景中的灯光信息",
+                        "例如: 位置、旋转、强度(功率)、",
+                        "类型(点光、聚光)、色温颜色、",
+                        "软硬 (最多10个灯,欧拉旋转)",
+                    ],
+                },
+                PromptOption.PROMPT_REVERSE: {
+                    "icon": "prompt_reverse",
+                    "title": "提示词反求",
+                    "tooltips": [
+                        "消耗积分反求当前视口提示词",
+                        "并添加到提示词末尾",
+                    ],
+                },
+                PromptOption.TODO: {
+                    "icon": "prompt_todo",
+                    "title": "",
+                    "tooltips": [
+                        "",
+                    ],
+                },
             }
             imgui.push_style_color(imgui.Col.FRAME_BG, Const.FRAME_BG)
             imgui.push_style_var_y(imgui.StyleVar.FRAME_PADDING, 0)
@@ -3056,10 +3120,10 @@ class AIStudio(AppHud):
                 if imgui.begin_table("##Table", len(advanced_options)):
                     for i in range(len(advanced_options)):
                         imgui.table_setup_column(f"##Column{i}", imgui.TableColumnFlags.WIDTH_STRETCH, 0, i)
-                    for option, img in advanced_options.items():
+                    for option, config in advanced_options.items():
                         imgui.table_next_column()
                         imgui.push_id(f"##Image_{option}")
-
+                        img = config.get("icon")
                         imgui.begin_group()
                         imgui.set_next_item_allow_overlap()
                         imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
@@ -3070,6 +3134,11 @@ class AIStudio(AppHud):
                         cell = imgui.get_content_region_avail()[0]
                         if imgui.button(f"##{img}", (cell, cell)):
                             self._process_prompt_options(widget, wrapper, option)
+                        if imgui.is_item_hovered():
+                            imgui.set_next_window_size((400, 0))
+                            title = config.get("title")
+                            tooltips = config.get("tooltips")
+                            AppHelperDraw.draw_tips_with_title(app, tooltips, title)
                         pmin = imgui.get_item_rect_min()
                         pmax = imgui.get_item_rect_max()
                         dl = imgui.get_window_draw_list()
