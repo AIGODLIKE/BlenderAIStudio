@@ -107,11 +107,11 @@ def get_orientation_reference_object_info(context, camera_obj):
 
             return ",".join(
                 [
+                    camera_prompt,
                     # "相对于主体距离%s" %ref_obj.name,
                     "水平角%.0f" % rel["horizontal"],
                     "俯仰角%.0f" % rel["vertical"],
                     "倾斜角%.0f" % rel.get("tilt", 0),
-                    # camera_prompt,
                 ]
             )
     return None
@@ -319,7 +319,7 @@ def get_camera_info(context):
             #     if pivot:
             #         items.append("立体轴心%s" % pivot)
         info = ",".join(items)
-        return f"根据相机信息确认观察者视角,修改观察视角相机信息({info})"
+        return f"相机信息({info})"
     else:
         raise Exception(_T("No Camera in Scene"))
 
