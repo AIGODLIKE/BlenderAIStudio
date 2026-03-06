@@ -3109,8 +3109,13 @@ class AIStudio(AppHud):
                 if imgui.begin_table("##Table", len(advanced_options)):
                     for i in range(len(advanced_options)):
                         imgui.table_setup_column(f"##Column{i}", imgui.TableColumnFlags.WIDTH_STRETCH, 0, i)
+                    opt_index = 0
                     for option, config in advanced_options.items():
+                        opt_index += 1
                         imgui.table_next_column()
+                        if opt_index > 2:
+                            imgui.button(f"##{opt_index}", (0, 0))
+                            continue
                         imgui.push_id(f"##Image_{option}")
                         img = config.get("icon")
                         imgui.begin_group()
