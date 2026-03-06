@@ -287,18 +287,28 @@ def _get_objects_bounding_box(objects: list[bpy.types.Object]) -> tuple[Vector, 
     return bb_min, bb_max
 
 
-# 三视图视角定义
+# 六视图视角定义
 #   w_axis / h_axis: 投影平面对应的世界坐标轴索引 (0=X, 1=Y, 2=Z)
 #   depth_axis: 深度方向的世界坐标轴索引
 #
 # 约定与 Blender Numpad 视角一致:
-#   Front (Numpad 1): 从 -Y 看向 +Y → euler (π/2, 0, π)
-#   Right (Numpad 3): 从 +X 看向 -X → euler (π/2, 0, π/2)
-#   Top   (Numpad 7): 从 +Z 看向 -Z → euler (0, 0, 0)
-THREE_VIEW_SPECS = [
+#   Front  (Numpad 1):       从 -Y 看向 +Y → euler (π/2, 0, π)
+#   Back   (Ctrl+Numpad 1):  从 +Y 看向 -Y → euler (π/2, 0, 0)
+#   Right  (Numpad 3):       从 +X 看向 -X → euler (π/2, 0, π/2)
+#   Left   (Ctrl+Numpad 3):  从 -X 看向 +X → euler (π/2, 0, -π/2)
+#   Top    (Numpad 7):       从 +Z 看向 -Z → euler (0, 0, 0)
+#   Bottom (Ctrl+Numpad 7):  从 -Z 看向 +Z → euler (π, 0, 0)
+SIX_VIEW_SPECS = [
     {  # 正视图 (Front): 相机在 -Y 侧, 看向 +Y → 投影到 XZ 平面
         "name": "front",
         "euler": (math.pi / 2, 0, math.pi),
+        "w_axis": 0,
+        "h_axis": 2,
+        "depth_axis": 1,
+    },
+    {  # 后视图 (Back): 相机在 +Y 侧, 看向 -Y → 投影到 XZ 平面
+        "name": "back",
+        "euler": (math.pi / 2, 0, 0),
         "w_axis": 0,
         "h_axis": 2,
         "depth_axis": 1,
@@ -310,6 +320,13 @@ THREE_VIEW_SPECS = [
         "h_axis": 2,
         "depth_axis": 0,
     },
+    {  # 左视图 (Left): 相机在 -X 侧, 看向 +X → 投影到 YZ 平面
+        "name": "left",
+        "euler": (math.pi / 2, 0, -math.pi / 2),
+        "w_axis": 1,
+        "h_axis": 2,
+        "depth_axis": 0,
+    },
     {  # 顶视图 (Top): 相机在 +Z 侧, 看向 -Z → 投影到 XY 平面
         "name": "top",
         "euler": (0, 0, 0),
@@ -317,16 +334,23 @@ THREE_VIEW_SPECS = [
         "h_axis": 1,
         "depth_axis": 2,
     },
+    {  # 底视图 (Bottom): 相机在 -Z 侧, 看向 +Z → 投影到 XY 平面
+        "name": "bottom",
+        "euler": (math.pi, 0, 0),
+        "w_axis": 0,
+        "h_axis": 1,
+        "depth_axis": 2,
+    },
 ]
 
 
-def _render_three_views(
+def _render_six_views(
     context: dict,
     objects: list[bpy.types.Object],
     resolution: int = 1024,
     padding: float = 1.05,
 ) -> list[str]:
-    """对指定物体进行正交三视图渲染（正视图、侧视图、顶视图）。
+    """对指定物体进行正交六视图渲染（正、后、右、左、顶、底）。
 
     算法要点:
         1. 计算所有物体联合包围盒 (AABB)
@@ -336,14 +360,16 @@ def _render_three_views(
         5. 渲染完成后删除临时相机, 恢复所有设置
 
     Args:
-        scene: Blender 场景
+        context: Blender 上下文
         objects: 要渲染的物体列表
-        resolution: 输出图片的长边像素数
+        resolution: 输出图片的最长边像素数（上限 1024）
         padding: 包围盒到画面边缘的留白比例 (>1.0), 例如 1.05 表示 5% 留白
 
     Returns:
-        三张渲染图片的路径列表 [front, right, top]
+        六张渲染图片的路径列表 [front, back, right, left, top, bottom]
     """
+    resolution = min(resolution, 1024)
+
     bb_min, bb_max = _get_objects_bounding_box(objects)
     bb_size = bb_max - bb_min
     bb_center = (bb_min + bb_max) / 2
@@ -352,7 +378,7 @@ def _render_three_views(
     if max_dim < 1e-6:
         raise ValueError("Selected objects have zero or near-zero bounding box")
 
-    temp_folder = get_temp_folder(prefix="three_view")
+    temp_folder = get_temp_folder(prefix="six_view")
     image_paths: list[str] = []
     created_objects: list[bpy.types.Object] = []
 
@@ -360,7 +386,10 @@ def _render_three_views(
     old_camera = scene.camera
     old_res_x = scene.render.resolution_x
     old_res_y = scene.render.resolution_y
+    old_res_percentage = scene.render.resolution_percentage
     old_engine = scene.render.engine
+
+    scene.render.resolution_percentage = 100
 
     for engine in ["BLENDER_EEVEE_NEXT", "BLENDER_EEVEE", "EEVEE"]:
         try:
@@ -370,7 +399,7 @@ def _render_three_views(
             continue
 
     try:
-        for spec in THREE_VIEW_SPECS:
+        for spec in SIX_VIEW_SPECS:
             view_name = spec["name"]
             euler_tuple = spec["euler"]
             w_axis = spec["w_axis"]
@@ -402,27 +431,26 @@ def _render_three_views(
             scene.render.resolution_x = res_x
             scene.render.resolution_y = res_y
 
-            cam_data = bpy.data.cameras.new(f"_three_view_{view_name}")
+            cam_data = bpy.data.cameras.new(f"_six_view_{view_name}")
             cam_data.type = "ORTHO"
             cam_data.ortho_scale = ortho_scale
             cam_data.sensor_fit = "AUTO"
             cam_data.clip_start = 0.001
             cam_data.clip_end = view_depth * 2 + max_dim * 4
 
-            cam_obj = bpy.data.objects.new(f"_three_view_{view_name}", cam_data)
+            cam_obj = bpy.data.objects.new(f"_six_view_{view_name}", cam_data)
             scene.collection.objects.link(cam_obj)
             created_objects.append(cam_obj)
 
             cam_obj.rotation_euler = euler_tuple
 
-            # 从 euler 推导观察方向, 相机沿观察方向的反方向偏移
             look_dir = -(cam_obj.rotation_euler.to_matrix() @ Vector((0, 0, 1)))
             cam_distance = view_depth / 2 + max_dim * 2
             cam_obj.location = bb_center - look_dir * cam_distance
 
             scene.camera = cam_obj
 
-            image_path = str(Path(temp_folder) / f"three_view_{view_name}.png")
+            image_path = str(Path(temp_folder) / f"six_view_{view_name}.png")
             with with_scene_render_output_settings(scene, image_path):
                 with silent_rendering():
                     bpy.ops.render.render(write_still=True)
@@ -431,6 +459,7 @@ def _render_three_views(
         scene.camera = old_camera
         scene.render.resolution_x = old_res_x
         scene.render.resolution_y = old_res_y
+        scene.render.resolution_percentage = old_res_percentage
         scene.render.engine = old_engine
 
         for obj in created_objects:
@@ -519,23 +548,24 @@ class BlenderRenderHelper:
         return image_path
 
     def render_three_views(self, context: dict, objects: list[bpy.types.Object] = None, resolution: int = 1024) -> list[str]:
-        """渲染选中物体的三视图（正视图、侧视图、顶视图）。
+        """渲染选中物体的六视图（正、后、右、左、顶、底）。
+
         Args:
             objects: 要渲染的物体列表，若为 None 则使用当前选中物体
-            resolution: 输出图片长边像素数
+            resolution: 输出图片最长边像素数（上限 1024）
 
         Returns:
-            三张渲染图片路径 [front, right, top]
+            六张渲染图片路径 [front, back, right, left, top, bottom]
         """
         if objects is None:
             objects = [obj for obj in bpy.context.selected_objects if obj.type == "MESH"]
         if not objects:
-            raise ValueError("No objects selected for three-view rendering")
+            raise ValueError("No objects selected for six-view rendering")
 
         try:
             self._wait_for_rendering()
             BlenderRenderHelper.set_is_rendering(True)
-            res = Timer.wait_run(_render_three_views)(context, objects, resolution)
+            res = Timer.wait_run(_render_six_views)(context, objects, resolution)
         finally:
             BlenderRenderHelper.set_is_rendering(False)
         return res
