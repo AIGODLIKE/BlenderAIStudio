@@ -207,9 +207,13 @@ def try_set_camera_orientation_reference(app: "AIStudio"):
     ao = context.active_object
     ai = context.scene.blender_ai_studio_property
     if ao:
-        ai.orientation_reference_object = ao
-        items = [f"已将相机主体参考设置为{ao.name}", ]
-        if camera_obj := context.scene.camera:
+        items = []
+        camera_obj = context.scene.camera
+
+        if ao != ai.orientation_reference_object:
+            ai.orientation_reference_object = ao
+            items.append(f"已将相机主体参考设置为{ao.name}")
+        if camera_obj:
             if ref_info := get_camera_info(context):
                 items.append(ref_info)
         items.append("您也可以在相机属性中手动指定主体")
