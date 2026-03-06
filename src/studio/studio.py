@@ -201,6 +201,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
                     "消耗积分",
                     "从当前画面中分离出线稿、色彩与空间深度信息",
                     "并添加到当前图像列表",
+                    "（按当前分辨率&模型单张计算）",
                 ],
             },
         }
@@ -3073,8 +3074,8 @@ class AIStudio(AppHud):
                     "title": "活动相机",
                     "tooltips": [
                         "使用当前活动相机的信息",
-                        "例如位置、旋转、焦距、景深、光圈",
-                        "(可选择一个活动的物体作为相机的主体,输入相对于主体的距离，方位角，俯仰角)"
+                        "例如焦距、景深、光圈",
+                        "(可选择一个活动的物体作为相机的主体,输入相对于主体的方位角，俯仰角)"
                     ],
                 },
                 PromptOption.LIGHT_INFO: {
@@ -3082,9 +3083,8 @@ class AIStudio(AppHud):
                     "title": "光源信息",
                     "tooltips": [
                         "使用场景中的灯光信息",
-                        "例如: 位置、旋转、强度(功率)、",
-                        "类型(点光、聚光)、色温颜色、",
-                        "软硬 (欧拉旋转)",
+                        "例如: 强度(功率),颜色",
+                        "类型(点光、聚光)",
                     ],
                 },
                 PromptOption.PROMPT_REVERSE: {
@@ -3200,7 +3200,8 @@ class AIStudio(AppHud):
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             return
 
-    def _process_prompt_options(self, widget: WidgetDescriptor, wrapper: StudioWrapper, option: PromptOption, app: "AIStudio"):
+    def _process_prompt_options(self, widget: WidgetDescriptor, wrapper: StudioWrapper, option: PromptOption,
+                                app: "AIStudio"):
         """点击事件"""
         if option == PromptOption.CAMERA_INFO:
             label_str_flag = option.value
@@ -3210,7 +3211,8 @@ class AIStudio(AppHud):
         if option == PromptOption.LIGHT_INFO:
             light_count = len([o for o in bpy.context.scene.objects if o.type == "LIGHT"])
             if light_count > 10:
-                app.push_error_message(_T("Too many lights in scene. Large amount of data may increase generation failure rate. It is recommended not to use too many lights."))
+                app.push_error_message(
+                    _T("Too many lights in scene. Large amount of data may increase generation failure rate. It is recommended not to use too many lights."))
             label_str_flag = option.value
             widget.value += label_str_flag
         if option == PromptOption.PROMPT_REVERSE:

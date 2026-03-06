@@ -60,34 +60,34 @@ def _compute_relative_angles(camera_obj: bpy.types.Object, ref_obj: bpy.types.Ob
 
 
 def _angles_to_direction_labels(horizontal: float, vertical: float) -> tuple[str, str]:
-    """根据水平角、俯仰角返回方位描述标签（正面/右前/仰拍/略俯等）"""
+    """Return azimuth and elevation labels following ComfyUI-qwenmultiangle conventions."""
     v_clamped = max(-30, min(60, round(vertical)))
 
     if horizontal < 22.5 or horizontal >= 337.5:
-        h_direction = "正面"
+        h_direction = "front view"
     elif horizontal < 67.5:
-        h_direction = "右前"
+        h_direction = "front-right quarter view"
     elif horizontal < 112.5:
-        h_direction = "右侧"
+        h_direction = "right side view"
     elif horizontal < 157.5:
-        h_direction = "右后"
+        h_direction = "back-right quarter view"
     elif horizontal < 202.5:
-        h_direction = "背面"
+        h_direction = "back view"
     elif horizontal < 247.5:
-        h_direction = "左后"
+        h_direction = "back-left quarter view"
     elif horizontal < 292.5:
-        h_direction = "左侧"
+        h_direction = "left side view"
     else:
-        h_direction = "左前"
+        h_direction = "front-left quarter view"
 
     if v_clamped < -15:
-        v_direction = "仰拍"
+        v_direction = "low-angle shot"
     elif v_clamped < 15:
-        v_direction = "平视"
+        v_direction = "eye-level shot"
     elif v_clamped < 45:
-        v_direction = "略俯"
+        v_direction = "elevated shot"
     else:
-        v_direction = "俯拍"
+        v_direction = "high-angle shot"
 
     return h_direction, v_direction
 
@@ -161,10 +161,9 @@ def get_camera_info(context):
     rel = _get_orientation_rel(context, camera_obj)
     if rel:
         h_dir, v_dir = _angles_to_direction_labels(rel["horizontal"], rel["vertical"])
-        # parts.append("水平旋转%.0f度" % rel["horizontal"])
         v = rel["vertical"]
-        parts.append(f"{h_dir}视角")
-        parts.append(f"{v_dir}")
+        parts.append(h_dir)
+        parts.append(v_dir)
         # parts.append(
         #     f"{v_dir}%s%.0f度" % ("向下" if v > 0 else ("向上" if v < 0 else ""),
         #                           abs(v) if abs(v) >= 0.5 else 0))
