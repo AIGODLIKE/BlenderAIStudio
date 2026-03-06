@@ -169,7 +169,7 @@ def get_camera_info(context):
         #                           abs(v) if abs(v) >= 0.5 else 0))
         t = rel.get("tilt", 0)
         if abs(t) >= 0.5:
-            parts.append("%s旋转%.0f度" % ("顺时针" if t > 0 else "逆时针", abs(t)))
+            parts.append("%s倾斜%.0f度" % ("顺时针" if t > 0 else "逆时针", abs(t)))
 
     # 3. 景深、光圈、对焦距离
     dof = get_bl_property(camera, "dof", None)
