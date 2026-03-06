@@ -92,10 +92,9 @@ def _format_light(light_obj, light):
         temp = get_bl_property(light, "temperature", None)
         if temp is not None:
             items.append("色温%.0fK" % temp)
-    else:
-        color = get_bl_property(light, "color", None)
-        if color is not None:
-            items.append("颜色%s" % _linear_rgb_to_hex(color.r, color.g, color.b))
+    color = get_bl_property(light, "color", None)
+    if color is not None:
+        items.append("颜色%s" % _linear_rgb_to_hex(color.r, color.g, color.b))
 
     # # 软硬
     # soft_size = get_bl_property(light, "shadow_soft_size", None)
