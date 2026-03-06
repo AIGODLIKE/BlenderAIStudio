@@ -196,9 +196,10 @@ class StudioImagesDescriptor(WidgetDescriptor):
             },
             "image_line_art": {
                 "icon": "image_line_art",
-                "title": "线稿提取",
+                "title": "视觉解构",
                 "tooltips": [
-                    "消耗积分将当前视口使用AI提取线稿",
+                    "消耗积分",
+                    "从当前画面中分离出线稿、色彩与空间深度信息",
                     "并添加到当前图像列表",
                 ],
             },
