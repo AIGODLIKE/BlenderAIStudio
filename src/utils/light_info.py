@@ -5,6 +5,20 @@ from bpy.app.translations import pgettext as _T
 from .property import get_bl_property
 
 
+def _linear_to_srgb(c: float) -> int:
+    """Convert a single linear-space channel (0~1) to sRGB (0~255)."""
+    c = max(0.0, min(1.0, c))
+    if c <= 0.0031308:
+        s = c * 12.92
+    else:
+        s = 1.055 * (c ** (1.0 / 2.4)) - 0.055
+    return int(round(s * 255))
+
+
+def _linear_rgb_to_hex(r: float, g: float, b: float) -> str:
+    return "#%02X%02X%02X" % (_linear_to_srgb(r), _linear_to_srgb(g), _linear_to_srgb(b))
+
+
 def _format_light(light_obj, light):
     """格式化单个灯光信息"""
     items = []  # "灯光%s" % light_obj.name
@@ -81,7 +95,7 @@ def _format_light(light_obj, light):
     else:
         color = get_bl_property(light, "color", None)
         if color is not None:
-            items.append("颜色(%.1f,%.1f,%.1f)" % (color.r, color.g, color.b))
+            items.append("颜色%s" % _linear_rgb_to_hex(color.r, color.g, color.b))
 
     # # 软硬
     # soft_size = get_bl_property(light, "shadow_soft_size", None)
