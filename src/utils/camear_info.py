@@ -164,9 +164,10 @@ def get_camera_info(context):
         # parts.append("水平旋转%.0f度" % rel["horizontal"])
         v = rel["vertical"]
         parts.append(f"{h_dir}视角")
-        parts.append(
-            f"{v_dir}%s%.0f度" % ("向下" if v > 0 else ("向上" if v < 0 else ""),
-                                  abs(v) if abs(v) >= 0.5 else 0))
+        parts.append(f"{v_dir}")
+        # parts.append(
+        #     f"{v_dir}%s%.0f度" % ("向下" if v > 0 else ("向上" if v < 0 else ""),
+        #                           abs(v) if abs(v) >= 0.5 else 0))
         t = rel.get("tilt", 0)
         if abs(t) >= 0.5:
             parts.append("%s旋转%.0f度" % ("顺时针" if t > 0 else "逆时针", abs(t)))
