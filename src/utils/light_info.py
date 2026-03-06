@@ -18,7 +18,7 @@ def _format_light(light_obj, light):
     }
     light_type = get_bl_property(light, "type", None)
     if light_type is not None:
-        items.append("类型%s" % light_type_map.get(light_type, light_type))
+        items.append("%s" % light_type_map.get(light_type, light_type))
 
     # 位置、旋转（欧拉）、缩放（点光全向发光，旋转无影响故不输出）
     # loc = get_bl_property(light_obj, "location", None)

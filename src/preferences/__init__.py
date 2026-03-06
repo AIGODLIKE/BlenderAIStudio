@@ -119,7 +119,7 @@ Reference images must also be selected manually by the user""",
 
     line_art_prompt: bpy.props.StringProperty(
         name="Line Art Prompt",
-        default="提取线稿、深度图和色稿",
+        default="保持图像，不要裁剪图像，提取线稿、深度图、法线图和色稿、以四宫格方式铺满画布",
         **translation_context,
     )
 
