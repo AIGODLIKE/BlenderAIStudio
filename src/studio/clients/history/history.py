@@ -88,6 +88,7 @@ class StudioHistoryItem:
             self.status = self.STATUS_SUCCESS
         else:
             self.status = self.STATUS_FAILED
+            logger.info(f"Load Old with Failed: {self.task_id} {self.error_message}")
 
     def is_pending(self) -> bool:
         return self.status == self.STATUS_PENDING
