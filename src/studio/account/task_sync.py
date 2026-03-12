@@ -135,12 +135,16 @@ class TaskSyncService:
             self._syncing_task_ids.update(available_task_ids)  # 标记为同步中
 
         try:
-            # 1. 查询后端状态
-            logger.info(f"Querying status of {len(available_task_ids)} tasks...")
-            response_json = self.account._fetch_task_status(available_task_ids)
+            import datetime
             pref = get_pref()
+
+            t = datetime.datetime.now()
+            # 1. 查询后端状态
             if pref.use_debug_mode:
-                logger.info(f"{len(available_task_ids)} tasks {response_json}")
+                logger.info(f"Querying status of {t} {len(available_task_ids)} tasks...")
+            response_json = self.account._fetch_task_status(available_task_ids)
+            if pref.use_debug_mode:
+                logger.info(f"{len(available_task_ids)}  {t}  tasks {response_json}")
             # 2. 解析响应
             status_map = self.parser.parse_batch_response(response_json)
 
