@@ -43,7 +43,7 @@ def _collect_scene_history() -> dict:
             return data
         prop = scene.blender_ai_studio_property
         data["generate_history"] = _truncate_text(prop.generate_history or "[]", max_chars=60000)
-        for item in prop.edit_history:
+        for item in prop.edit_history[-10:]:
             data["edit_history"].append(
                 {
                     "task_id": item.task_id,
@@ -66,8 +66,7 @@ def _collect_studio_history() -> list[dict]:
 
         history = StudioHistory.get_instance()
         items = [item.data for item in history.items]
-        # 避免上报体过大，保留最近 50 条
-        return items[:50]
+        return items[-10:]
     except Exception as e:
         logger.error(f"收集 StudioHistory 失败: {e}")
         return []
@@ -99,9 +98,9 @@ def build_error_report_info() -> str:
         "blender_version": bpy.app.version_string,
         "addon_version": get_addon_version_str(),
         "preferences": _collect_preferences(),
-        "logger_recent": get_recent_logger_text(limit=8000),
-        "console_recent": get_recent_console_text(limit=12000),
-        "logger_file_tail": _read_log_file(max_chars=80000),
+        "logger_recent": get_recent_logger_text(limit=10000),
+        "console_recent": get_recent_console_text(limit=10000),
+        "logger_file_tail": _read_log_file(max_chars=10000),
         "scene_history": _collect_scene_history(),
         "studio_history_items": _collect_studio_history(),
     }
