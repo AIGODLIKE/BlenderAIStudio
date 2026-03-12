@@ -74,6 +74,8 @@ class StudioHistoryItem:
         for k in history.__dict__:
             if k not in data:
                 continue
+            if k == "status" and data.get(k) == StudioHistoryItem.STATUS_FAILED:
+                logger.info(f"Load new item with Failed: {history.task_id} {history.error_message} {data.get(k)}")
             setattr(history, k, data.get(k))
         return history
 
