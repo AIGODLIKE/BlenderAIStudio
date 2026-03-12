@@ -98,14 +98,14 @@ def build_error_report_info() -> str:
         "blender_version": bpy.app.version_string,
         "addon_version": get_addon_version_str(),
         "preferences": _collect_preferences(),
-        "logger_recent": get_recent_logger_text(limit=10000),
-        "console_recent": get_recent_console_text(limit=10000),
-        "logger_file_tail": _read_log_file(max_chars=10000),
+        "logger_recent": get_recent_logger_text(limit=100000),
+        "console_recent": get_recent_console_text(limit=100000),
+        "logger_file_tail": _read_log_file(max_chars=100000),
         "scene_history": _collect_scene_history(),
         "studio_history_items": _collect_studio_history(),
     }
     text = json.dumps(info, ensure_ascii=False, indent=2)
-    return _truncate_text(text, max_chars=200000)
+    return _truncate_text(text, max_chars=20000000)
 
 
 def upload_error_report_async(ops):
