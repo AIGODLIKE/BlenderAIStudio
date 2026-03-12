@@ -4,13 +4,13 @@ from queue import Queue
 from threading import Thread, Lock
 from typing import Callable, Optional, TYPE_CHECKING
 
+from .network import get_session
 from .task_history import (
     TaskStatus,
     TaskStatusData,
     TaskHistoryData,
     AccountTaskHistory,
 )
-from .network import get_session
 from ..utils import save_mime_typed_datas_to_temp_files
 from ...logger import logger
 
@@ -53,11 +53,11 @@ class StatusResponseParser:
 
         return result
 
-    def download_result(self, urls: list[str]) -> list[tuple[str, bytes]]:
+    def download_result(self, urls: list[str], task_history: TaskHistoryData) -> list[tuple[str, bytes]]:
         # TODO 是否考虑在下一次轮询前未下载完成时, 是否会导致重复下载?
         results = []
         for url in urls:
-            logger.info(f"Downloading result from: {url}")
+            logger.info(f"Downloading result {task_history.task_id} from: {url}")
             session = get_session()
             response = session.get(url)
             response.raise_for_status()
@@ -194,7 +194,7 @@ class TaskSyncService:
         logger.info(f"Task {task_history.task_id} completed, downloading result...")
 
         # 下载结果
-        data = self.parser.download_result(status.urls)
+        data = self.parser.download_result(status.urls, task_history)
 
         # 转换为统一格式
         parsed_data = self.parser.convert_to_unified_format(data)
@@ -236,6 +236,7 @@ class TaskSyncService:
         task_history.progress = 0.0
 
     def _mark_task_not_found(self, task_history: TaskHistoryData):
+        logger.warning(f"_mark_task_not_found {task_history.task_id} not found in backend")
         pass  # 预留方法，目前不需要特殊处理
 
 
