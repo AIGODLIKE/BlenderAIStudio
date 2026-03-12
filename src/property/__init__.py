@@ -246,8 +246,12 @@ class EditHistory(HistoryState, GeneralProperty, HistoryFailedCheck, bpy.types.P
             row.template_icon(oi.preview.icon_id, scale=icon_size)
             row.operator("bas.view_image", text="View Origin Image")
 
-        box.context_pointer_set("history", self)
-        box.operator("bas.restore_history", icon="FILE_PARENT")
+        row = box.row(align=True)
+        row.context_pointer_set("history", self)
+        row.operator("bas.restore_history", icon="FILE_PARENT")
+        ops = row.operator("wm.context_set_string", icon="COPY_ID",text="")
+        ops.data_path = "window_manager.clipboard"
+        ops.value = self.task_id
 
     @property
     def more_history_information(self) -> str:
