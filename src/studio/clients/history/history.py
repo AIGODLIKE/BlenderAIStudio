@@ -255,6 +255,7 @@ class StudioHistory:
             item.status = StudioHistoryItem.STATUS_UNKNOWN
             item.elapsed_time = time.time() - item.started_at
         elif task_history.state.is_failed():
+            logger.info(f"任务失败: {task_history.task_id} {task_history.error_message}")
             item.status = StudioHistoryItem.STATUS_FAILED
             item.finished_at = task_history.finished_at
             item.timestamp = task_history.finished_at
@@ -262,6 +263,7 @@ class StudioHistory:
             item.progress = 0.0
             item.error_message = task_history.error_message
         elif task_history.state.is_unknown():
+            logger.info(f"任务未知: {task_history.task_id} {task_history.error_message}")
             item.status = StudioHistoryItem.STATUS_FAILED
             item.error_message = task_history.error_message
         if not task_history.state.is_running():

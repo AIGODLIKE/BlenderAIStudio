@@ -128,6 +128,7 @@ class StudioClient(BaseAdapter):
             # 任务准备失败
             item.status = StudioHistoryItem.STATUS_FAILED
             item.error_message = result.error_message or str(result.error or "")
+            logger.warning(f"Task {task.task_id} 任务准备失败 {item.error_message}")
         elif is_network_error and is_account_mode:
             # 网络异常且为账号模式，标记为待确认状态
             item.status = StudioHistoryItem.STATUS_UNKNOWN
@@ -137,7 +138,7 @@ class StudioClient(BaseAdapter):
             # 真正的失败
             item.status = StudioHistoryItem.STATUS_FAILED
             item.error_message = result.error_message or str(result.error or "")
-            logger.error(f"Task failed: {task.task_id} {result.error_message}")
+            logger.error(f"Task failed 真正的失败: {task.task_id} {result.error_message}")
             logger.critical(f"Task failed: {task.task_id}")
 
         if not result.success:
