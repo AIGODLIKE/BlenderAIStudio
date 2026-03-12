@@ -13,6 +13,7 @@ from .task_history import (
 )
 from ..utils import save_mime_typed_datas_to_temp_files
 from ...logger import logger
+from ...utils import get_pref
 
 if TYPE_CHECKING:
     from .core import Account
@@ -137,7 +138,9 @@ class TaskSyncService:
             # 1. 查询后端状态
             logger.info(f"Querying status of {len(available_task_ids)} tasks...")
             response_json = self.account._fetch_task_status(available_task_ids)
-
+            pref = get_pref()
+            if pref.use_debug_mode:
+                logger.info(f"{len(available_task_ids)} tasks {response_json}")
             # 2. 解析响应
             status_map = self.parser.parse_batch_response(response_json)
 

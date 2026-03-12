@@ -162,7 +162,7 @@ Reference images must also be selected manually by the user""",
     )
     use_debug_mode: bpy.props.BoolProperty(
         name="Use Development Mode",
-        default=False,
+        default=True,
         **translation_context,
     )
 

@@ -330,11 +330,12 @@ def sync_history_timer():
         items = history.find_all_needs_status_sync_items()
 
         pref = get_pref()
-        if pref.use_debug_mode:
-            logger.info("sync_history_timer")
-            for i in items:
-                logger.info(f"{i.task_id} {i.status}")
-            print()
+        if pref.use_debug_mode and len(items):
+            print("sync_history_timer", flush=True)
+            for index, i in enumerate(items):
+                logger.info(f"\t{index} {i.task_id} {i.status}")
+                print("sync_history_timer", flush=True)
+            print(flush=True)
         account = Account.get_instance()
         task_history_map = account.fetch_task_history([item.task_id for item in items])
         for task_history in task_history_map.values():
