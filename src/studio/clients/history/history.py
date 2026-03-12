@@ -12,6 +12,7 @@ from ...account import Account
 from ...account.task_history import TaskHistoryData
 
 from .... import logger
+from ....utils import get_pref
 
 
 class StudioHistoryItem:
@@ -296,7 +297,8 @@ class StudioHistory:
                 logger.debug(data)
             items = [StudioHistoryItem.load(item) for item in data]
             # 排除未提交的任务(排队中、准备中)
-            items = [item for item in items if item.status not in (StudioHistoryItem.STATUS_PENDING, StudioHistoryItem.STATUS_PREPARING)]
+            items = [item for item in items if
+                     item.status not in (StudioHistoryItem.STATUS_PENDING, StudioHistoryItem.STATUS_PREPARING)]
             # 转移running状态为unknown
             for item in items:
                 if item.status != StudioHistoryItem.STATUS_RUNNING:
@@ -326,6 +328,13 @@ def sync_history_timer():
     try:
         history = StudioHistory.get_instance()
         items = history.find_all_needs_status_sync_items()
+
+        pref = get_pref()
+        if pref.use_debug_mode:
+            logger.info("sync_history_timer")
+            for i in items:
+                logger.info(f"{i.task_id} {i.status}")
+            print()
         account = Account.get_instance()
         task_history_map = account.fetch_task_history([item.task_id for item in items])
         for task_history in task_history_map.values():

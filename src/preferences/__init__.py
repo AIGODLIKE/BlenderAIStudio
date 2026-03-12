@@ -160,22 +160,30 @@ Reference images must also be selected manually by the user""",
         default=False,
         **translation_context,
     )
+    use_debug_mode: bpy.props.BoolProperty(
+        name="Use Development Mode",
+        default=False,
+        **translation_context,
+    )
 
     dev_api_base_url: bpy.props.StringProperty(
         name="Dev API Base URL",
         default="",
+        subtype="PASSWORD",
         **translation_context,
     )
 
     dev_login_url: bpy.props.StringProperty(
         name="Dev Login URL",
         default="",
+        subtype="PASSWORD",
         **translation_context,
     )
 
     dev_token: bpy.props.StringProperty(
         name="Dev Token",
         default="",
+        subtype="PASSWORD",
         **translation_context,
     )
 
@@ -229,11 +237,12 @@ Reference images must also be selected manually by the user""",
         column = layout.column()
         column.operator("bas.upload_error_report", icon="URL")
         column.label(text="Environment Settings")
+        column.prop(self, "init_privacy")
+        column.prop(self, "use_debug_mode")
         column.prop(self, "use_dev_ui")
         column.prop(self, "use_dev_environment")
 
         if self.use_dev_environment:
-            column.prop(self, "init_privacy")
             column.prop(self, "dev_api_base_url")
             column.prop(self, "dev_login_url")
             column.prop(self, "dev_token")
