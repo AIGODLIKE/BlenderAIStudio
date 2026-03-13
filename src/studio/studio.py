@@ -1227,6 +1227,7 @@ class StudioWrapper:
         self._fast_render_running: dict[str, bool] = {}
         self._three_view_render_running: dict[str, bool] = {}
         self._line_art_render_running: dict[str, bool] = {}
+        self._prompt_reverse_running: dict[str, bool] = {}
 
     def set_fast_render_running(self, model_name: str, running: bool):
         self._fast_render_running[model_name] = running
@@ -1245,6 +1246,12 @@ class StudioWrapper:
 
     def get_line_art_render_running(self, model_name: str):
         return self._line_art_render_running.get(model_name, False)
+
+    def set_prompt_reverse_running(self, model_name: str, running: bool):
+        self._prompt_reverse_running[model_name] = running
+
+    def get_prompt_reverse_running(self, model_name: str):
+        return self._prompt_reverse_running.get(model_name, False)
 
     @property
     def title(self):
@@ -3113,7 +3120,7 @@ class AIStudio(AppHud):
                     for option, config in advanced_options.items():
                         opt_index += 1
                         imgui.table_next_column()
-                        if opt_index > 2:
+                        if opt_index > 3:
                             imgui.button(f"##{opt_index}", (0, 0))
                             continue
                         imgui.push_id(f"##Image_{option}")
@@ -3145,6 +3152,10 @@ class AIStudio(AppHud):
                             img_min = (cx - img_w * 0.5, cy - img_h * 0.5)
                             img_max = (cx + img_w * 0.5, cy + img_h * 0.5)
                             dl.add_image(icon, img_min, img_max)
+
+                        if option == PromptOption.PROMPT_REVERSE and wrapper.get_prompt_reverse_running(wrapper.model_name):
+                            self._display_prompt_reverse_running_effect(pmin, pmax, dl)
+
                         imgui.pop_style_color(3)
                         imgui.end_group()
                         imgui.pop_id()
@@ -3200,6 +3211,18 @@ class AIStudio(AppHud):
                 AppHelperDraw.draw_tips_with_title(self, [tip], title)
             return
 
+    def _display_prompt_reverse_running_effect(self, pmin, pmax, dl):
+        cx = (pmin[0] + pmax[0]) * 0.5
+        cy = (pmin[1] + pmax[1]) * 0.5
+        radius = (pmax[0] - pmin[0]) * 0.35
+        t = imgui.get_time()
+        start_angle = t * 4.0
+        end_angle = start_angle + math.pi * 1.5
+        col = imgui.get_color_u32((1.0, 1.0, 1.0, 0.9))
+        dl.path_clear()
+        dl.path_arc_to((cx, cy), radius, start_angle, end_angle, 32)
+        dl.path_stroke(col, 0, 3.0)
+
     def _process_prompt_options(self, widget: WidgetDescriptor, wrapper: StudioWrapper, option: PromptOption,
                                 app: "AIStudio"):
         """点击事件"""
@@ -3216,8 +3239,67 @@ class AIStudio(AppHud):
             label_str_flag = option.value
             widget.value += label_str_flag
         if option == PromptOption.PROMPT_REVERSE:
-            label_str_flag = option.value
-            widget.value += label_str_flag
+            self._submit_prompt_reverse(widget, wrapper, app)
+
+    def _submit_prompt_reverse(self, widget: WidgetDescriptor, wrapper: StudioWrapper, app: "AIStudio"):
+        """渲染当前视口并提交提示词反求任务"""
+        if not app.state.is_logged_in():
+            app.push_error_message(_T("Please login first"))
+            return
+
+        model_name = wrapper.model_name
+        if wrapper.get_prompt_reverse_running(model_name):
+            self.push_info_message(_T("Prompt reverse is already running, ignore click"))
+            return
+        wrapper.set_prompt_reverse_running(model_name, True)
+
+        try:
+            context_copy = bpy.context.copy()
+        except Exception as e:
+            logger.error(f"复制上下文失败: {e}")
+            wrapper.set_prompt_reverse_running(model_name, False)
+            return
+
+        manager = self.state.prompt_reverse_manager
+
+        def _on_success(content: str):
+            def _append_prompt():
+                if not content:
+                    return
+                widget.value = widget.value.rstrip() + " " + content if widget.value.strip() else content
+                wrapper.set_prompt_reverse_running(model_name, False)
+            Timer.put(_append_prompt)
+
+        def _on_error(msg: str):
+            def _show_error():
+                app.push_error_message(msg)
+                wrapper.set_prompt_reverse_running(model_name, False)
+            Timer.put(_show_error)
+
+        def _render_and_submit():
+            helper = BlenderRenderHelper()
+            try:
+                image_path = helper.render("FastRender", context_copy)
+            except Exception as e:
+                logger.error(f"提示词反求渲染失败: {e}")
+                Timer.put(lambda: app.push_error_message(_T("Render failed for prompt reverse")))
+                wrapper.set_prompt_reverse_running(model_name, False)
+                return
+
+            if not image_path:
+                Timer.put(lambda: app.push_error_message(_T("Render result is empty")))
+                wrapper.set_prompt_reverse_running(model_name, False)
+                return
+
+            manager.submit_task(
+                image_path=image_path,
+                on_success=_on_success,
+                on_error=_on_error,
+                prompt=get_pref().prompt_reverse_prompt,
+            )
+
+        threading.Thread(target=_render_and_submit, daemon=True).start()
+        app.push_info_message(_T("Prompt reverse task submitted, please wait..."))
 
     def test_webp_animation(self):
         for i, image in enumerate(Path.home().joinpath("Desktop/webp").glob("*.webp")):

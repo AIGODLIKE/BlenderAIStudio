@@ -124,6 +124,12 @@ Reference images must also be selected manually by the user""",
         **translation_context,
     )
 
+    prompt_reverse_prompt: bpy.props.StringProperty(
+        name="Prompt Reverse Prompt",
+        default="",
+        **translation_context,
+    )
+
     @property
     def is_backup_mode(self):  # 是稳定模式
         return self.account_auth_mode == AuthMode.ACCOUNT.value
@@ -161,6 +167,7 @@ Reference images must also be selected manually by the user""",
         layout.operator("bas.upload_error_report", icon="URL")
         layout.prop(self, "disable_system_prompt")
         layout.prop(self, "line_art_prompt")
+        layout.prop(self, "prompt_reverse_prompt")
 
         box = layout.box()
         box.prop(self, "enable_experimental_features")

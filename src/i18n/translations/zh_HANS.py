@@ -233,6 +233,7 @@ preferences_translations = (
     ("Verifying completed!!!", "验证完成!!!", ""),
     ("Successfully obtained download address", "获取下载地址成功", ""),
     ("Line Art Prompt", "线稿提示词", PROP_TCTX),
+    ("Prompt Reverse Prompt", "反求提示词", PROP_TCTX),
 )
 translations = (
     ("AI Studio Entry", "AI Studio 入口", OPS_TCTX),
