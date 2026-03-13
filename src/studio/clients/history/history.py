@@ -157,6 +157,9 @@ class StudioHistoryItem:
             prompt = self.metadata["params"].get("prompt", "")  # 新格式
         return prompt
 
+    def get_auth_mode(self):
+        return self.metadata.get("auth_mode", "")
+
     def get_output_file_image(self):
         for output in self.outputs:
             if output[0].startswith("image/"):

@@ -123,7 +123,8 @@ class StudioClient(BaseAdapter):
         is_connection_error = isinstance(result.error, (HTTPConnectionPool, HTTPSConnectionPool, ReadTimeout))
 
         account = Account.get_instance()
-        is_account_mode = account.auth_mode == AuthMode.ACCOUNT.value # TODO 生成时切换?
+        auth_mode = item.get_auth_mode() or account.auth_mode
+        is_account_mode = auth_mode == AuthMode.ACCOUNT.value
         if isinstance(result.error, TaskPrepareException):
             # 任务准备失败
             item.status = StudioHistoryItem.STATUS_FAILED

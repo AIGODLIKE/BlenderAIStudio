@@ -356,7 +356,12 @@ class UniversalClient(StudioClient):
         item.created_at = time.time()
         item.started_at = time.time()
         item.status = StudioHistoryItem.STATUS_PREPARING
+        item.metadata["model_id"] = task.model_id
+        item.metadata["model_name"] = self.model_config.model_name
+        item.metadata["category"] = self.model_config.category
+        item.metadata["auth_mode"] = task.auth_mode
         item.metadata.setdefault("params", {}).update(params)
+        item.metadata["task_id"] = self.task_id
         self.history.add(item)
         logger.info(f"任务已提交: {self.task_id}")
         return item, task
