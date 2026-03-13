@@ -14,6 +14,7 @@ from bpy.app.translations import pgettext as _T
 
 from .network import get_session
 from .task_history import AccountTaskHistory, TaskHistoryData
+from .prompt_reverse import PromptReverseManager, PromptReversePoller, CTalkApiClient
 from .task_sync import TaskSyncService, TaskStatusPoller
 from .websocket import WebSocketClient
 from ..config.model_registry import ModelRegistry
@@ -80,6 +81,11 @@ class Account:
         self.task_history = AccountTaskHistory()
         self.sync_service = TaskSyncService(self, self.task_history)
         self.task_poller = TaskStatusPoller(self, self.sync_service, interval=15)
+
+        # 提示词反求服务
+        self.prompt_reverse_manager = PromptReverseManager.get_instance(self)
+        ctalk_client = CTalkApiClient(self)
+        self.prompt_reverse_poller = PromptReversePoller(self.prompt_reverse_manager, ctalk_client, interval=5.0)
 
         # 兑换积分表
         self.redeem_to_credits_table = {

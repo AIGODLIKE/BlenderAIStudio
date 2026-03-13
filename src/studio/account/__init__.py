@@ -9,6 +9,11 @@ from .task_history import (
     TaskHistoryData,
     AccountTaskHistory,
 )
+from .prompt_reverse import (
+    PromptReverseManager,
+    PromptReversePoller,
+    CTalkApiClient,
+)
 from .task_sync import (
     StatusResponseParser,
     TaskSyncService,
@@ -36,12 +41,18 @@ __all__ = [
     "StatusResponseParser",
     "TaskSyncService",
     "TaskStatusPoller",
+    # 提示词反求
+    "PromptReverseManager",
+    "PromptReversePoller",
+    "CTalkApiClient",
     # WebSocket
     "WebSocketClient",
     # 注册函数
     "init_account",
     "start_task_status_poller",
     "stop_task_status_poller",
+    "start_prompt_reverse_poller",
+    "stop_prompt_reverse_poller",
     "register",
     "unregister",
 ]
@@ -79,12 +90,33 @@ def stop_task_status_poller():
         logger.error(f"Failed to stop task status poller: {e}")
 
 
+def start_prompt_reverse_poller():
+    if not get_pref():
+        return 1
+
+    try:
+        account = Account.get_instance()
+        account.prompt_reverse_poller.start()
+    except Exception as e:
+        logger.error(f"Failed to start prompt reverse poller: {e}")
+
+
+def stop_prompt_reverse_poller():
+    try:
+        account = Account.get_instance()
+        account.prompt_reverse_poller.stop()
+    except Exception as e:
+        logger.error(f"Failed to stop prompt reverse poller: {e}")
+
+
 def register():
     bpy.app.timers.register(init_account, first_interval=1, persistent=True)
     bpy.app.timers.register(start_task_status_poller, first_interval=1, persistent=True)
+    bpy.app.timers.register(start_prompt_reverse_poller, first_interval=1, persistent=True)
 
 
 def unregister():
     if bpy.app.timers.is_registered(init_account):
         bpy.app.timers.unregister(init_account)
     stop_task_status_poller()
+    stop_prompt_reverse_poller()
