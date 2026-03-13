@@ -29,21 +29,21 @@ class Debug:
     dev_api_base_url: bpy.props.StringProperty(
         name="Dev API Base URL",
         default="",
-        subtype="PASSWORD",
+        # subtype="PASSWORD",
         **translation_context,
     )
 
     dev_login_url: bpy.props.StringProperty(
         name="Dev Login URL",
         default="",
-        subtype="PASSWORD",
+        # subtype="PASSWORD",
         **translation_context,
     )
 
     dev_token: bpy.props.StringProperty(
         name="Dev Token",
         default="",
-        subtype="PASSWORD",
+        # subtype="PASSWORD",
         **translation_context,
     )
 
