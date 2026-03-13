@@ -135,16 +135,18 @@ class TaskSyncService:
             self._syncing_task_ids.update(available_task_ids)  # 标记为同步中
 
         try:
-            import datetime
+            import datetime, uuid
             pref = get_pref()
 
-            t = datetime.datetime.now()
+            ci = str(uuid.uuid4())[:8]
             # 1. 查询后端状态
             if pref.use_debug_mode:
-                logger.info(f"Querying status of {t} {len(available_task_ids)} tasks...")
+                t = datetime.datetime.now()
+                logger.info(f"Querying status of {ci} {t} {len(available_task_ids)} tasks... {available_task_ids}")
             response_json = self.account._fetch_task_status(available_task_ids)
             if pref.use_debug_mode:
-                logger.info(f"{len(available_task_ids)}  {t}  tasks {response_json}")
+                t = datetime.datetime.now()
+                logger.info(f"{ci} {len(available_task_ids)}  {t}  tasks {response_json}")
             # 2. 解析响应
             status_map = self.parser.parse_batch_response(response_json)
 
