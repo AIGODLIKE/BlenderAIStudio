@@ -5,6 +5,7 @@ import bpy
 from bpy.app.translations import pgettext_iface as iface
 
 from .api_key import ApiKey
+from .debug import Debug
 from .online_update import OnlineUpdate
 from .privacy import Privacy
 from ..i18n import PROP_TCTX
@@ -62,7 +63,7 @@ class PricingStrategy(Enum):
         return [item.value for item in list(cls)]
 
 
-class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey, Privacy):
+class BlenderAIStudioPref(bpy.types.AddonPreferences, OnlineUpdate, ApiKey, Privacy, Debug):
     bl_idname = base_name
     ui_pre_scale: bpy.props.FloatProperty(
         name="UI Pre Scale Factor",
@@ -149,51 +150,6 @@ Reference images must also be selected manually by the user""",
         self.account_pricing_strategy = value
         bpy.context.preferences.use_preferences_save = True
 
-    use_dev_ui: bpy.props.BoolProperty(
-        name="Use Development UI",
-        default=False,
-        **translation_context,
-    )
-    # 环境配置
-    use_dev_environment: bpy.props.BoolProperty(
-        name="Use Development Environment",
-        default=False,
-        **translation_context,
-    )
-    use_debug_mode: bpy.props.BoolProperty(
-        name="Use Development Mode",
-        default=True,
-        **translation_context,
-    )
-
-    dev_api_base_url: bpy.props.StringProperty(
-        name="Dev API Base URL",
-        default="",
-        subtype="PASSWORD",
-        **translation_context,
-    )
-
-    dev_login_url: bpy.props.StringProperty(
-        name="Dev Login URL",
-        default="",
-        subtype="PASSWORD",
-        **translation_context,
-    )
-
-    dev_token: bpy.props.StringProperty(
-        name="Dev Token",
-        default="",
-        subtype="PASSWORD",
-        **translation_context,
-    )
-
-    enable_experimental_features: bpy.props.BoolProperty(
-        name="Experimental Features",
-        description="Enable experimental features that may be unstable, Restart if enabled",
-        default=False,
-        **translation_context,
-    )
-
     def draw(self, context):
         layout = self.layout
         column = layout.column()
@@ -231,21 +187,6 @@ Reference images must also be selected manually by the user""",
         layout.prop(self, "account_auth_mode", text="Operating Mode")
         if not self.is_api_mode:
             layout.prop(self, "account_pricing_strategy", text="Pricing Strategy")
-
-    def draw_dev(self, layout):
-        # 环境配置
-        column = layout.column()
-        column.operator("bas.upload_error_report", icon="URL")
-        column.label(text="Environment Settings")
-        column.prop(self, "init_privacy")
-        column.prop(self, "use_debug_mode")
-        column.prop(self, "use_dev_ui")
-        column.prop(self, "use_dev_environment")
-
-        if self.use_dev_environment:
-            column.prop(self, "dev_api_base_url")
-            column.prop(self, "dev_login_url")
-            column.prop(self, "dev_token")
 
     def draw_service(self, layout):
         from ..studio.account import Account

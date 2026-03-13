@@ -1,4 +1,3 @@
-import bpy
 import json
 import platform
 import time
@@ -7,10 +6,12 @@ from pathlib import Path
 from threading import Thread
 from typing import Optional
 from uuid import uuid4
+
+import bpy
+
 from ..progress_estimator import TaskProgressEstimator
 from ...account import Account
 from ...account.task_history import TaskHistoryData
-
 from .... import logger
 from ....utils import get_pref
 
@@ -334,11 +335,11 @@ def sync_history_timer():
 
         pref = get_pref()
         if pref.use_debug_mode and len(items):
-            print("sync_history_timer", flush=True)
+            logger.info("sync_history_timer")
             for index, i in enumerate(items):
-                logger.info(f"\t{index} {i.task_id} {i.status}")
-                print("sync_history_timer", flush=True)
-            print(flush=True)
+                text = f"\t{index} {i.task_id} {i.status}"
+                logger.info(text)
+            logger.info("sync_history_finished")
         account = Account.get_instance()
         task_history_map = account.fetch_task_history([item.task_id for item in items])
         for task_history in task_history_map.values():
