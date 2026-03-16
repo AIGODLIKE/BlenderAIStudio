@@ -145,6 +145,7 @@ class GeminiImageGenerateBuilder(RequestBuilder):
         if "resolution" in processed and ("width" not in processed or "height" not in processed):
             resolution_str = processed["resolution"]
             resolution_map = {
+                "0.5K": (512, 512),
                 "1K": (1024, 1024),
                 "2K": (2048, 2048),
                 "4K": (4096, 4096),
@@ -174,11 +175,11 @@ class GeminiImageGenerateBuilder(RequestBuilder):
         return processed
 
     def _build_headers(
-            self,
-            header_template: Dict[str, str],
-            credentials: Dict[str, str],
-            model_config: "ModelConfig",
-            params: Dict[str, Any],
+        self,
+        header_template: Dict[str, str],
+        credentials: Dict[str, str],
+        model_config: "ModelConfig",
+        params: Dict[str, Any],
     ) -> Dict[str, str]:
         """构建 Headers
 
@@ -247,6 +248,10 @@ class GeminiImageGenerateBuilder(RequestBuilder):
             image_size = "4K"
         elif width >= 2048 or height >= 2048:
             image_size = "2K"
+        elif width >= 1024 or height >= 1024:
+            image_size = "1K"
+        elif width >= 512 or height >= 512:
+            image_size = "512"
 
         image_config = {}
         if self.is_pro:
