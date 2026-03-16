@@ -32,6 +32,7 @@ class MaskImageProperty(bpy.types.PropertyGroup):
     origin_image: bpy.props.PointerProperty(type=bpy.types.Image, name="原图图片 可以用于生成的图或是遮罩的图")
     generated_images: bpy.props.CollectionProperty(type=ImageItem, name="生成的图片")
     is_mask_image: bpy.props.BoolProperty(name="Is Mask Image", default=False)
+    is_edit_mask_image: bpy.props.BoolProperty(name="Is Edit Mask Image", default=False)
 
     def add_generated_image(self, image):
         gi = self.generated_images.add()
@@ -199,6 +200,9 @@ class EditHistory(HistoryState, GeneralProperty, HistoryFailedCheck, bpy.types.P
             rr.alert = True
             rr.label(text="", icon="ERROR")
 
+        ops = row.operator("wm.context_set_string", icon="COPY_ID", text="", emboss=False)
+        ops.data_path = "window_manager.clipboard"
+        ops.value = self.task_id
         row.operator("bas.remove_history", icon="PANEL_CLOSE", text="", emboss=False).index = index
         row.operator("bas.restore_history", icon="FILE_PARENT", text="", emboss=False)
         if self.prompt:
@@ -249,9 +253,6 @@ class EditHistory(HistoryState, GeneralProperty, HistoryFailedCheck, bpy.types.P
         row = box.row(align=True)
         row.context_pointer_set("history", self)
         row.operator("bas.restore_history", icon="FILE_PARENT")
-        ops = row.operator("wm.context_set_string", icon="COPY_ID",text="")
-        ops.data_path = "window_manager.clipboard"
-        ops.value = self.task_id
 
     @property
     def more_history_information(self) -> str:

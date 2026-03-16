@@ -1,11 +1,12 @@
 import bpy
 
 from .menu import SelectMaskMenu, RenderButtonMenu
-from .panel import AIStudioImagePanel, AIStudioHistoryPanel, AIStudioScenePanel
+from .panel import AIStudioImagePanel, AIStudioHistoryPanel, AIStudioScenePanel, AIStudioEditMaskPanel
 from ..icons import get_icon
 
 clss = [
     AIStudioImagePanel,
+    AIStudioEditMaskPanel,
     AIStudioHistoryPanel,
     AIStudioScenePanel,
 

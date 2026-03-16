@@ -15,7 +15,7 @@ from .history import (
     RemoveHistory,
     ClearHistory,
 )
-from .mask_image import DrawImageMask, ApplyImageMask, SelectMask
+from .mask_image import DrawImageMask, ApplyImageMask, SelectMask, RemoveMask, EditImageMask
 from .privacy_tips import PrivacyTips
 from .prompt_edit import (
     PromptEdit,
@@ -43,7 +43,9 @@ class_list = [
 
     SelectMask,
     DrawImageMask,
+    EditImageMask,
     ApplyImageMask,
+    RemoveMask,
 
     PromptEdit,
     PromptSave,

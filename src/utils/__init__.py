@@ -34,6 +34,7 @@ __all__ = [
     "check_folder_writable_permission",
     "check_cache_folder_writable_permission",
     "image_file_to_base64",
+    "get_edit_main_image",
 ]
 
 
@@ -373,6 +374,25 @@ def image_file_to_base64(image_file_path):
     text = f"To base64 base64_size_mb:{base64_size_mb} path:{image_file_path}"
     logger.info(text)
     return part
+
+
+def get_edit_main_image(context):
+    """从上下文获取编辑的主图片
+    在编辑页面活动图像可能是遮罩图片
+    """
+
+    def get_image(image):
+        ai = image.blender_ai_studio_property
+        if ai.is_mask_image:
+            if ai.origin_image:
+                return ai.origin_image
+            return None
+        else:
+            return image
+
+    if i := context.space_data.image:
+        return get_image(i)
+    return None
 
 
 modules = [

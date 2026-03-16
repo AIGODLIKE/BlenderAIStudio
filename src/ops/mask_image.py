@@ -1,63 +1,27 @@
 import bpy
 
 from ..i18n.translations.zh_HANS import OPS_TCTX
-from ..utils import png_name_suffix, refresh_image_preview
+from ..utils import png_name_suffix, refresh_image_preview, get_edit_main_image
 
 
-class DrawImageMask(bpy.types.Operator):
-    bl_idname = "bas.draw_mask"
-    bl_label = "Draw Mask"
+class PublicPoll:
     bl_options = {"REGISTER"}
     bl_translation_context = OPS_TCTX
-    bl_description = "Mask"
-    run_count: bpy.props.IntProperty(default=0)
-
-    is_edit: bpy.props.BoolProperty(default=False)
 
     @classmethod
     def poll(cls, context):
         space = context.space_data
         image = getattr(space, "image", None)
-        return image and not image.blender_ai_studio_property.is_mask_image
+        return image
 
-    def invoke(self, context, event):
-        bpy.ops.ed.undo_push(message="Push Undo")
+
+class SwitchPaint:
+    run_count = 0
+
+    def start_switch(self, context):
         space = context.space_data
-        print(self.bl_idname)
-
-        image = getattr(space, "image")
-        image.use_fake_user = True
-        scene_prop = context.scene.blender_ai_studio_property
-
-        name = png_name_suffix(image.name, "_mask")
-
-        if self.is_edit:
-            mask_image = getattr(context, "image", None)
-        else:
-            mask_image = image.copy()
-            mask_image.use_fake_user = True
-            try:
-                if not mask_image.packed_file:
-                    mask_image.pack()
-            except RuntimeError as e:
-                print("pack error", e)
-            mask_image.filepath = ""
-            mask_image.name = name
-
-            mi = scene_prop.mask_images.add()  # 新创建一个mask图
-            mi.name = name
-            mi.image = mask_image
-
-            aip = mask_image.blender_ai_studio_property
-            aip.is_mask_image = True
-            aip.origin_image = image
-        if mask_image is None:
-            self.report({"ERROR"}, "Can't create mask image")
-            return {"CANCELLED"}
-        space.image = mask_image
         space.ui_mode = "PAINT"
-
-        context.window_manager.modal_handler_add(self)
+        context.window_manager.modal_handler_add(self)  # 进入modal为了切换笔刷及画笔颜色
         return {"RUNNING_MODAL"}
 
     def modal(self, context, event):
@@ -85,7 +49,67 @@ class DrawImageMask(bpy.types.Operator):
         return {"RUNNING_MODAL"}
 
 
-class ApplyImageMask(bpy.types.Operator):
+class DrawImageMask(bpy.types.Operator, PublicPoll, SwitchPaint):
+    bl_idname = "bas.draw_mask"
+    bl_label = "Draw Mask"
+
+    def invoke(self, context, event):
+        bpy.ops.ed.undo_push(message="Push Undo")
+        space = context.space_data
+
+        image = get_edit_main_image(context)
+
+        print(self.bl_idname, f"绘制{image.name}")
+        if image.blender_ai_studio_property.is_mask_image:
+            self.report({"ERROR"}, f"出现了错误，当前图片为遮罩图片,无法再进行绘制")
+            return {"CANCELLED"}
+        image.use_fake_user = True
+        scene_prop = context.scene.blender_ai_studio_property
+
+        new_name = png_name_suffix(image.name, "_mask")
+
+        mask_image = image.copy()
+        mask_image.use_fake_user = True
+        try:
+            if not mask_image.packed_file:
+                mask_image.pack()
+        except RuntimeError as e:
+            print("pack error", e)
+        mask_image.filepath = ""
+        mask_image.name = new_name
+
+        mi = scene_prop.mask_images.add()  # 新创建一个mask图
+        mi.name = new_name
+        mi.image = mask_image
+
+        aip = mask_image.blender_ai_studio_property
+        aip.is_mask_image = True
+        aip.origin_image = image
+        if mask_image is None:
+            self.report({"ERROR"}, "Can't create mask image")
+            return {"CANCELLED"}
+
+        aip = mask_image.blender_ai_studio_property
+        aip.is_edit_mask_image = True
+        space.image = mask_image
+
+        return self.start_switch(context)
+
+
+class EditImageMask(bpy.types.Operator, PublicPoll, SwitchPaint):
+    bl_idname = "bas.edit_mask"
+    bl_label = "Edit Mask"
+
+    def invoke(self, context, event):
+        mask_image = getattr(context, "image", None)
+        if mask_image:
+            aip = mask_image.blender_ai_studio_property
+            aip.is_edit_mask_image = True
+            context.space_data.image = mask_image
+        return self.start_switch(context)
+
+
+class ApplyImageMask(bpy.types.Operator, PublicPoll):
     bl_idname = "bas.apply_image_mask"
     bl_translation_context = OPS_TCTX
     bl_label = "Apply Image Mask"
@@ -95,22 +119,23 @@ class ApplyImageMask(bpy.types.Operator):
     def poll(cls, context):
         space = context.space_data
         image = getattr(space, "image", None)
-        return image and image.blender_ai_studio_property.origin_image
+        return image and image.blender_ai_studio_property.is_mask_image
 
     def execute(self, context):
         space = context.space_data
         image = getattr(space, "image")
-        print(self.bl_idname, image)
+        print(self.bl_idname, image.name)
         bpy.ops.image.save("EXEC_DEFAULT", False)
         refresh_image_preview(image)
         image.use_fake_user = True
         if image.preview:
             image.preview.reload()
 
-        ai = image.blender_ai_studio_property
+        aip = image.blender_ai_studio_property
         oii = context.scene.blender_ai_studio_property
 
-        space.image = ai.origin_image
+        aip.is_edit_mask_image = False
+        space.image = image
         space.ui_mode = "VIEW"
         for index, m in enumerate(oii.mask_images):
             if m.image == image:
@@ -119,18 +144,16 @@ class ApplyImageMask(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class SelectMask(bpy.types.Operator):
+class SelectMask(bpy.types.Operator, PublicPoll):
     bl_idname = "bas.select_mask"
     bl_translation_context = OPS_TCTX
     bl_label = "Select Mask"
     bl_options = {"REGISTER"}
+
     index: bpy.props.IntProperty()
-    remove: bpy.props.BoolProperty(default=False)
 
     @classmethod
     def description(cls, context, properties):
-        if properties.remove:
-            return "Remove Mask"
         if properties.index == -1:
             return "Not using mask"
         return cls.bl_label
@@ -142,6 +165,7 @@ class SelectMask(bpy.types.Operator):
         return image
 
     def invoke(self, context, event):
+        context.scene.blender_ai_studio_property.clear_invalid_data()
         return context.window_manager.invoke_popup(self)
 
     def execute(self, context):
@@ -150,17 +174,9 @@ class SelectMask(bpy.types.Operator):
         oii = context.scene.blender_ai_studio_property
         print(self.bl_idname, self.index, image)
 
-        if self.remove:
-            ri = oii.mask_images[self.index].image
-            if image and ri == image:
-                oi = ri.blender_ai_studio_property.origin_image
-                if oi:
-                    setattr(context.space_data, "image", oi)
-            oii.mask_images.remove(self.index)
-        else:
-            oii.mask_index = self.index
-            if space.ui_mode == "PAINT":
-                space.image = oii.active_mask
+        oii.mask_index = self.index
+        # if space.ui_mode == "PAINT":
+        space.image = oii.active_mask
         return {"FINISHED"}
 
     def draw(self, context):
@@ -180,9 +196,37 @@ class SelectMask(bpy.types.Operator):
                 row = box.row(align=True)
                 ops = row.operator("bas.select_mask", text=m.image.name, icon="RESTRICT_SELECT_OFF", translate=False)
                 ops.index = index
-                ops.remove = False
-                ops = row.operator("bas.select_mask", text="", icon="TRASH")
+                ops = row.operator("bas.remove_mask", text="", icon="TRASH")
                 ops.index = index
-                ops.remove = True
         if len(oii.mask_images) == 0:
             column.label(text="No mask available, please draw")
+
+
+class RemoveMask(bpy.types.Operator, PublicPoll):
+    bl_idname = "bas.remove_mask"
+    bl_translation_context = OPS_TCTX
+    bl_label = "Remove Mask"
+    bl_description = "Remove mask image"
+    bl_options = {"REGISTER"}
+    index: bpy.props.IntProperty()
+
+    def execute(self, context):
+        active_image = context.space_data.image
+
+        origin_image = get_edit_main_image(context)
+        oii = context.scene.blender_ai_studio_property
+        mask_image = oii.mask_images[self.index].image
+
+        print(self.bl_idname, self.index, origin_image)
+
+        if active_image == mask_image:
+            setattr(context.space_data, "image", origin_image)
+
+        if origin_image and mask_image == origin_image:
+            oi = mask_image.blender_ai_studio_property.origin_image
+            if oi:
+                setattr(context.space_data, "image", oi)
+        oii.mask_images.remove(self.index)
+        oii.mask_index = self.index
+
+        return {"FINISHED"}

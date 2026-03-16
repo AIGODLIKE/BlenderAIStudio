@@ -9,10 +9,10 @@ from ..utils import get_custom_icon, get_addon_version_str, get_pref, check_imag
 from ..utils.camear_info import get_camera_info
 
 
-def check_is_draw_mask(context):
+def check_is_edit_mask(context):
     image = context.space_data.image
     ip = image.blender_ai_studio_property
-    is_draw_mask = image and ip.is_mask_image
+    is_draw_mask = image and ip.is_mask_image and ip.is_edit_mask_image
     return is_draw_mask
 
 
@@ -21,6 +21,34 @@ def check_is_paint_2d(context):
 
     mode = UnifiedPaintPanel.get_brush_mode(context)
     return mode == "PAINT_2D"
+
+
+def draw_row(context, layout, ai):
+    is_draw_mask = check_is_edit_mask(context)
+    if ai and ai.active_mask and not is_draw_mask:
+        rr = layout.row(align=True)
+        rr.operator_context = "EXEC_DEFAULT"
+        op = rr.operator("bas.remove_mask", text="", icon="X")
+        op.index = -1
+    if ai and ai.mask_images:
+        layout.operator_context = "INVOKE_DEFAULT"
+        layout.operator("wm.call_menu", text="", icon="COLLAPSEMENU").name = "BAS_MT_select_mask_menu"
+
+
+scale_y = 1.2
+
+
+def draw_dev_info(context, layout):
+    if get_pref().use_dev_ui:
+        image = context.space_data.image
+        prop = image.blender_ai_studio_property
+
+        box = layout.box()
+        box.label(text="Dev Info")
+        box.prop(prop, "is_mask_image")
+        box.prop(prop, "is_edit_mask_image")
+        box.prop(prop, "origin_image")
+        box.prop(prop, "generated_images")
 
 
 class AIStudioImagePanel(bpy.types.Panel):
@@ -34,17 +62,32 @@ class AIStudioImagePanel(bpy.types.Panel):
     @classmethod
     def poll(cls, context):
         space_data = context.space_data
-        return space_data and space_data.image is not None
+        if space_data and space_data.image is not None:
+            ai = space_data.image.blender_ai_studio_property
+            if not ai.is_edit_mask_image:
+                return True
+
+        return False
 
     def draw(self, context):
         ai = context.scene.blender_ai_studio_property
+
         layout = self.layout
-        UpdateService.draw_update_info_panel(layout)
-        if check_is_draw_mask(context):
+
+        draw_dev_info(context, layout)
+        UpdateService.draw_update_info_panel(layout)  # 插件更新信息
+
+        if check_is_edit_mask(context):
             self.draw_mask(context, layout)
             return
 
-        self.draw_image_info(context, layout)
+        main_image = context.space_data.image  # 主图
+        if main_image:  # 如果当前图片为蒙版图片,就获取主图的信息
+            iai = main_image.blender_ai_studio_property
+            if iai.is_mask_image and iai.origin_image:
+                main_image = iai.origin_image
+
+        self.draw_image_info(context, layout, main_image)
         column = layout.column(align=True)
         bb = column.box()
         self.draw_model_parameters(context, bb)  # 动态绘制需要的参数
@@ -55,11 +98,10 @@ class AIStudioImagePanel(bpy.types.Panel):
         col.separator(factor=3)
         self.draw_ai_edit_layout(context, col)
         self.draw_task_layout(context, layout)
-        self.draw_image_switch(context, layout)
+        self.draw_image_switch(context, layout, main_image)
 
     @staticmethod
-    def draw_image_switch(context, layout: bpy.types.UILayout):
-        image = context.space_data.image
+    def draw_image_switch(context, layout: bpy.types.UILayout, image):
 
         column = layout.column(align=True)
         ai = image.blender_ai_studio_property
@@ -76,68 +118,9 @@ class AIStudioImagePanel(bpy.types.Panel):
                 row.operator("bas.view_image", text=text)
 
     @staticmethod
-    def draw_mask(context, layout: bpy.types.UILayout):
-        from bl_ui.properties_paint_common import UnifiedPaintPanel
-        from ..utils import get_custom_icon
-        from ..ops import SelectMask
-
-        is_draw_mask = check_is_draw_mask(context)
-        is_paint_2d = check_is_paint_2d(context)
-
-        ai = context.scene.blender_ai_studio_property
-
-        def draw_row(r):
-            if ai and ai.active_mask and not is_draw_mask:
-                rr = r.row(align=True)
-                rr.operator_context = "EXEC_DEFAULT"
-                rr.operator("bas.select_mask", text="", icon="X").index = -1
-            if ai and ai.mask_images:
-                r.operator_context = "INVOKE_DEFAULT"
-                r.operator("wm.call_menu", text="", icon="COLLAPSEMENU").name = "BAS_MT_select_mask_menu"
-
-        scale_y = 1.2
-        if is_draw_mask:
-            box = layout.box()
-            if is_paint_2d:  # 绘制笔刷大小和颜色
-                if paint_settings := getattr(UnifiedPaintPanel.paint_settings(context), "unified_paint_settings", None):
-                    box.prop(paint_settings, "size")
-                    box.prop(paint_settings, "color")
-            box.template_icon(get_custom_icon("draw_mask_example"), scale=6)
-            if not is_paint_2d:
-                ops = box.operator("wm.context_set_string", text="Continue drawing", icon="BRUSH_DATA")
-                ops.data_path = "space_data.ui_mode"
-                ops.value = "PAINT"
-            row = box.row(align=True)
-            row.scale_y = scale_y
-            row.operator("bas.apply_image_mask", icon="CHECKMARK")
-            draw_row(row)
-            SelectMask.draw_select_mask(context, box.box())
-        else:
-            if ai.active_mask:
-                box = layout.box()
-            else:
-                box = layout.column()
-
-            args = {}
-            if ai.active_mask:
-                args["text"] = "Redraw mask"
-            row = box.row(align=True)
-            row.scale_y = scale_y
-            row.operator("bas.draw_mask", icon="BRUSH_DATA", **args).is_edit = False
-            if ai.active_mask:
-                row.context_pointer_set("image", ai.active_mask)
-                row.operator("bas.draw_mask", icon="IMAGE_RGB_ALPHA", text="Edit mask").is_edit = True
-
-            draw_row(row)
-            if ai and ai.active_mask and ai.active_mask.preview:
-                box.template_icon(ai.active_mask.preview.icon_id, scale=5)
-        return is_draw_mask
-
-    @staticmethod
-    def draw_image_info(context, layout: bpy.types.UILayout):
-        image = context.space_data.image
+    def draw_image_info(context, layout: bpy.types.UILayout, image):
+        """绘制图片的信息"""
         w, h = image.size[:]
-
         layout.column()
 
         box = layout.box()
@@ -255,6 +238,88 @@ class AIStudioImagePanel(bpy.types.Panel):
         row.prop(ai, "prompt", text="")
         row.operator("bas.prompt_edit", text="", icon="FILE_TEXT")
 
+    @staticmethod
+    def draw_mask(context, layout: bpy.types.UILayout):
+
+        # layout.label(text="draw_mask")
+
+        ai = context.scene.blender_ai_studio_property
+
+        active_image = context.space_data.image
+        if active_image:  # 一般不会出现这个问题
+            ai_i = active_image.blender_ai_studio_property
+            if ai_i.is_mask_image and active_image != ai.active_mask and ai_i.origin_image is None:
+                layout.label(text="未找到遮罩的原图,出现了奇怪的错误！！")
+        active_mask = ai.active_mask
+
+        if active_mask:
+            box = layout.box()
+        else:
+            box = layout.column()
+
+        args = {}
+        if active_mask:
+            args["text"] = "Redraw mask"
+        row = box.row(align=True)
+        row.scale_y = scale_y
+        row.operator("bas.draw_mask", icon="BRUSH_DATA", **args)
+        if active_mask:
+            row.context_pointer_set("image", active_mask)
+            row.operator("bas.edit_mask", icon="IMAGE_RGB_ALPHA", text="Edit mask")
+
+        draw_row(context, row, ai)
+        if ai and active_mask:
+            i = active_mask
+            if context.space_data.image == i:
+                i = active_mask.blender_ai_studio_property.origin_image
+            if i and i.preview:
+                box.template_icon(i.preview.icon_id, scale=5)
+
+
+class AIStudioEditMaskPanel(bpy.types.Panel):
+    bl_idname = "SDN_PT_BLENDER_AI_STUDIO_PT_Edit_Mask"
+    bl_label = f"Blender AI Studio Edit Mask {get_addon_version_str()}"
+    bl_translation_context = PANEL_TCTX
+    bl_space_type = "IMAGE_EDITOR"
+    bl_region_type = "UI"
+    bl_category = "AIStudio"
+
+    @classmethod
+    def poll(cls, context):
+        space_data = context.space_data
+        if space_data and space_data.image is not None:
+            ai = space_data.image.blender_ai_studio_property
+            if ai.is_edit_mask_image:
+                return True
+        return False
+
+    def draw(self, context):
+        from bl_ui.properties_paint_common import UnifiedPaintPanel
+        from ..ops import SelectMask
+
+        layout = self.layout
+        draw_dev_info(context, layout)
+        layout.label(text="Edit Mask")
+
+        is_paint_2d = check_is_paint_2d(context)
+
+        ai = context.scene.blender_ai_studio_property
+
+        box = layout.box()
+        if is_paint_2d:  # 绘制笔刷大小和颜色
+            if paint_settings := getattr(UnifiedPaintPanel.paint_settings(context), "unified_paint_settings", None):
+                box.prop(paint_settings, "size")
+                box.prop(paint_settings, "color")
+        # box.template_icon(get_custom_icon("draw_mask_example"), scale=6)
+        if not is_paint_2d:
+            ops = box.operator("wm.context_set_string", text="Continue drawing", icon="BRUSH_DATA")
+            ops.data_path = "space_data.ui_mode"
+            ops.value = "PAINT"
+        row = box.row(align=True)
+        row.scale_y = scale_y
+        row.operator("bas.apply_image_mask", icon="CHECKMARK")
+        SelectMask.draw_select_mask(context, box.box())
+
 
 class AIStudioScenePanel(bpy.types.Panel):
     """场景属性中的 Blender AI Studio 设置"""
@@ -309,6 +374,7 @@ class AIStudioHistoryPanel(bpy.types.Panel):
     def draw(self, context):
         oii = context.scene.blender_ai_studio_property
         layout = self.layout
+        draw_dev_info(context, layout)
 
         rl = list(oii.running_task_list)
         if rl:
