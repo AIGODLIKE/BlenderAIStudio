@@ -261,6 +261,8 @@ class ApplyAiEditImage(bpy.types.Operator):
         print("origin_image", origin_image, origin_image_file_path)
         print("mask_image", mask_image, mask_image_path)
         print("reference_images_path", reference_images_path)
+        print("resolution", resolution)
+        print("aspect_ratio", aspect_ratio)
         try:
             for i in range(oii.batch_count):
                 self.task_start(
@@ -336,8 +338,6 @@ class ApplyAiEditImage(bpy.types.Operator):
 
         if resolution == "None":
             resolution = "1K"
-        elif resolution == "0.5K":
-            resolution = "512"
 
         if account.auth_mode == AuthMode.API.value:
             credentials = {"api_key": pref.api_key.strip()}
@@ -349,6 +349,9 @@ class ApplyAiEditImage(bpy.types.Operator):
                 "modelId": submit_model_id,
                 "size": resolution,
             }
+
+        if resolution == "0.5K":
+            resolution = "512"
         reference_images = [mask_image_path, *reference_images_path]  # 优先传递mask图片(即使为空)
         params = {
             "main_image": origin_image_file_path,
