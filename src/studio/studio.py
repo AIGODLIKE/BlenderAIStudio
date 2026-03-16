@@ -3295,7 +3295,7 @@ class AIStudio(AppHud):
                 image_path=image_path,
                 on_success=_on_success,
                 on_error=_on_error,
-                prompt=get_pref().prompt_reverse_prompt,
+                prompt="", #get_pref().prompt_reverse_prompt
             )
 
         threading.Thread(target=_render_and_submit, daemon=True).start()
