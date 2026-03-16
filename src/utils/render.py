@@ -1,18 +1,19 @@
-import bpy
 import math
-import time
 import tempfile
+import time
 from contextlib import contextmanager
 from pathlib import Path
+from threading import Lock
 from traceback import print_exc
 from uuid import uuid4
+
+import bpy
 from bpy.app.translations import pgettext as _T
-from mathutils import Euler, Vector
-from threading import Lock
-from ..timer import Timer
-from ..utils import get_temp_folder
+from mathutils import Vector
 
 from .. import logger
+from ..timer import Timer
+from ..utils import get_temp_folder
 
 
 def check_scene_camera_with_exception(scene: bpy.types.Scene):
@@ -89,12 +90,16 @@ def render_scene_to_png(scene: bpy.types.Scene, image_path: str):
     render.image_settings.file_format = "PNG"
 
     def restore():
-        logger.info("restore render setting")
-        ren = scene.render
-        setattr(ren, "filepath", old)
-        if bpy.app.version >= (5, 0):
-            setattr(ren.image_settings, "media_type", old_media_type)
-        setattr(ren.image_settings, "file_format", old_fmt)
+        try:
+            logger.info("restore render setting")
+            ren = scene.render
+            setattr(ren, "filepath", old)
+            if bpy.app.version >= (5, 0):
+                setattr(ren.image_settings, "media_type", old_media_type)
+            setattr(ren.image_settings, "file_format", old_fmt)
+        except Exception as e:
+            logger.error(str(e))
+            print_exc()
 
     def on_finish(_sce):
         bpy.app.timers.register(restore, first_interval=5, persistent=False)
@@ -137,14 +142,18 @@ def render_scene_depth_to_png(scene: bpy.types.Scene, image_path: str):
     render.image_settings.file_format = "PNG"
 
     def restore():
-        logger.info("restore render setting")
-        ren = scene.render
-        setattr(ren, "filepath", old_filepath)
-        setattr(ren.image_settings, "file_format", old_fmt)
-        if bpy.app.version >= (5, 0):
-            setattr(ren.image_settings, "media_type", old_media_type)
-            setattr(scene, "compositing_node_group", old_tree)
-            bpy.data.node_groups.remove(tree)
+        try:
+            logger.info("restore render setting")
+            ren = scene.render
+            setattr(ren, "filepath", old_filepath)
+            setattr(ren.image_settings, "file_format", old_fmt)
+            if bpy.app.version >= (5, 0):
+                setattr(ren.image_settings, "media_type", old_media_type)
+                setattr(scene, "compositing_node_group", old_tree)
+                bpy.data.node_groups.remove(tree)
+        except Exception as e:
+            logger.error(str(e))
+            print_exc()
 
     def on_finish(_sce):
         bpy.app.timers.register(restore, first_interval=5, persistent=False)
@@ -345,10 +354,10 @@ SIX_VIEW_SPECS = [
 
 
 def _render_six_views(
-    context: dict,
-    objects: list[bpy.types.Object],
-    resolution: int = 1024,
-    padding: float = 1.05,
+        context: dict,
+        objects: list[bpy.types.Object],
+        resolution: int = 1024,
+        padding: float = 1.05,
 ) -> list[str]:
     """对指定物体进行正交六视图渲染（正、后、右、左、顶、底）。
 
@@ -547,7 +556,8 @@ class BlenderRenderHelper:
 
         return image_path
 
-    def render_three_views(self, context: dict, objects: list[bpy.types.Object] = None, resolution: int = 1024) -> list[str]:
+    def render_three_views(self, context: dict, objects: list[bpy.types.Object] = None, resolution: int = 1024) -> list[
+        str]:
         """渲染选中物体的六视图（正、后、右、左、顶、底）。
 
         Args:
@@ -676,7 +686,6 @@ def register():
 
 def unregister():
     bpy.app.handlers.load_post.remove(reset_render_status)
-
 
 # if __name__ == "__main__":
 #     render_agent = RenderAgent()
