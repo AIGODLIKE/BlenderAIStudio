@@ -5,7 +5,8 @@ import bpy
 
 from .. import logger
 from ..i18n.translations.zh_HANS import OPS_TCTX
-from ..utils import png_name_suffix, get_pref, get_temp_folder, save_image_to_temp_folder, refresh_image_preview
+from ..utils import png_name_suffix, get_pref, get_temp_folder, save_image_to_temp_folder, refresh_image_preview, \
+    get_edit_main_image
 from ..utils.area import find_ai_image_editor_space_data, find_image_editor_areas
 
 
@@ -197,8 +198,7 @@ class ApplyAiEditImage(bpy.types.Operator):
         print(self.bl_idname, "start")
         pref = get_pref()
         oii = context.scene.blender_ai_studio_property
-        space_data = context.space_data
-        origin_image = space_data.image
+        origin_image = get_edit_main_image(context)
         aspect_ratio = oii.aspect_ratio
         resolution = oii.resolution
         if not origin_image:
@@ -243,14 +243,26 @@ class ApplyAiEditImage(bpy.types.Operator):
             else:
                 self.report({"ERROR"}, "Can't find reference image")
                 return {"CANCELLED"}
-        if oii.active_mask:
-            if mask_path := save_image_to_temp_folder(oii.active_mask, temp_folder):
+
+        mask_image = oii.active_mask
+        if mask_image is None:
+            mii = context.space_data.image.blender_ai_studio_property
+            if mii.is_mask_image and mii.origin_image == origin_image:
+                mask_image = context.space_data.image  # 当前活动图片是那个遮罩图片
+
+        if mask_image:
+            if mask_path := save_image_to_temp_folder(mask_image, temp_folder):
                 mask_image_path = mask_path
             else:
                 self.report({"ERROR"}, "Can't save mask image")
                 return {"CANCELLED"}
 
         print("temp", temp_folder)
+        print("origin_image", origin_image, origin_image_file_path)
+        print("mask_image", mask_image, mask_image_path)
+        print("reference_images_path", reference_images_path)
+        print("resolution", resolution)
+        print("aspect_ratio", aspect_ratio)
         try:
             for i in range(oii.batch_count):
                 self.task_start(
@@ -294,7 +306,6 @@ class ApplyAiEditImage(bpy.types.Operator):
 
         from ..preferences import AuthMode
 
-        space_data = context.space_data
         pref = get_pref()
         oii = context.scene.blender_ai_studio_property
 
@@ -338,6 +349,9 @@ class ApplyAiEditImage(bpy.types.Operator):
                 "modelId": submit_model_id,
                 "size": resolution,
             }
+
+        if resolution == "0.5K":
+            resolution = "512"
         reference_images = [mask_image_path, *reference_images_path]  # 优先传递mask图片(即使为空)
         params = {
             "main_image": origin_image_file_path,
