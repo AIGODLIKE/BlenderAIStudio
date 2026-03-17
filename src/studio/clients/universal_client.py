@@ -381,11 +381,24 @@ class UniversalClient(StudioClient):
 
         Account.get_instance().fetch_credits()
 
-    def add_line_art_task(self, prompt: str, account: "Account") -> tuple[StudioHistoryItem, UniversalModelTask]:
+    def add_line_art_task(
+        self,
+        prompt: str,
+        account: "Account",
+        reference_images: list[str] | None = None,
+    ) -> tuple[StudioHistoryItem, UniversalModelTask]:
+        """提交线稿提取任务
+
+        Args:
+            prompt: 提示词
+            account: 账户实例
+            reference_images: 外部图片路径列表。为空时使用 FastRender 渲染当前视口。
+        """
+        has_external = bool(reference_images)
         params = {
-            "input_image_type": "FastRender",
+            "input_image_type": "NoInput" if has_external else "FastRender",
             "prompt": prompt,
-            "reference_images": [],
+            "reference_images": reference_images or [],
             "aspect_ratio": "Auto",
             "resolution": "1K",
             "__use_internal_prompt": False,
