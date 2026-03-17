@@ -26,8 +26,7 @@ from .gui.app.renderer import imgui
 from .gui.app.style import Const
 from .gui.texture import TexturePool
 from .gui.widgets import CustomWidgets, with_child, DEFAULT_CHILD_FLAGS
-from .tasks import TaskResult
-from .utils import save_mime_typed_datas_to_temp_files
+from .image_tools import ImageToolRegistry, ToolState
 from .wrapper import BaseAdapter, WidgetDescriptor, DescriptorFactory
 from ..i18n import STUDIO_TCTX
 from ..preferences import AuthMode, PricingStrategy
@@ -114,6 +113,10 @@ class StudioImagesDescriptor(WidgetDescriptor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._stable_content_x = None
+        self._ctx_menu_image_index: int = -1
+        self._ctx_menu_image_path: str = ""
+        self._ctx_menu_pending_open: bool = False
+        self._ctx_menu_active: bool = False
         self.add_custom_display_end(self._display_image_tools)
 
     def _get_stable_cell_size(self):
@@ -163,6 +166,9 @@ class StudioImagesDescriptor(WidgetDescriptor):
 
             imgui.pop_style_var(2)
             imgui.pop_style_color(1)
+
+            self._draw_image_context_menu(wrapper, app)
+
         imgui.same_line()
         imgui.pop_style_color()
 
@@ -521,6 +527,10 @@ class StudioImagesDescriptor(WidgetDescriptor):
             pos = imgui.get_mouse_pos()
             imgui.set_next_window_pos((pos[0] - 40, pos[1] + 50), cond=imgui.Cond.ALWAYS)
             self.adapter.on_image_action(self.widget_name, "replace_image", index)
+        if imgui.is_item_clicked(imgui.MouseButton.RIGHT):
+            self._ctx_menu_image_index = index
+            self._ctx_menu_image_path = img_path
+            self._ctx_menu_pending_open = True
 
         imgui.same_line()
         pos = imgui.get_cursor_pos()
@@ -535,7 +545,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
         if imgui.button(f"##{self.title}_{self.widget_name}x", (bw2, bh2)):
             self.adapter.on_image_action(self.widget_name, "delete_image", index)
         imgui.pop_style_color(3)
-        if is_hovered:
+        if is_hovered and not self._ctx_menu_pending_open and not self._ctx_menu_active:
             imgui.push_style_var(imgui.StyleVar.WINDOW_ROUNDING, Const.CHILD_R)
             imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, (12, 12))
             imgui.begin_tooltip()
@@ -580,6 +590,101 @@ class StudioImagesDescriptor(WidgetDescriptor):
         imgui.same_line()
         imgui.dummy((isx, 0))
         imgui.end_group()
+
+    def _draw_image_context_menu(self, wrapper: "StudioWrapper", app: "AIStudio"):
+        popup_id = f"##RefImageCtxMenu_{self.widget_name}"
+        if self._ctx_menu_pending_open:
+            imgui.open_popup(popup_id)
+            self._ctx_menu_pending_open = False
+
+        tools = ImageToolRegistry.get_tools()
+        tool_count = len(tools)
+        if tool_count == 0:
+            return
+
+        s = 54 * Const.SCALE
+        p = 6 * Const.SCALE
+
+        imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, (p, p))
+        imgui.push_style_var(imgui.StyleVar.FRAME_PADDING, (0, 0))
+        imgui.push_style_var(imgui.StyleVar.CELL_PADDING, (p / 2, 0))
+        imgui.push_style_var(imgui.StyleVar.POPUP_ROUNDING, Const.CHILD_R)
+        imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R)
+
+        imgui.push_style_color(imgui.Col.POPUP_BG, Const.FRAME_BG)
+        imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
+        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
+        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
+
+        if imgui.begin_popup(popup_id):
+            self._ctx_menu_active = True
+            images: list[str] = self.value
+
+            imgui.begin_table("##CtxToolTable", tool_count)
+            for tool in tools:
+                imgui.table_next_column()
+                is_running = tool.get_state(wrapper) == ToolState.RUNNING
+                clickable = tool.enabled and not is_running
+
+                icon_name = tool.icon or "none"
+                icon = TexturePool.get_tex_id(icon_name)
+                tex = TexturePool.get_tex(icon)
+
+                imgui.push_id(f"##ctx_{tool.name}")
+                imgui.begin_group()
+                imgui.set_next_item_allow_overlap()
+
+                if not clickable:
+                    imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+                    imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
+                    imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
+
+                clicked = imgui.button(f"##{tool.name}", (s, s))
+
+                if not clickable:
+                    imgui.pop_style_color(3)
+
+                pmin = imgui.get_item_rect_min()
+                pmax = imgui.get_item_rect_max()
+                dl = imgui.get_window_draw_list()
+
+                if tex and tex.width > 0 and tex.height > 0:
+                    max_dim = float(max(tex.width, tex.height))
+                    img_w = s * (float(tex.width) / max_dim)
+                    img_h = s * (float(tex.height) / max_dim)
+                    cx = (pmin[0] + pmax[0]) * 0.5
+                    cy = (pmin[1] + pmax[1]) * 0.5
+                    img_min = (cx - img_w * 0.5, cy - img_h * 0.5)
+                    img_max = (cx + img_w * 0.5, cy + img_h * 0.5)
+                    tint = 0xFFFFFFFF if clickable else imgui.get_color_u32((1, 1, 1, 0.35))
+                    dl.add_image(icon, img_min, img_max, col=tint)
+
+                if is_running:
+                    self._display_running_effect()
+
+                if imgui.is_item_hovered(imgui.HoveredFlags.ALLOW_WHEN_DISABLED):
+                    imgui.set_next_window_size((400, 0))
+                    AppHelperDraw.draw_tips_with_title(app, tool.tooltips, tool.display_name)
+
+                if clicked and clickable:
+                    tool.execute(
+                        self._ctx_menu_image_path,
+                        self._ctx_menu_image_index,
+                        images,
+                        wrapper,
+                        app,
+                    )
+                    imgui.close_current_popup()
+
+                imgui.end_group()
+                imgui.pop_id()
+            imgui.end_table()
+            imgui.end_popup()
+        else:
+            self._ctx_menu_active = False
+
+        imgui.pop_style_color(4)
+        imgui.pop_style_var(5)
 
 
 class StudioHistoryViewer:
