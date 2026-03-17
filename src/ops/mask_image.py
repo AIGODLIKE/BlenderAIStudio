@@ -39,7 +39,7 @@ class SwitchPaint:
                 relative_asset_identifier=r"brushes\\essentials_brushes-mesh_texture.blend\\Brush\\Paint Hard Pressure",
             )
             paint_settings.size = 25
-            paint_settings.color = [0, 0, 0]
+            paint_settings.color = [0.938686, 0.584079, 0.011612]
             bpy.ops.ed.undo_push(message="Push Undo")
             return {"FINISHED"}
 
