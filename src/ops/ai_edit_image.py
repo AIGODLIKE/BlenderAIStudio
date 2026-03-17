@@ -6,7 +6,7 @@ import bpy
 from .. import logger
 from ..i18n.translations.zh_HANS import OPS_TCTX
 from ..utils import png_name_suffix, get_pref, get_temp_folder, save_image_to_temp_folder, refresh_image_preview, \
-    get_edit_main_image
+    get_edit_main_image, calc_appropriate_aspect_ratio
 from ..utils.area import find_ai_image_editor_space_data, find_image_editor_areas
 
 
@@ -352,6 +352,15 @@ class ApplyAiEditImage(bpy.types.Operator):
 
         if resolution == "0.5K":
             resolution = "512"
+
+        if aspect_ratio == "Auto":  # 处理自动宽高比
+            try:
+                width, height = origin_image.size[:]
+                aspect_ratio = calc_appropriate_aspect_ratio(width, height) #其它模型可能会出现不存在宽高比的情况?!
+            except Exception as e:
+                print(e)
+                aspect_ratio = "1:1"  # 默认值
+
         reference_images = [mask_image_path, *reference_images_path]  # 优先传递mask图片(即使为空)
         params = {
             "main_image": origin_image_file_path,
