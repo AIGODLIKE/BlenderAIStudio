@@ -1,5 +1,7 @@
 import mimetypes
 import time
+import datetime
+import uuid
 from queue import Queue
 from threading import Thread, Lock
 from typing import Callable, Optional, TYPE_CHECKING
@@ -135,7 +137,6 @@ class TaskSyncService:
             self._syncing_task_ids.update(available_task_ids)  # 标记为同步中
 
         try:
-            import datetime, uuid
             pref = get_pref()
 
             ci = str(uuid.uuid4())[:8]
