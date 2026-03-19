@@ -14,7 +14,7 @@ error_translations = (
     ("Insufficient balance!", "余额不足", None),
     ("API Request Error!", "API 请求错误", None),
     ("Authentication failed!", "认证失败", None),
-    ("Token expired!", "Token 过期", None),
+    ("Token expired!", "Token 过期,请重新登录", None),
     ("Network error", "网络错误", None),
     ("Network error,Please check the network and proxy", "网络错误,请检查网络及代理", None),
     ("Failed to parse API response", "解析API响应失败", None),
