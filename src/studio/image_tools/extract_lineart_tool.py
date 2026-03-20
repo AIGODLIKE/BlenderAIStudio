@@ -7,6 +7,7 @@ try:
     from ...logger import logger
 except ImportError:
     import logging
+
     logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
@@ -24,11 +25,27 @@ class ExtractLineartTool(ImageTool):
 
     @property
     def display_name(self) -> str:
-        return "提取线稿"
+        return "ControlNet"
+
+    @property
+    def title(self) -> str:
+        return "ControlNet视觉解构"
+
+    @property
+    def category(self) -> str:
+        return "视觉分析"
+
+    @property
+    def cost(self) -> int:
+        return 3
+
+    @property
+    def category_color(self) -> tuple:
+        return (255 / 255, 195 / 255, 0 / 255, 1.0)
 
     @property
     def icon(self) -> Optional[str]:
-        return "image_line_art"
+        return "image_tools/image_line_art"
 
     @property
     def tooltips(self) -> list[str]:
@@ -69,7 +86,9 @@ class ExtractLineartTool(ImageTool):
         original_model = client.current_model_name
         client.current_model_name = "NanoBananaPro"
         item, task = client.add_line_art_task(
-            prompt, app.state, reference_images=[image_path],
+            prompt,
+            app.state,
+            reference_images=[image_path],
         )
         client.current_model_name = original_model
 

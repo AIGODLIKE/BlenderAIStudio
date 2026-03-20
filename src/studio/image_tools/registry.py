@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 from .base import ImageTool
 
 
@@ -18,6 +20,14 @@ class ImageToolRegistry:
     @classmethod
     def get_tools(cls) -> list[ImageTool]:
         return list(cls._tools)
+
+    @classmethod
+    def get_tools_grouped(cls) -> list[tuple[str, list[ImageTool]]]:
+        """按 category 分组返回工具，保持注册顺序"""
+        groups: OrderedDict[str, list[ImageTool]] = OrderedDict()
+        for tool in cls._tools:
+            groups.setdefault(tool.category, []).append(tool)
+        return list(groups.items())
 
     @classmethod
     def clear(cls) -> None:

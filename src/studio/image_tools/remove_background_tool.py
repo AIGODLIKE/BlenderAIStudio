@@ -15,11 +15,23 @@ class RemoveBackgroundTool(ImageTool):
 
     @property
     def display_name(self) -> str:
-        return "去背景"
+        return "移除背景"
+
+    @property
+    def category(self) -> str:
+        return "抠图"
+
+    @property
+    def cost(self) -> int:
+        return 3
+
+    @property
+    def category_color(self) -> tuple:
+        return (67 / 255, 207 / 255, 124 / 255, 1.0)
 
     @property
     def icon(self) -> Optional[str]:
-        return "image_screenshot"
+        return "image_tools/remove_background"
 
     @property
     def tooltips(self) -> list[str]:

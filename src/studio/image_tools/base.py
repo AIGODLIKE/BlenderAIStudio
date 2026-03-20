@@ -26,7 +26,12 @@ class ImageTool(ABC):
     @property
     @abstractmethod
     def display_name(self) -> str:
-        """菜单显示名称"""
+        """菜单行显示名称"""
+
+    @property
+    def title(self) -> str:
+        """工具标题（用于 tooltip 等场景），默认与 display_name 相同"""
+        return self.display_name
 
     @property
     def icon(self) -> Optional[str]:
@@ -41,6 +46,21 @@ class ImageTool(ABC):
     def enabled(self) -> bool:
         """是否可用（False 时菜单项灰显）"""
         return True
+
+    @property
+    def category(self) -> str:
+        """工具分类名称（用于菜单分组显示）"""
+        return ""
+
+    @property
+    def cost(self) -> int:
+        """工具消耗的积分数"""
+        return 0
+
+    @property
+    def category_color(self) -> tuple[float, float, float, float]:
+        """分类指示条颜色 (r, g, b, a)"""
+        return (1.0, 1.0, 1.0, 1.0)
 
     @abstractmethod
     def execute(

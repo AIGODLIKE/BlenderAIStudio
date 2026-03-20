@@ -22,8 +22,20 @@ class PromptReverseTool(ImageTool):
         return "反求提示词"
 
     @property
+    def category(self) -> str:
+        return "视觉分析"
+
+    @property
+    def cost(self) -> int:
+        return 3
+
+    @property
+    def category_color(self) -> tuple:
+        return (255 / 255, 195 / 255, 0 / 255, 1.0)
+
+    @property
     def icon(self) -> str:
-        return "prompt_reverse"
+        return "image_tools/prompt_reverse"
 
     @property
     def tooltips(self) -> list[str]:
