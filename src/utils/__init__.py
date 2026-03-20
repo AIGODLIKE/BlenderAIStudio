@@ -1,13 +1,13 @@
+import bpy
 import base64
 import hashlib
+import OpenImageIO as oiio
 import os
 import sys
 import time
 import uuid
 from functools import cache
 from typing import TYPE_CHECKING
-
-import bpy
 
 from .pkg_installer import PkgInstaller
 from .. import logger
@@ -196,6 +196,15 @@ def time_diff_to_str(time_diff=None, start=None, end=None):
     return "".join(result)
 
 
+def get_image_size(filepath: str) -> tuple[float, float] | None:
+    img_buf = oiio.ImageBuf(filepath)
+    if not img_buf.initialized:
+        return None
+
+    spec = img_buf.spec()
+    return spec.width, spec.height
+
+
 def calc_appropriate_aspect_ratio(width: int, height: int) -> str:
     aspect_ratio_presets = {
         "1:1": 1 / 1,
@@ -210,6 +219,21 @@ def calc_appropriate_aspect_ratio(width: int, height: int) -> str:
         "21:9": 21 / 9,
     }
     return min(aspect_ratio_presets, key=lambda k: abs(aspect_ratio_presets[k] - width / height))
+
+
+def calc_appropriate_resolution(w: float, h: float) -> str:
+    # 定义参考分辨率及对应标签
+    references = [(512, "512"), (1024, "1K"), (2048, "2K"), (4096, "4K"),]
+
+    max_side = max(w, h)
+
+    # 如果长边超出最大参考值，直接返回最大标签
+    if max_side >= references[-1][0]:
+        return references[-1][1]
+
+    # 找到绝对差值最小的参考值
+    closest = min(references, key=lambda ref: abs(max_side - ref[0]))
+    return closest[1]
 
 
 def refresh_image_preview(image: bpy.types.Image):
