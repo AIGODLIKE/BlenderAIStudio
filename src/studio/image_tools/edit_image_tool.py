@@ -34,7 +34,7 @@ class EditImageTool(ImageTool):
 
     @property
     def icon(self) -> Optional[str]:
-        return "image_tools/image_edit"
+        return "image_tools/edit_text"
 
     @property
     def tooltips(self) -> list[str]:

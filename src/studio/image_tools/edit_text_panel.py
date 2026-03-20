@@ -177,6 +177,8 @@ class EditTextPanel:
             # 粘贴结果
             content = bpy.context.window_manager.clipboard or ""
             for slice in content.split("\n"):
+                if not slice.strip():
+                    continue
                 self._add_content_row(slice.strip())
             if not content:
                 app.push_error_message("Clipboard is Empty!")
