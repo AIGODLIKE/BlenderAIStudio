@@ -69,6 +69,7 @@ class EditTextPanel:
         flags |= imgui.WindowFlags.NO_SAVED_SETTINGS
         imgui.push_style_var(imgui.StyleVar.FRAME_PADDING, Const.FRAME_P)
         imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, Const.ITEM_S)
+        imgui.push_style_color(imgui.Col.MODAL_WINDOW_DIM_BG, Const.MODAL_WINDOW_DIM_BG)
         if imgui.begin_popup_modal(popup_id, False, flags)[0]:
             self._visible = True
             self._draw_column_headers()
@@ -78,6 +79,7 @@ class EditTextPanel:
         else:
             self._visible = False
         imgui.pop_style_var(2)
+        imgui.pop_style_color(1)
 
     def _calc_col_width(self):
         avail_w = imgui.get_content_region_avail()[0]
