@@ -168,9 +168,15 @@ class StudioImagesDescriptor(WidgetDescriptor):
             imgui.pop_style_color(1)
 
             self._draw_image_context_menu(wrapper, app)
+            self._draw_edit_text_panel(app)
 
         imgui.same_line()
         imgui.pop_style_color()
+
+    def _draw_edit_text_panel(self, app: "AIStudio"):
+        for tool in ImageToolRegistry.get_tools():
+            if hasattr(tool, "draw_panel"):
+                tool.draw_panel(app)
 
     def _display_image_tools(self, _, wrapper: "StudioWrapper", app: "AIStudio"):
         if len(self.value) >= self.widget_def.get("limit", 999):
@@ -597,22 +603,25 @@ class StudioImagesDescriptor(WidgetDescriptor):
             imgui.open_popup(popup_id)
             self._ctx_menu_pending_open = False
 
-        tools = ImageToolRegistry.get_tools()
-        tool_count = len(tools)
-        if tool_count == 0:
+        groups = ImageToolRegistry.get_tools_grouped()
+        if not groups:
             return
 
-        s = 54 * Const.SCALE
-        p = 6 * Const.SCALE
+        scale = Const.SCALE
+        pad = 8 * scale
+        row_h = 44 * scale
+        icon_s = 22 * scale
+        bar_w = 3 * scale
+        popup_w = 220 * scale
 
-        imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, (p, p))
+        imgui.push_style_var(imgui.StyleVar.WINDOW_PADDING, (pad, pad))
         imgui.push_style_var(imgui.StyleVar.FRAME_PADDING, (0, 0))
-        imgui.push_style_var(imgui.StyleVar.CELL_PADDING, (p / 2, 0))
+        imgui.push_style_var(imgui.StyleVar.ITEM_SPACING, (0, 6 * scale))
         imgui.push_style_var(imgui.StyleVar.POPUP_ROUNDING, Const.CHILD_R)
-        imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.CHILD_R)
+        imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, 12 * scale)
 
-        imgui.push_style_color(imgui.Col.POPUP_BG, Const.FRAME_BG)
-        imgui.push_style_color(imgui.Col.BUTTON, Const.BUTTON)
+        imgui.push_style_color(imgui.Col.POPUP_BG, Const.WINDOW_BG)
+        imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
         imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
         imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
 
@@ -620,65 +629,101 @@ class StudioImagesDescriptor(WidgetDescriptor):
             self._ctx_menu_active = True
             images: list[str] = self.value
 
-            imgui.begin_table("##CtxToolTable", tool_count)
-            for tool in tools:
-                imgui.table_next_column()
-                is_running = tool.get_state(wrapper) == ToolState.RUNNING
-                clickable = tool.enabled and not is_running
+            for gi, (category_name, tools) in enumerate(groups):
+                if category_name:
+                    if gi > 0:
+                        imgui.spacing()
+                    imgui.push_style_color(imgui.Col.TEXT, Const.GRAY)
+                    app.font_manager.push_h3_font(18)
+                    imgui.text(category_name)
+                    app.font_manager.pop_font()
+                    imgui.pop_style_color()
 
-                icon_name = tool.icon or "none"
-                icon = TexturePool.get_tex_id(icon_name)
-                tex = TexturePool.get_tex(icon)
+                for tool in tools:
+                    is_running = tool.get_state(wrapper) == ToolState.RUNNING
+                    clickable = tool.enabled and not is_running
 
-                imgui.push_id(f"##ctx_{tool.name}")
-                imgui.begin_group()
-                imgui.set_next_item_allow_overlap()
+                    imgui.push_id(f"##ctx_{tool.name}")
+                    imgui.set_next_item_allow_overlap()
 
-                if not clickable:
-                    imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
-                    imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
-                    imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
+                    if not clickable:
+                        imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
+                        imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.TRANSPARENT)
+                        imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.TRANSPARENT)
+                        imgui.push_style_color(imgui.Col.TEXT, Const.DISABLE)
 
-                clicked = imgui.button(f"##{tool.name}", (s, s))
+                    clicked = imgui.button(f"##{tool.name}", (popup_w - pad * 2, row_h))
 
-                if not clickable:
-                    imgui.pop_style_color(3)
+                    if not clickable:
+                        imgui.pop_style_color(4)
 
-                pmin = imgui.get_item_rect_min()
-                pmax = imgui.get_item_rect_max()
-                dl = imgui.get_window_draw_list()
+                    pmin = imgui.get_item_rect_min()
+                    pmax = imgui.get_item_rect_max()
+                    dl = imgui.get_window_draw_list()
 
-                if tex and tex.width > 0 and tex.height > 0:
-                    max_dim = float(max(tex.width, tex.height))
-                    img_w = s * (float(tex.width) / max_dim)
-                    img_h = s * (float(tex.height) / max_dim)
-                    cx = (pmin[0] + pmax[0]) * 0.5
-                    cy = (pmin[1] + pmax[1]) * 0.5
-                    img_min = (cx - img_w * 0.5, cy - img_h * 0.5)
-                    img_max = (cx + img_w * 0.5, cy + img_h * 0.5)
-                    tint = 0xFFFFFFFF if clickable else imgui.get_color_u32((1, 1, 1, 0.35))
-                    dl.add_image(icon, img_min, img_max, col=tint)
-
-                if is_running:
-                    self._display_running_effect()
-
-                if imgui.is_item_hovered(imgui.HoveredFlags.ALLOW_WHEN_DISABLED):
-                    imgui.set_next_window_size((400, 0))
-                    AppHelperDraw.draw_tips_with_title(app, tool.tooltips, tool.display_name)
-
-                if clicked and clickable:
-                    tool.execute(
-                        self._ctx_menu_image_path,
-                        self._ctx_menu_image_index,
-                        images,
-                        wrapper,
-                        app,
+                    bar_color = imgui.get_color_u32(tool.category_color)
+                    bar_x = pmin[0] + 8 * scale
+                    bar_top = pmin[1] + 12 * scale
+                    bar_bot = pmax[1] - 12 * scale
+                    dl.add_rect_filled(
+                        (bar_x, bar_top),
+                        (bar_x + bar_w, bar_bot),
+                        bar_color,
+                        rounding=bar_w * 0.5,
                     )
-                    imgui.close_current_popup()
 
-                imgui.end_group()
-                imgui.pop_id()
-            imgui.end_table()
+                    icon_name = tool.icon or "none"
+                    icon_id = TexturePool.get_tex_id(icon_name)
+                    tex = TexturePool.get_tex(icon_id)
+                    icon_x = bar_x + bar_w + 8 * scale
+                    icon_cy = (pmin[1] + pmax[1]) * 0.5
+                    if tex and tex.width > 0 and tex.height > 0:
+                        tint = 0xFFFFFFFF if clickable else imgui.get_color_u32((1, 1, 1, 0.35))
+                        dl.add_image(
+                            icon_id,
+                            (icon_x, icon_cy - icon_s * 0.5),
+                            (icon_x + icon_s, icon_cy + icon_s * 0.5),
+                            col=tint,
+                        )
+
+                    text_x = icon_x + icon_s + 8 * scale
+                    text_color = 0xFFFFFFFF if clickable else imgui.get_color_u32(Const.DISABLE)
+                    text_y = icon_cy - imgui.get_font_size() * 0.5
+                    dl.add_text((text_x, text_y), text_color, tool.display_name)
+
+                    if tool.cost > 0:
+                        cost_str = str(tool.cost)
+                        cost_w = imgui.calc_text_size(cost_str)[0]
+                        cost_x = pmax[0] - cost_w - 10 * scale
+                        dl.add_text((cost_x, text_y), text_color, cost_str)
+
+                    if is_running:
+                        icon_cx = icon_x + icon_s * 0.5
+                        spin_radius = icon_s * 0.55
+                        t = imgui.get_time()
+                        start_angle = t * 4.0
+                        end_angle = start_angle + math.pi * 1.5
+                        spin_col = imgui.get_color_u32((1.0, 1.0, 1.0, 0.9))
+                        dl.path_clear()
+                        dl.path_arc_to((icon_cx, icon_cy), spin_radius, start_angle, end_angle, 24)
+                        dl.path_stroke(spin_col, 0, 2.0)
+
+                    if imgui.is_item_hovered(imgui.HoveredFlags.ALLOW_WHEN_DISABLED):
+                        imgui.set_next_window_size((400, 0))
+                        AppHelperDraw.draw_tips_with_title(app, tool.tooltips, tool.title)
+
+                    if clicked and clickable:
+                        tool.execute(
+                            self._ctx_menu_image_path,
+                            self._ctx_menu_image_index,
+                            images,
+                            wrapper,
+                            app,
+                        )
+                        imgui.close_current_popup()
+
+                    imgui.pop_id()
+
             imgui.end_popup()
         else:
             self._ctx_menu_active = False
