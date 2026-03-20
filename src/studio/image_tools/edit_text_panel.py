@@ -259,6 +259,8 @@ class EditTextPanel:
             return
         aspect_ration = calc_appropriate_aspect_ratio(*img_size)
         resolution = calc_appropriate_resolution(*img_size)
+        original_model = app.client.current_model_name
+        app.client.current_model_name = "NanoBananaPro"
         app.client.add_edit_text_task(
             prompt,
             app.state,
@@ -266,6 +268,7 @@ class EditTextPanel:
             aspect_ration,
             resolution,
         )
+        app.client.current_model_name = original_model
 
     def get_edit_results(self) -> list[tuple[str, str]]:
         return [(r.original, r.replacement) for r in self._rows if r.original.strip() or r.replacement.strip()]
