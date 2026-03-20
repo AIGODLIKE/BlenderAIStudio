@@ -407,6 +407,26 @@ class UniversalClient(StudioClient):
         credentials = self.get_credentials(account)
         return self._add_task_one(account, credentials, params)
 
+    def add_edit_text_task(
+        self,
+        prompt: str,
+        account: "Account",
+        reference_images: list[str],
+        aspect_ratio: str = "Auto",
+        resolution: str = "1K",
+    ) -> tuple[StudioHistoryItem, UniversalModelTask]:
+        params = {
+            "input_image_type": "NoInput",
+            "prompt": prompt,
+            "reference_images": reference_images,
+            "aspect_ratio": aspect_ratio,
+            "resolution": resolution,
+            "__use_internal_prompt": False,
+            "__disable_system_prompt": True,
+        }
+        credentials = self.get_credentials(account)
+        return self._add_task_one(account, credentials, params)
+
     @staticmethod
     def _save_result_file(parsed_data: list[tuple[str, str | bytes]]) -> list[str]:
         """保存结果文件
@@ -424,11 +444,11 @@ class UniversalClient(StudioClient):
         load_images_into_blender(outputs)
 
     def _update_history_item_on_complete(
-            self,
-            task_id: str,
-            response_data: list,
-            outputs: list[tuple[str, str]],
-            metadata: Dict[str, Any],
+        self,
+        task_id: str,
+        response_data: list,
+        outputs: list[tuple[str, str]],
+        metadata: Dict[str, Any],
     ):
         item = self.history.find_by_task_id(task_id)
         if not item:
