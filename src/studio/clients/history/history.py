@@ -166,6 +166,12 @@ class StudioHistoryItem:
                 return output[1]
         return ""
 
+    def get_text_plain_output(self) -> str:
+        for output in self.outputs:
+            if output[0] == "text/plain":
+                return output[1]
+        return ""
+
     def get_one_output_file_by_mime_type(self, mime_type: str) -> str:
         for output in self.outputs:
             if output[0] == mime_type:

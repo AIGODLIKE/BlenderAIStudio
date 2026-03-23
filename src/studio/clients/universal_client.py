@@ -463,6 +463,17 @@ class UniversalClient(StudioClient):
             return None, None
         return self.add_zt_task(image_path, account, "remove_background")
 
+    def add_ocr_task(
+        self,
+        image_path: str,
+        account: "Account",
+    ) -> tuple[StudioHistoryItem, UniversalModelTask]:
+        """提交 OCR 任务"""
+        if account.auth_mode != AuthMode.ACCOUNT.value:
+            self.push_error(_T("RemoveBackground is only supported in Account mode"))
+            return None, None
+        return self.add_zt_task(image_path, account, "ocr")
+
     def add_zt_task(
         self,
         image_path: str,
