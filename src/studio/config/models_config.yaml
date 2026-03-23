@@ -499,3 +499,42 @@ models:
         description: Edit existing image with prompt/mask
 
     default_action: generate
+
+  - modelId: "ZT"
+    modelName: ZT
+    provider: ZT
+    category: ZT
+    auth_modes: [account]
+
+    endpoints:
+      account:
+        base_url: "{account_api_base_url}"
+        entry: service/zt-api
+        method: POST
+        headers:
+          X-Auth-T: "{token}"
+          X-REQ-ID: "{reqId}"
+          X-TASK-TYPE: "{taskType}"
+
+        response_parser: ZTParser
+
+    parameters:
+      - name: reference_images
+        display_name: Reference Images
+        category: Input
+        type: IMAGE_LIST
+        hide_title: false
+        limit: 12
+
+    request_builder: ZTBuilder
+    response_parser: ZTParser
+
+    actions:
+      remove_background:
+        display_name: Remove Background
+        description: Remove background from image
+      ocr:
+        display_name: OCR
+        description: Extract text from image
+
+    default_action: remove_background

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, TYPE_CHECKING
+from typing import Dict, Any, TYPE_CHECKING, Optional
 from dataclasses import dataclass, field
 
 if TYPE_CHECKING:
@@ -12,7 +12,8 @@ class RequestData:
 
     url: str
     headers: Dict[str, str]
-    payload: Dict[str, Any]
+    payload: Optional[Dict[str, Any]] = None
+    files: Optional[list[dict[str, Any]]] = None
     method: str = "POST"
     query_params: Dict[str, str] = field(default_factory=dict)
     timeout: int = 80

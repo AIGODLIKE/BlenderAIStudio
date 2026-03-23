@@ -103,6 +103,7 @@ class UniversalProvider(BaseProvider):
             url=request_data.url,
             headers=request_data.headers,
             json=request_data.payload,
+            files=request_data.files,
             params=request_data.query_params,
             timeout=request_data.timeout,
         )
