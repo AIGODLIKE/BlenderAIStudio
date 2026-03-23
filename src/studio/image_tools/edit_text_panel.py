@@ -1,4 +1,6 @@
 import bpy
+import math
+
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from ..gui.app.renderer import imgui
@@ -50,10 +52,32 @@ class EditTextPanel:
         row.original = content
         self._rows.append(row)
 
-    def _request_ocr(self):
+    def _request_ocr(self, app: "AIStudio", image_path: str):
+        if self._ocr_loading:
+            app.push_info_message("OCR is already running")
+            return
         self._ocr_loading = True
-        # TODO: 实际调用远程 OCR API，完成后填充 self._rows
-        self._ocr_loading = False
+        wrapper = app.client_wrapper
+        client = wrapper.studio_client
+
+        old_model_name = wrapper.studio_client.current_model_name
+        wrapper.studio_client.current_model_name = "ZT"
+        item, _task = client.add_ocr_task(image_path, app.state)
+        wrapper.studio_client.current_model_name = old_model_name
+
+        def _poll_job():
+            if item and not item.is_finished():
+                return 1.0
+            self._ocr_loading = False
+            text = item.get_text_plain_output()
+            if not text:
+                return
+            for output in text.split("\n"):
+                if not output.strip():
+                    continue
+                self._add_content_row(output.strip())
+
+        bpy.app.timers.register(_poll_job)
 
     def draw(self, app: "AIStudio"):
         popup_id = "##EditTextPanel"
@@ -191,7 +215,12 @@ class EditTextPanel:
         imgui.same_line()
         imgui.push_id("footer_ocr")
         if CustomWidgets.icon_label_button("image_tools/ocr", "", "CENTER", btn_size, img_size):
-            self._request_ocr()
+            self._request_ocr(app, self._image_path)
+        if self._ocr_loading:
+            pmin = imgui.get_item_rect_min()
+            pmax = imgui.get_item_rect_max()
+            dl = imgui.get_window_draw_list()
+            self._display_prompt_reverse_running_effect(pmin, pmax, dl)
         if imgui.is_item_hovered():
             imgui.set_tooltip("OCR 识别（即将推出）")
         imgui.pop_id()
@@ -204,6 +233,18 @@ class EditTextPanel:
         self._draw_cancel_button()
 
         imgui.pop_style_var(1)
+
+    def _display_prompt_reverse_running_effect(self, pmin, pmax, dl: imgui.DrawList):
+        cx = (pmin[0] + pmax[0]) * 0.5
+        cy = (pmin[1] + pmax[1]) * 0.5
+        radius = (pmax[0] - pmin[0]) * 0.25
+        t = imgui.get_time()
+        start_angle = t * 4.0
+        end_angle = start_angle + math.pi * 1.5
+        col = imgui.get_color_u32((1.0, 1.0, 1.0, 0.9))
+        dl.path_clear()
+        dl.path_arc_to((cx, cy), radius, start_angle, end_angle, 32)
+        dl.path_stroke(col, 0, 3.0)
 
     def _draw_run_button(self, app: "AIStudio", w: float, h: float):
         has_content = any(r.original.strip() or r.replacement.strip() for r in self._rows)
