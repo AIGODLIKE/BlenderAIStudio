@@ -24,25 +24,32 @@ if TYPE_CHECKING:
 class StatusResponseParser:
     """状态查询响应解析器
 
-    处理后端状态查询接口返回的数据，格式为：
+    处理后端状态查询接口返回的数据，V2 格式为：
     {
         "responseId": "2009467300415012864",
-        "code": 1000,
+        "code": 0,
         "data": {
             "taskId": {
-                "state": "completed",
-                "urls": ["https://xxxxx", "https://yyyyy"]
+                "state": "SUCCESS",
+                "msg": "",
+                "usedTime": 38,
+                "inline_data": [
+                    {"type": "TEXT", "content": "..."},
+                    {"type": "IMAGE", "content": "https://..."}
+                ]
             }
         }
     }
     """
 
     def parse_batch_response(self, response_json: dict) -> dict[str, TaskStatusData]:
-        result = {}
-        data = response_json.get("data", {})
+        result: dict[str, TaskStatusData] = {}
+        data: dict = response_json.get("data", {})
         for task_id, task_info in data.items():
+            inline_data = task_info.get("inline_data") or []
             state = TaskStatus(task_info.get("state", TaskStatus.UNKNOWN.value))
-            urls = task_info.get("urls") or []
+            urls = self._extract_urls_from_inline_data(inline_data)
+
             progress = 1.0 if state == TaskStatus.SUCCESS else 0.0
             error_message = task_info.get("msg")
 
@@ -55,6 +62,31 @@ class StatusResponseParser:
             )
 
         return result
+
+    def _extract_urls_from_inline_data(self, inline_data: list[dict[str, str]]) -> list[str]:
+        """从 inline_data 中提取 URL
+
+        V2 版本将结果数据内联在响应中，支持 TEXT 和 IMAGE 两种类型。
+        IMAGE 类型的 content 是 URL，TEXT 类型的 content 是文本内容。
+        """
+        urls: list[str] = []
+        for item in inline_data:
+            item_type = item.get("type", "").upper()
+            content = item.get("content", "")
+            if item_type == "IMAGE" and content:
+                urls.append(content)
+        return urls
+
+    def get_inline_text_content(self, task_info: dict[str, list[dict[str, str]]]) -> str:
+        """从任务信息中提取文本内容"""
+        inline_data = task_info.get("inline_data") or []
+        text_parts: list[str] = []
+        for item in inline_data:
+            item_type = item.get("type", "").upper()
+            content = item.get("content", "")
+            if item_type == "TEXT" and content:
+                text_parts.append(content)
+        return "\n".join(text_parts)
 
     def download_result(self, urls: list[str], task_history: TaskHistoryData) -> list[tuple[str, bytes]]:
         # TODO 是否考虑在下一次轮询前未下载完成时, 是否会导致重复下载?
