@@ -87,8 +87,10 @@ class RemoveBackgroundTool(ImageTool):
 
         client = wrapper.studio_client
         account = app.state
-
+        old_model_name = wrapper.studio_client.current_model_name
+        wrapper.studio_client.current_model_name = "ZT"
         item, _task = client.add_remove_background_task(image_path, account)
+        wrapper.studio_client.current_model_name = old_model_name
 
         def _poll_job():
             if item and not item.is_finished():
