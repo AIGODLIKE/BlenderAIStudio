@@ -9,7 +9,7 @@ from ..logger import logger
 from ..timer import Timer
 
 
-def save_mime_typed_datas_to_temp_files(mime_typed_datas: list[tuple[str, str | bytes]]) -> list[str]:
+def save_mime_typed_datas_to_temp_files(mime_typed_datas: list[tuple[str, str | bytes]]) -> list[tuple[str, str]]:
     """保存 MIME 类型数据到临时文件
 
     Args:

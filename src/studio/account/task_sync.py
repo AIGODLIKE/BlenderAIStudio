@@ -49,6 +49,7 @@ class StatusResponseParser:
             inline_data = task_info.get("inline_data") or []
             state = TaskStatus(task_info.get("state", TaskStatus.UNKNOWN.value))
             urls = self._extract_urls_from_inline_data(inline_data)
+            pure_data = self._extract_pure_data_from_inline_data(inline_data)
 
             progress = 1.0 if state == TaskStatus.SUCCESS else 0.0
             error_message = task_info.get("msg")
@@ -57,11 +58,23 @@ class StatusResponseParser:
                 task_id=task_id,
                 state=state,
                 urls=urls,
+                pure_data=pure_data,
                 progress=progress,
                 error_message=error_message,
             )
 
         return result
+
+    def extract_urls_from_inline_data(self, inline_data: list[dict[str, str]]) -> list[str]:
+        """
+        从 inline_data 中提取所有 URL
+        """
+        urls: list[str] = []
+        for item in inline_data:
+            content = item.get("content", "")
+            if content:
+                urls.append(content)
+        return urls
 
     def _extract_urls_from_inline_data(self, inline_data: list[dict[str, str]]) -> list[str]:
         """从 inline_data 中提取 URL
@@ -76,6 +89,16 @@ class StatusResponseParser:
             if item_type == "IMAGE" and content:
                 urls.append(content)
         return urls
+
+    def _extract_pure_data_from_inline_data(self, inline_data: list[dict[str, str]]) -> list[dict[str, str]]:
+        """从 inline_data 中提取纯数据"""
+        pure_data: list[tuple[str, str]] = []
+        for item in inline_data:
+            item_type = item.get("type", "").upper()
+            content: str = item.get("content", "")
+            if item_type == "TEXT" and content:
+                pure_data.append(("text/plain", content))
+        return pure_data
 
     def get_inline_text_content(self, task_info: dict[str, list[dict[str, str]]]) -> str:
         """从任务信息中提取文本内容"""
@@ -243,6 +266,10 @@ class TaskSyncService:
 
         # 保存文件（需要导入 utils）
         outputs = save_mime_typed_datas_to_temp_files(parsed_data)
+
+        # 提取纯数据
+        if status.pure_data:
+            outputs = outputs + status.pure_data
 
         # 更新 History
         task_history.state = TaskStatus.SUCCESS

@@ -38,6 +38,7 @@ class TaskStatusData:
     task_id: str
     state: TaskStatus = TaskStatus.NONE
     urls: Optional[list[str]] = None  # 结果下载地址
+    pure_data: list[tuple[str, str]] = field(default_factory=list)
     progress: float = 0.0
     error_message: str = ""
 
