@@ -63,6 +63,7 @@ error_translations = (
      None),
     ("RemoveBackground is submitted, please wait for the result", "移除背景任务已提交，请等待结果", None),
     ("OCR is submitted, please wait for the result", "OCR任务已提交，请等待结果", None),
+    ("Task is submitted, please wait for the result", "任务已提交，请等待结果", None),
 )
 
 studio_panel_translations = (
