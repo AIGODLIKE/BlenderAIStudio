@@ -10,7 +10,7 @@ from .progress_estimator import TaskProgressEstimator
 from ..account import Account
 from ..common import PromptOption
 from ..config.model_registry import ModelConfig, ModelRegistry
-from ..tasks import UniversalModelTask, Task, TaskResult
+from ..tasks import UniversalModelTask, RemoveBackgroundTask, Task, TaskResult
 from ..utils import save_mime_typed_datas_to_temp_files, load_images_into_blender
 from ...utils.camear_info import get_camera_info
 from ...utils.light_info import get_light_info
@@ -426,6 +426,46 @@ class UniversalClient(StudioClient):
         }
         credentials = self.get_credentials(account)
         return self._add_task_one(account, credentials, params)
+
+    def add_remove_background_task(
+        self,
+        image_path: str,
+        account: "Account",
+    ) -> tuple[StudioHistoryItem | None, "RemoveBackgroundTask | None"]:
+        """提交移除背景任务
+
+        Args:
+            image_path: 图片路径
+            account: 账户实例
+        Returns:
+            (历史记录项, 任务)
+        """
+        if account.auth_mode != AuthMode.ACCOUNT.value:
+            self.push_error(_T("RemoveBackground is only supported in Account mode"))
+            return None, None
+        # 创建任务
+        task = RemoveBackgroundTask(image_path, account)
+        self._register_task_callbacks(task)
+
+        # 提交到任务管理器
+        task_id = self.task_manager.submit_task(task)
+
+        # 创建历史记录项
+        item = StudioHistoryItem()
+        item.task_id = task_id
+        item.model = "remove_background"
+        item.created_at = time.time()
+        item.started_at = time.time()
+        item.status = StudioHistoryItem.STATUS_PREPARING
+        item.metadata["image_path"] = image_path
+        self.history.add(item)
+
+        logger.info(f"RemoveBackground: 任务已提交, TaskID={task_id}")
+
+        # 注册完成回调
+        task.register_callback("completed", self._on_completed)
+
+        return item, task
 
     @staticmethod
     def _save_result_file(parsed_data: list[tuple[str, str | bytes]]) -> list[str]:
