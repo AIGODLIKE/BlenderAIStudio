@@ -9,6 +9,7 @@ from .task import (
 from .sequence_task import SequenceTask
 from .universal_task import UniversalModelTask
 from .remove_background_task import RemoveBackgroundTask
+from .ocr_task import OCRTask
 
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "SequenceTask",
     "UniversalModelTask",
     "RemoveBackgroundTask",
+    "OCRTask",
 ]
