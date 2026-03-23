@@ -184,14 +184,14 @@ class Task(ABC):
     子类需要实现 prepare(), execute(), cleanup() 方法。
     """
 
-    def __init__(self, task_name: str):
+    def __init__(self, task_name: str, task_id: str = ""):
         """
         初始化任务
 
         Args:
             task_name: 任务名称
         """
-        self.task_id: str = str(uuid.uuid4())
+        self.task_id: str = task_id or str(uuid.uuid4())
         self.task_name: str = task_name
         self.state: TaskState = TaskState.PENDING
         self.progress: TaskProgress = TaskProgress()

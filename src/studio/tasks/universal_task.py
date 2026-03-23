@@ -21,7 +21,7 @@ class UniversalModelTask(Task):
     - 创建历史记录
     """
 
-    def __init__(self, model_id: str, auth_mode: str, credentials: Dict[str, str], params: Dict[str, Any], context: dict, task_name: Optional[str] = None):
+    def __init__(self, model_id: str, auth_mode: str, credentials: Dict[str, str], params: Dict[str, Any], context: dict, task_name: Optional[str] = None, task_id: str = ""):
         """初始化通用模型任务
 
         Args:
@@ -41,7 +41,7 @@ class UniversalModelTask(Task):
 
         # 设置任务名称
         task_name = task_name or f"{self.model_config.model_name}"
-        super().__init__(task_name)
+        super().__init__(task_name, task_id)
 
         self.auth_mode = auth_mode
         self.credentials = credentials
