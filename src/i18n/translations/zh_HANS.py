@@ -62,6 +62,7 @@ error_translations = (
     ("Model ID not found. Please Check Login Status or Contact Developer", "模型ID未找到，请检查登录状态或联系开发者",
      None),
     ("RemoveBackground is submitted, please wait for the result", "移除背景任务已提交，请等待结果", None),
+    ("OCR is submitted, please wait for the result", "OCR任务已提交，请等待结果", None),
 )
 
 studio_panel_translations = (
