@@ -4,13 +4,18 @@ from traceback import print_exc
 from bpy.app.translations import pgettext_iface as _T
 from pathlib import Path
 from typing import Iterable, Dict, Any, List
+from uuid import uuid4
 
 from .base import StudioClient, StudioHistoryItem
 from .progress_estimator import TaskProgressEstimator
 from ..account import Account
 from ..common import PromptOption
 from ..config.model_registry import ModelConfig, ModelRegistry
-from ..tasks import UniversalModelTask, RemoveBackgroundTask, Task, TaskResult
+from ..tasks import (
+    UniversalModelTask,
+    Task,
+    TaskResult,
+)
 from ..utils import save_mime_typed_datas_to_temp_files, load_images_into_blender
 from ...utils.camear_info import get_camera_info
 from ...utils.light_info import get_light_info
@@ -70,6 +75,8 @@ class UniversalClient(StudioClient):
 
         # 当前选择的模型 ID
         self._current_model_name = self.DEFAULT_MODEL_NAME
+        # 用于手动设置模型 ID
+        self._model_id_set_by_user: str = ""
 
         # 动态加载模型配置
         self._model_registry = ModelRegistry.get_instance()
@@ -116,7 +123,11 @@ class UniversalClient(StudioClient):
         if account.auth_mode == AuthMode.API.value:
             return self._model_config.model_id
         strategy = account.pricing_strategy
-        return self._model_registry.resolve_submit_id(self.model_name, strategy)
+        return self._model_registry.resolve_submit_id(self.model_name, strategy) or self._model_id_set_by_user
+
+    @model_id.setter
+    def model_id(self, value: str):
+        self._model_id_set_by_user = value
 
     @property
     def meta(self) -> Dict[str, Any]:
@@ -338,13 +349,20 @@ class UniversalClient(StudioClient):
             }
         return credentials
 
-    def _add_task_one(self, account: "Account", credentials, params) -> tuple[StudioHistoryItem, UniversalModelTask]:
+    def _add_task_one(
+        self,
+        account: "Account",
+        credentials,
+        params,
+        task_id: str = "",
+    ) -> tuple[StudioHistoryItem, UniversalModelTask]:
         task = UniversalModelTask(
             model_id=self.model_id,
             auth_mode=account.auth_mode,
             credentials=credentials,
             params=params,
             context=bpy.context.copy(),
+            task_id=task_id,
         )
         self._register_task_callbacks(task)
         task.register_callback("completed", self._on_completed)
@@ -431,7 +449,7 @@ class UniversalClient(StudioClient):
         self,
         image_path: str,
         account: "Account",
-    ) -> tuple[StudioHistoryItem | None, "RemoveBackgroundTask | None"]:
+    ) -> tuple[StudioHistoryItem, UniversalModelTask]:
         """提交移除背景任务
 
         Args:
@@ -443,29 +461,29 @@ class UniversalClient(StudioClient):
         if account.auth_mode != AuthMode.ACCOUNT.value:
             self.push_error(_T("RemoveBackground is only supported in Account mode"))
             return None, None
-        # 创建任务
-        task = RemoveBackgroundTask(image_path, account)
-        self._register_task_callbacks(task)
+        return self.add_zt_task(image_path, account, "remove_background")
 
-        # 提交到任务管理器
-        task_id = self.task_manager.submit_task(task)
+    def add_zt_task(
+        self,
+        image_path: str,
+        account: "Account",
+        action: str,
+    ) -> tuple[StudioHistoryItem, UniversalModelTask]:
+        self.model_id = "ZT"
 
-        # 创建历史记录项
-        item = StudioHistoryItem()
-        item.task_id = task_id
-        item.model = "remove_background"
-        item.created_at = time.time()
-        item.started_at = time.time()
-        item.status = StudioHistoryItem.STATUS_PREPARING
-        item.metadata["image_path"] = image_path
-        self.history.add(item)
+        action_map = {"remove_background": "1", "ocr": "2"}
+        task_id = str(uuid4())
+        credentials = {
+            "token": account.token,
+            "reqId": task_id,
+            "taskType": action_map[action],
+        }
 
-        logger.info(f"RemoveBackground: 任务已提交, TaskID={task_id}")
-
-        # 注册完成回调
-        task.register_callback("completed", self._on_completed)
-
-        return item, task
+        params = {
+            "reference_images": [image_path],
+            "__action": action,
+        }
+        return self._add_task_one(account, credentials, params, task_id)
 
     @staticmethod
     def _save_result_file(parsed_data: list[tuple[str, str | bytes]]) -> list[str]:
