@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from typing_extensions import override
 
 from .base import ImageTool, ToolState
+from ...utils.image_processor import ImageProcessor
 
 if TYPE_CHECKING:
     from ..studio import StudioWrapper, AIStudio
@@ -84,6 +85,13 @@ class RemoveBackgroundTool(ImageTool):
             return
 
         self._running[model_name] = True
+
+        # 压缩图片
+        image_path = ImageProcessor.compress_image_to_tempfile(image_path)
+        if not image_path:
+            app.push_info_message("Failed to compress image")
+            self._running[model_name] = False
+            return
 
         client = wrapper.studio_client
         account = app.state

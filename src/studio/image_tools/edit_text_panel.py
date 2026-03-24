@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from ..gui.app.renderer import imgui
 from ..gui.app.style import Const
 from ..gui.widgets import CustomWidgets
+from ...utils.image_processor import ImageProcessor
 from ...utils import get_image_size, calc_appropriate_aspect_ratio, calc_appropriate_resolution
 if TYPE_CHECKING:
     from ..studio import AIStudio
@@ -57,6 +58,13 @@ class EditTextPanel:
             app.push_info_message("OCR is already running")
             return
         self._ocr_loading = True
+        # 压缩图片
+        image_path = ImageProcessor.compress_image_to_tempfile(image_path)
+        if not image_path:
+            app.push_info_message("Failed to compress image")
+            self._ocr_loading = False
+            return
+
         wrapper = app.client_wrapper
         client = wrapper.studio_client
 
