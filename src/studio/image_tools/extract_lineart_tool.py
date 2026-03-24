@@ -36,8 +36,8 @@ class ExtractLineartTool(ImageTool):
         return "视觉分析"
 
     @property
-    def cost(self) -> int:
-        return 3
+    def cost(self) -> str:
+        return "3"
 
     @property
     def category_color(self) -> tuple:

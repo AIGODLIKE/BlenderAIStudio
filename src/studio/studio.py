@@ -691,7 +691,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
                     text_y = icon_cy - imgui.get_font_size() * 0.5
                     dl.add_text((text_x, text_y), text_color, tool.display_name)
 
-                    if tool.cost > 0:
+                    if tool.cost:
                         cost_str = str(tool.cost)
                         cost_w = imgui.calc_text_size(cost_str)[0]
                         cost_x = pmax[0] - cost_w - 10 * scale

@@ -36,8 +36,8 @@ class RemoveBackgroundTool(ImageTool):
 
     @property
     @override
-    def cost(self) -> int:
-        return 3
+    def cost(self) -> str:
+        return "3"
 
     @property
     @override

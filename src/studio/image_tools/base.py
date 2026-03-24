@@ -53,9 +53,9 @@ class ImageTool(ABC):
         return ""
 
     @property
-    def cost(self) -> int:
+    def cost(self) -> str:
         """工具消耗的积分数"""
-        return 0
+        return "0"
 
     @property
     def category_color(self) -> tuple[float, float, float, float]:
