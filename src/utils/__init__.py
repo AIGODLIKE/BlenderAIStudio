@@ -35,6 +35,7 @@ __all__ = [
     "check_cache_folder_writable_permission",
     "image_file_to_base64",
     "get_edit_main_image",
+    "ImageProcessor",
 ]
 
 
@@ -421,6 +422,7 @@ def get_edit_main_image(context):
 
 modules = [
     "render",
+    "image_processor",
 ]
 
 reg, unreg = bpy.utils.register_submodule_factory(__package__, modules)
