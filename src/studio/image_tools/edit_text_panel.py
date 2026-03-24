@@ -54,6 +54,7 @@ class EditTextPanel:
         self._rows.append(row)
 
     def _request_ocr(self, app: "AIStudio", image_path: str):
+        return
         if self._ocr_loading:
             app.push_info_message("OCR is already running")
             return
