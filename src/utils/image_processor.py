@@ -146,6 +146,32 @@ class ImageProcessor:
         return cls._write_oiio(input_path, output_path)
 
     @classmethod
+    def compress_image_to_tempfile(
+        cls,
+        input_path: str,
+        max_dimension: int | None = None,
+        max_size_mb: float | None = None,
+        format: ImageFormat | None = None,
+    ) -> str:
+        """压缩图片到临时文件"""
+        default_fmt = Path(input_path).suffix.lower().lstrip(".")
+        max_dimension = max_dimension or cls.MAX_DIMENSION
+        out_fmt = format or cls._detect_format(input_path) or default_fmt
+
+        tmp = tempfile.NamedTemporaryFile(suffix="." + out_fmt, delete=False)
+        tmp.close()
+        output_path = tmp.name
+
+        try:
+            if not cls.resize_by_max_dimension(input_path, output_path, max_dimension):
+                cls._copy_file(input_path, output_path)
+        except Exception as e:
+            logger.warning(f"compress_image_to_tempfile failed: {e}")
+            return ""
+
+        return output_path
+
+    @classmethod
     def compress_image(
         cls,
         input_path: str,
@@ -162,25 +188,16 @@ class ImageProcessor:
         if not output_path:
             output_path = input_path
 
-        default_fmt = Path(input_path).suffix.lower().lstrip(".")
-        max_dimension = max_dimension or cls.MAX_DIMENSION
-        out_fmt = format or cls._detect_format(output_path) or default_fmt
-
-        tmp = tempfile.NamedTemporaryFile(suffix="." + out_fmt, delete=False)
-        intermediate_path = tmp.name
-        tmp.close()
-
+        intermediate_path = cls.compress_image_to_tempfile(input_path, max_dimension, max_size_mb, format)
+        if not intermediate_path:
+            return None
         try:
-            if not cls.resize_by_max_dimension(input_path, intermediate_path, max_dimension):
-                cls._copy_file(input_path, intermediate_path)
-            cls._write_oiio(intermediate_path, output_path)
+            return shutil.copy2(intermediate_path, output_path)
         finally:
             try:
                 os.remove(intermediate_path)
             except OSError:
                 pass
-
-        return output_path if os.path.exists(output_path) else None
 
     @classmethod
     def convert_format(cls, input_path: str, output_path: str) -> bool:
