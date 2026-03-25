@@ -350,7 +350,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
                 "icon": "image_line_art",
                 "title": "视觉解构",
                 "tooltips": [
-                    "消耗积分",
+                    "消耗3积分",
                     "从当前画面中分离出线稿、色彩与空间深度信息",
                     "并添加到当前图像列表",
                     "(按当前分辨率&模型单张计算)",
