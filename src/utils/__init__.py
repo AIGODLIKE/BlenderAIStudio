@@ -7,6 +7,7 @@ import sys
 import time
 import uuid
 from functools import cache
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .pkg_installer import PkgInstaller
@@ -35,7 +36,6 @@ __all__ = [
     "check_cache_folder_writable_permission",
     "image_file_to_base64",
     "get_edit_main_image",
-    "ImageProcessor",
 ]
 
 
@@ -418,6 +418,21 @@ def get_edit_main_image(context):
     if i := context.space_data.image:
         return get_image(i)
     return None
+
+
+def read_text_file_to_string(text_file: str) -> str:
+    encodings = ["utf-8", "gbk", "gb2312", "gb18030", "utf-16", "utf-32"]
+    path = Path(text_file)
+    if not path.exists() or not path.is_file():
+        return ""
+    for encoding in encodings:
+        try:
+            return path.read_text(encoding)
+        except UnicodeDecodeError:
+            continue
+        except PermissionError:
+            return ""
+    return ""
 
 
 modules = [

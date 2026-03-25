@@ -2,13 +2,12 @@ import bpy
 import math
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING
 from ..gui.app.renderer import imgui
 from ..gui.app.style import Const
 from ..gui.widgets import CustomWidgets
 from ...utils.image_processor import ImageProcessor
-from ...utils import get_image_size, calc_appropriate_aspect_ratio, calc_appropriate_resolution
+from ...utils import get_image_size, calc_appropriate_aspect_ratio, calc_appropriate_resolution, read_text_file_to_string
 if TYPE_CHECKING:
     from ..studio import AIStudio
 
@@ -73,26 +72,12 @@ class EditTextPanel:
         item, _task = client.add_ocr_task(image_path, app.state)
         client.current_model_name = old_model_name
 
-        def read_text_to_string(text_file: str) -> str:
-            encodings = ["utf-8", "gbk", "gb2312", "gb18030", "utf-16", "utf-32"]
-            path = Path(text_file)
-            if not path.exists() or not path.is_file():
-                return ""
-            for encoding in encodings:
-                try:
-                    return path.read_text(encoding)
-                except UnicodeDecodeError:
-                    continue
-                except PermissionError:
-                    return ""
-            return ""
-
         def _poll_job():
             if item and not item.is_finished():
                 return 1.0
             self._ocr_loading = False
             text_file = item.get_output_file_text()
-            text = read_text_to_string(text_file)
+            text = read_text_file_to_string(text_file)
             if not text:
                 app.push_error_message("OCR 识别失败")
                 return
