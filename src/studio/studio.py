@@ -769,13 +769,22 @@ class StudioHistoryViewer:
             self._draw(item)
 
     def draw_first(self):
-        if not self.history.items:
+        item = self.get_first_item()
+        if not item:
             return
-        item = self.history.items[0]
         self._draw(item)
+
+    def get_first_item(self) -> StudioHistoryItem | None:
+        for item in self.history.items:
+            if not item.get_output_file_text():
+                return item
+        return None
 
     def _draw(self, item: StudioHistoryItem):
         item.update_elapsed_time()
+        # 临时屏蔽文本任务的绘制
+        if item.get_output_file_text():
+            return
         imgui.push_style_color(imgui.Col.FRAME_BG, self.col_bg)
         imgui.push_style_var_y(imgui.StyleVar.CELL_PADDING, 0)
         imgui.push_style_var_y(imgui.StyleVar.ITEM_SPACING, Const.CHILD_P[1])
