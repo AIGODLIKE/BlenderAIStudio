@@ -35,8 +35,7 @@ class EditImageTool(ImageTool):
     def icon(self) -> Optional[str]:
         return "image_tools/edit_text"
 
-    @property
-    def tooltips(self) -> list[str]:
+    def tooltips(self, app: "AIStudio") -> list[str]:
         return [
             "识别图像中的文字并逐行编辑替换",
             "支持 OCR 自动识别或手动粘贴",

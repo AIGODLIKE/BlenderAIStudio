@@ -49,11 +49,10 @@ class RemoveBackgroundTool(ImageTool):
     def icon(self) -> str | None:
         return "image_tools/remove_background"
 
-    @property
     @override
-    def tooltips(self) -> list[str]:
+    def tooltips(self, app: "AIStudio") -> list[str]:
         return [
-            "消耗积分",
+            "消耗3积分",
             "AI 自动识别并去除图片背景",
             "支持人物、物品、产品等多种场景",
         ]

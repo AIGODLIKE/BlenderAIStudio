@@ -36,8 +36,7 @@ class PromptReverseTool(ImageTool):
     def icon(self) -> str:
         return "image_tools/prompt_reverse"
 
-    @property
-    def tooltips(self) -> list[str]:
+    def tooltips(self, app: "AIStudio") -> list[str]:
         return [
             "消耗积分反求当前参考图的提示词",
             "并添加到提示词末尾",

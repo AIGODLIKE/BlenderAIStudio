@@ -53,10 +53,9 @@ class ExtractLineartTool(ImageTool):
     def icon(self) -> Optional[str]:
         return "image_tools/image_line_art"
 
-    @property
-    def tooltips(self) -> list[str]:
+    def tooltips(self, app: "AIStudio") -> list[str]:
         return [
-            "消耗3积分",
+            f"消耗{self.cost(app)}积分",
             "从当前参考图中分离出线稿、色彩与空间深度信息",
             "并添加到当前图像列表",
         ]

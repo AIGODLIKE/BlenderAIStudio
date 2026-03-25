@@ -236,7 +236,8 @@ def _draw_image_context_menu_impl(
 
             if imgui.is_item_hovered(imgui.HoveredFlags.ALLOW_WHEN_DISABLED):
                 imgui.set_next_window_size((400, 0))
-                AppHelperDraw.draw_tips_with_title(app, tool.tooltips, tool.title)
+                tooltips = tool.tooltips(app)
+                AppHelperDraw.draw_tips_with_title(app, tooltips, tool.title)
 
             if clicked and clickable:
                 tool.execute(image_path, image_index, images, app)
@@ -321,6 +322,12 @@ class StudioImagesDescriptor(WidgetDescriptor):
     def _display_image_tools(self, _, wrapper: "StudioWrapper", app: "AIStudio"):
         if len(self.value) >= self.widget_def.get("limit", 999):
             return
+        def calc_line_art_cost(app: "AIStudio") -> str:
+            MODEL_NAME = "NanoBanana2"
+            resolution = app.client_wrapper.get_resolution()
+            price = app.calc_model_price(MODEL_NAME, resolution)
+            return price
+
         advanced_options = {
             "image_paste": {
                 "icon": "image_paste",
@@ -350,7 +357,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
                 "icon": "image_line_art",
                 "title": "ControlNet视觉解构",
                 "tooltips": [
-                    "消耗3积分",
+                    f"消耗{calc_line_art_cost(app)}积分",
                     "从当前画面中分离出线稿、色彩与空间深度信息",
                     "并添加到当前图像列表",
                     "(按当前分辨率&模型单张计算)",

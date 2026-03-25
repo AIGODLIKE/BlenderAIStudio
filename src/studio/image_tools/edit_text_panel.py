@@ -7,7 +7,7 @@ from ..gui.app.renderer import imgui
 from ..gui.app.style import Const
 from ..gui.widgets import CustomWidgets
 from ...utils.image_processor import ImageProcessor
-from ...utils import get_image_size, calc_appropriate_aspect_ratio, calc_appropriate_resolution, read_text_file_to_string
+from ...utils import get_image_size, calc_appropriate_aspect_ratio, read_text_file_to_string
 if TYPE_CHECKING:
     from ..studio import AIStudio
 
@@ -230,7 +230,7 @@ class EditTextPanel:
             dl = imgui.get_window_draw_list()
             self._display_prompt_reverse_running_effect(pmin, pmax, dl)
         if imgui.is_item_hovered():
-            imgui.set_tooltip("OCR 识别")
+            imgui.set_tooltip("OCR 识别( 2积分/次 )")
         imgui.pop_id()
 
         imgui.pop_style_color(3)

@@ -37,8 +37,7 @@ class ImageTool(ABC):
     def icon(self) -> Optional[str]:
         return None
 
-    @property
-    def tooltips(self) -> list[str]:
+    def tooltips(self, app: "AIStudio") -> list[str]:
         """tooltip 提示信息行列表"""
         return []
 
