@@ -76,13 +76,15 @@ class EditTextPanel:
         def read_text_to_string(text_file: str) -> str:
             encodings = ["utf-8", "gbk", "gb2312", "gb18030", "utf-16", "utf-32"]
             path = Path(text_file)
-            if not path.exists():
+            if not path.exists() or not path.is_file():
                 return ""
             for encoding in encodings:
                 try:
                     return path.read_text(encoding)
                 except UnicodeDecodeError:
                     continue
+                except PermissionError:
+                    return ""
             return ""
 
         def _poll_job():
@@ -92,6 +94,7 @@ class EditTextPanel:
             text_file = item.get_output_file_text()
             text = read_text_to_string(text_file)
             if not text:
+                app.push_error_message("OCR 识别失败")
                 return
             for output in text.split("\n"):
                 if not output.strip():
