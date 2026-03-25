@@ -243,7 +243,7 @@ class EditTextPanel:
             dl = imgui.get_window_draw_list()
             self._display_prompt_reverse_running_effect(pmin, pmax, dl)
         if imgui.is_item_hovered():
-            imgui.set_tooltip("OCR 识别（即将推出）")
+            imgui.set_tooltip("OCR 识别")
         imgui.pop_id()
 
         imgui.pop_style_color(3)
