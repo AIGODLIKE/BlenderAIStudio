@@ -86,7 +86,7 @@ class UniversalClient(StudioClient):
         self._meta_cache[self.model_name] = self._generate_meta()
 
         self._last_fetch_task_timestamp = 0
-        self._fetch_task_interval = 10
+        self._fetch_task_interval = 1
 
     @property
     def api_key(self) -> str:
@@ -461,7 +461,7 @@ class UniversalClient(StudioClient):
         if account.auth_mode != AuthMode.ACCOUNT.value:
             self.push_error(_T("RemoveBackground is only supported in Account mode"))
             return None, None
-        return self.add_zt_task(image_path, account, "remove_background")
+        return self.add_api_task(image_path, account, "remove_background")
 
     def add_ocr_task(
         self,
@@ -472,17 +472,17 @@ class UniversalClient(StudioClient):
         if account.auth_mode != AuthMode.ACCOUNT.value:
             self.push_error(_T("RemoveBackground is only supported in Account mode"))
             return None, None
-        return self.add_zt_task(image_path, account, "ocr")
+        return self.add_api_task(image_path, account, "ocr")
 
-    def add_zt_task(
+    def add_api_task(
         self,
         image_path: str,
         account: "Account",
         action: str,
     ) -> tuple[StudioHistoryItem, UniversalModelTask]:
-        self.model_id = "ZT"
+        self.model_id = "API"
 
-        action_map = {"remove_background": "1", "ocr": "2"}
+        action_map = {"remove_background": "1", "ocr": "3"}
         task_id = str(uuid4())
         credentials = {
             "token": account.token,

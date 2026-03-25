@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from ...config.model_registry import ModelConfig
 
 
-class ZTBuilder(RequestBuilder):
+class APIBuilder(RequestBuilder):
     @override
     def build(
         self,
@@ -26,7 +26,7 @@ class ZTBuilder(RequestBuilder):
 
         # 验证功能支持
         if not model_config.supports_action(action):
-            error_msg: str = _T("Action '{action}' not supported for model 'ZT'.") or ""
+            error_msg: str = _T("Action '{action}' not supported for model 'API'.") or ""
             error_msg = error_msg.format(action=action, model_name=model_config.model_name)
             raise ValueError(error_msg)
 

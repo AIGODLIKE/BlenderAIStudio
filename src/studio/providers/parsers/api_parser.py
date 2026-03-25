@@ -3,7 +3,7 @@ from typing_extensions import override
 from .base import ResponseParser
 
 
-class ZTParser(ResponseParser):
+class APIParser(ResponseParser):
     @override
     def parse(self, response) -> list[tuple[str, Any]]:
         try:

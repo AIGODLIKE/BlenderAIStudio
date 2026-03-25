@@ -500,23 +500,23 @@ models:
 
     default_action: generate
 
-  - modelId: "ZT"
-    modelName: ZT
-    provider: ZT
-    category: ZT
+  - modelId: "API"
+    modelName: API
+    provider: API
+    category: API
     auth_modes: [account]
 
     endpoints:
       account:
         base_url: "{account_api_base_url}"
-        entry: service/zt-api
+        entry: service/api
         method: POST
         headers:
           X-Auth-T: "{token}"
           X-REQ-ID: "{reqId}"
           X-TASK-TYPE: "{taskType}"
 
-        response_parser: ZTParser
+        response_parser: APIParser
 
     parameters:
       - name: reference_images
@@ -526,8 +526,8 @@ models:
         hide_title: false
         limit: 12
 
-    request_builder: ZTBuilder
-    response_parser: ZTParser
+    request_builder: APIBuilder
+    response_parser: APIParser
 
     actions:
       remove_background:

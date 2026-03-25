@@ -2,13 +2,13 @@ from .base import RequestBuilder, RequestData
 from .registry import BuilderRegistry
 from .gemini_builder import GeminiImageGenerateBuilder
 from .seedream_builder import SeedreamImageGenerateBuilder
-from .zt_builder import ZTBuilder
+from .api_builder import APIBuilder
 
 # 自动注册所有构建器
 BuilderRegistry.register("GeminiImageGenerateBuilder", GeminiImageGenerateBuilder)
 BuilderRegistry.register("GeminiImageGenerateBuilderPro", lambda: GeminiImageGenerateBuilder(is_pro=True))
 BuilderRegistry.register("SeedreamImageGenerateBuilder", SeedreamImageGenerateBuilder)
-BuilderRegistry.register("ZTBuilder", ZTBuilder)
+BuilderRegistry.register("APIBuilder", APIBuilder)
 
 __all__ = [
     "RequestBuilder",
@@ -16,5 +16,5 @@ __all__ = [
     "BuilderRegistry",
     "GeminiImageGenerateBuilder",
     "SeedreamImageGenerateBuilder",
-    "ZTBuilder",
+    "APIBuilder",
 ]
