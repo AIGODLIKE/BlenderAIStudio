@@ -210,7 +210,6 @@ class CustomWidgets:
             tex_col = imgui.get_style_color_vec4(imgui.Col.TEXT)
             col = imgui.get_color_u32(tex_col)
             dl.add_text((text_x, text_y), col, label)
-
         return clicked
 
     @staticmethod

@@ -62,6 +62,7 @@ error_translations = (
     ("Model ID not found. Please Check Login Status or Contact Developer", "模型ID未找到，请检查登录状态或联系开发者",
      None),
     ("RemoveBackground is submitted, please wait for the result", "移除背景任务已提交，请等待结果", None),
+    ("RemoveBackground is only supported in Account mode", "移除背景仅支持稳定通道,请登录后使用", None),
     ("OCR is submitted, please wait for the result", "OCR任务已提交，请等待结果", None),
     ("Task is submitted, please wait for the result", "任务已提交，请等待结果", None),
     ("OCR is already running", "OCR正在运行，请等待结果", None),
