@@ -26,7 +26,7 @@ class EditImageTool(ImageTool):
 
     @property
     def cost(self) -> str:
-        return "0-6"
+        return "0-2"
 
     @property
     def category_color(self) -> tuple[float, float, float, float]:
