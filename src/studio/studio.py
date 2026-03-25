@@ -749,7 +749,6 @@ class StudioImagesDescriptor(WidgetDescriptor):
                 self._ctx_menu_image_path,
                 self._ctx_menu_image_index,
                 self.value,
-                wrapper,
                 app,
             )
             imgui.end_popup()
