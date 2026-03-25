@@ -348,7 +348,7 @@ class StudioImagesDescriptor(WidgetDescriptor):
             },
             "image_line_art": {
                 "icon": "image_line_art",
-                "title": "视觉解构",
+                "title": "ControlNet视觉解构",
                 "tooltips": [
                     "消耗3积分",
                     "从当前画面中分离出线稿、色彩与空间深度信息",
