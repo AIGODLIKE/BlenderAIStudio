@@ -80,7 +80,7 @@ class Account:
         # 任务历史和同步服务
         self.task_history = AccountTaskHistory()
         self.sync_service = TaskSyncService(self, self.task_history)
-        self.task_poller = TaskStatusPoller(self, self.sync_service, interval=15)
+        self.task_poller = TaskStatusPoller(self, self.sync_service, interval=5)
 
         # 提示词反求服务
         self.prompt_reverse_manager = PromptReverseManager.get_instance(self)

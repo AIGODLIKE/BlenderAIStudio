@@ -2,6 +2,7 @@ import bpy
 import math
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 from ..gui.app.renderer import imgui
 from ..gui.app.style import Const
@@ -54,7 +55,6 @@ class EditTextPanel:
         self._rows.append(row)
 
     def _request_ocr(self, app: "AIStudio", image_path: str):
-        return
         if self._ocr_loading:
             app.push_info_message("OCR is already running")
             return
@@ -66,19 +66,31 @@ class EditTextPanel:
             self._ocr_loading = False
             return
 
-        wrapper = app.client_wrapper
-        client = wrapper.studio_client
+        client = app.client
 
-        old_model_name = wrapper.studio_client.current_model_name
-        wrapper.studio_client.current_model_name = "ZT"
+        old_model_name = client.current_model_name
+        client.current_model_name = "API"
         item, _task = client.add_ocr_task(image_path, app.state)
-        wrapper.studio_client.current_model_name = old_model_name
+        client.current_model_name = old_model_name
+
+        def read_text_to_string(text_file: str) -> str:
+            encodings = ["utf-8", "gbk", "gb2312", "gb18030", "utf-16", "utf-32"]
+            path = Path(text_file)
+            if not path.exists():
+                return ""
+            for encoding in encodings:
+                try:
+                    return path.read_text(encoding)
+                except UnicodeDecodeError:
+                    continue
+            return ""
 
         def _poll_job():
             if item and not item.is_finished():
                 return 1.0
             self._ocr_loading = False
-            text = item.get_text_plain_output()
+            text_file = item.get_output_file_text()
+            text = read_text_to_string(text_file)
             if not text:
                 return
             for output in text.split("\n"):

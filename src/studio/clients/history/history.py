@@ -166,9 +166,9 @@ class StudioHistoryItem:
                 return output[1]
         return ""
 
-    def get_text_plain_output(self) -> str:
+    def get_output_file_text(self) -> str:
         for output in self.outputs:
-            if output[0] == "text/plain":
+            if output[0].startswith("text/"):
                 return output[1]
         return ""
 
@@ -320,6 +320,7 @@ class StudioHistory:
             logger.debug(f"load history {len(items)}")
             self.items = items
             self.update_max_index()
+            self.add_fake_items()
         except Exception as e:
             traceback.print_exc()
             logger.debug("恢复历史记录失败", e.args)
