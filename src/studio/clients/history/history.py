@@ -320,7 +320,6 @@ class StudioHistory:
             logger.debug(f"load history {len(items)}")
             self.items = items
             self.update_max_index()
-            self.add_fake_items()
         except Exception as e:
             traceback.print_exc()
             logger.debug("恢复历史记录失败", e.args)
