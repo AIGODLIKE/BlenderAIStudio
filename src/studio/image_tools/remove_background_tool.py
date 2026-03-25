@@ -35,9 +35,8 @@ class RemoveBackgroundTool(ImageTool):
     def category(self) -> str:
         return "抠图"
 
-    @property
     @override
-    def cost(self) -> str:
+    def cost(self, app: "AIStudio") -> str:
         return "3"
 
     @property

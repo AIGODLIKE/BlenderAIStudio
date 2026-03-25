@@ -217,8 +217,8 @@ def _draw_image_context_menu_impl(
             text_y = icon_cy - imgui.get_font_size() * 0.5
             dl.add_text((text_x, text_y), text_color, tool.display_name)
 
-            if tool.cost:
-                cost_str = str(tool.cost)
+            if tool.cost(app):
+                cost_str = str(tool.cost(app))
                 cost_w = imgui.calc_text_size(cost_str)[0]
                 cost_x = pmax[0] - cost_w - 10 * scale
                 dl.add_text((cost_x, text_y), text_color, cost_str)
@@ -1488,6 +1488,14 @@ class StudioWrapper:
                     return w.value
         return []
 
+    def get_resolution(self) -> str:
+        widgets = self.widgets.get(self.model_name, {})
+        for _c, ws in widgets.items():
+            for w in ws:
+                if w.widget_name == "resolution":
+                    return w.value
+        return "1K"
+
 class AIStudioPanelType(Enum):
     NONE = "none"
     GENERATION = "generation"
@@ -2376,6 +2384,10 @@ class AIStudio(AppHud):
 
     def calc_active_client_price(self, price_table: dict) -> int | None:
         return self.client.calc_price(price_table)
+
+    def calc_model_price(self, model_name: str, resolution: str) -> int | None:
+        strategy = self.state.pricing_strategy
+        return self.model_registry.calc_price(model_name, strategy, resolution)
 
     def push_error_message(self, message: str):
         translated_msg = pgettext(message)

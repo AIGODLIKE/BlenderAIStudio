@@ -404,6 +404,7 @@ class UniversalClient(StudioClient):
         prompt: str,
         account: "Account",
         reference_images: list[str] | None = None,
+        resolution="1K",
     ) -> tuple[StudioHistoryItem, UniversalModelTask]:
         """提交线稿提取任务
 
@@ -418,7 +419,7 @@ class UniversalClient(StudioClient):
             "prompt": prompt,
             "reference_images": reference_images or [],
             "aspect_ratio": "Auto",
-            "resolution": "1K",
+            "resolution": resolution,
             "__use_internal_prompt": False,
             "__disable_system_prompt": True,
         }

@@ -16,6 +16,9 @@ if TYPE_CHECKING:
     from ..studio import StudioWrapper, AIStudio
 
 
+MODEL_NAME = "NanoBanana2"
+
+
 class ExtractLineartTool(ImageTool):
     """对参考图提取线稿，结果追加到参考图列表"""
 
@@ -37,9 +40,10 @@ class ExtractLineartTool(ImageTool):
     def category(self) -> str:
         return "视觉分析"
 
-    @property
-    def cost(self) -> str:
-        return "3"
+    def cost(self, app: "AIStudio") -> str:
+        resolution = app.client_wrapper.get_resolution()
+        price = app.calc_model_price(MODEL_NAME, resolution)
+        return str(price)
 
     @property
     def category_color(self) -> tuple:
@@ -82,11 +86,13 @@ class ExtractLineartTool(ImageTool):
 
         prompt = get_pref().line_art_prompt
         original_model = client.current_model_name
-        client.current_model_name = "NanoBananaPro"
+        client.current_model_name = MODEL_NAME
+        resolution = app.client_wrapper.get_resolution()
         item, task = client.add_line_art_task(
             prompt,
             app.state,
             reference_images=[image_path],
+            resolution=resolution,
         )
         client.current_model_name = original_model
 

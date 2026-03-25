@@ -11,8 +11,7 @@ from ...utils import get_image_size, calc_appropriate_aspect_ratio, calc_appropr
 if TYPE_CHECKING:
     from ..studio import AIStudio
 
-
-COST_PER_RUN = 6
+MODEL_NAME = "NanoBanana2"
 FOOTER_ICON_BTN_WIDTH = 68
 FOOTER_ICON_BTN_HEIGHT = 56
 
@@ -266,7 +265,9 @@ class EditTextPanel:
             imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.GRAY)
             imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.GRAY)
 
-        label = f"运行({COST_PER_RUN}/次)"
+        resolution = app.client_wrapper.get_resolution()
+        price = app.calc_model_price(MODEL_NAME, resolution)
+        label = f"运行({price}/次)"
         app.font_manager.push_h1_font(24)
         if imgui.button(label, (w, h)):
             if has_content:
@@ -310,9 +311,10 @@ class EditTextPanel:
             app.push_error_message("Image Parse Error")
             return
         aspect_ration = calc_appropriate_aspect_ratio(*img_size)
-        resolution = calc_appropriate_resolution(*img_size)
+        # resolution = calc_appropriate_resolution(*img_size)
+        resolution = app.client_wrapper.get_resolution()
         original_model = app.client.current_model_name
-        app.client.current_model_name = "NanoBananaPro"
+        app.client.current_model_name = MODEL_NAME
         app.client.add_edit_text_task(
             prompt,
             app.state,

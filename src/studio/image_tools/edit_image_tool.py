@@ -24,8 +24,7 @@ class EditImageTool(ImageTool):
     def category(self) -> str:
         return "编辑"
 
-    @property
-    def cost(self) -> str:
+    def cost(self, app: "AIStudio") -> str:
         return "0-2"
 
     @property

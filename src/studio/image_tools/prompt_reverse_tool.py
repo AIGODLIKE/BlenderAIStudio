@@ -25,8 +25,7 @@ class PromptReverseTool(ImageTool):
     def category(self) -> str:
         return "视觉分析"
 
-    @property
-    def cost(self) -> str:
+    def cost(self, app: "AIStudio") -> str:
         return "3"
 
     @property

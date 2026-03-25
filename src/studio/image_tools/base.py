@@ -52,8 +52,7 @@ class ImageTool(ABC):
         """工具分类名称（用于菜单分组显示）"""
         return ""
 
-    @property
-    def cost(self) -> str:
+    def cost(self, app: "AIStudio") -> str:
         """工具消耗的积分数"""
         return "0"
 
