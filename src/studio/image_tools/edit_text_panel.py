@@ -287,7 +287,7 @@ class EditTextPanel:
         imgui.push_style_color(imgui.Col.BUTTON_HOVERED, Const.BUTTON_HOVERED)
         imgui.push_style_color(imgui.Col.BUTTON_ACTIVE, Const.BUTTON_ACTIVE)
         imgui.push_style_var(imgui.StyleVar.FRAME_ROUNDING, Const.RP_FRAME_INNER_R)
-        clicked = CustomWidgets.icon_label_button("image_tools/close", "", "CENTER", btn_size, img_size)
+        clicked = CustomWidgets.icon_label_button("image_tools/exit", "", "CENTER", btn_size, img_size)
         imgui.pop_style_var(1)
         imgui.pop_style_color(3)
         imgui.pop_id()
