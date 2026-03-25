@@ -68,7 +68,6 @@ class ImageTool(ABC):
         image_path: str,
         image_index: int,
         images: list[str],
-        wrapper: "StudioWrapper",
         app: "AIStudio",
     ) -> None:
         """执行工具操作
@@ -77,9 +76,11 @@ class ImageTool(ABC):
             image_path: 参考图文件路径
             image_index: 参考图在列表中的索引
             images: 参考图列表引用（用于追加结果等）
-            wrapper: Studio wrapper 实例
             app: AIStudio 实例
         """
 
     def get_state(self, wrapper: "StudioWrapper") -> ToolState:
         return ToolState.IDLE
+
+    def draw(self, app: "AIStudio"):
+        pass

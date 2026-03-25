@@ -1,7 +1,9 @@
 import bpy
+from bpy.app.translations import pgettext_iface as iface
 from typing import TYPE_CHECKING, Optional
 
 from .base import ImageTool, ToolState
+from ...utils import get_pref
 
 try:
     from ...logger import logger
@@ -65,20 +67,16 @@ class ExtractLineartTool(ImageTool):
         image_path: str,
         image_index: int,
         images: list[str],
-        wrapper: "StudioWrapper",
         app: "AIStudio",
     ) -> None:
-        from bpy.app.translations import pgettext_iface as iface
-        from ...utils import get_pref
-
-        model_name = wrapper.model_name
+        model_name = app.client.model_name
         if self._running.get(model_name, False):
             app.push_info_message(iface("Line art is already running"))
             return
 
         self._running[model_name] = True
 
-        client = wrapper.studio_client
+        client = app.client
         config = client.get_meta("reference_images") if client else {}
         limit = config.get("limit") or 10
 

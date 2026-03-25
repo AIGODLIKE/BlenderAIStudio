@@ -54,21 +54,20 @@ class PromptReverseTool(ImageTool):
         image_path: str,
         image_index: int,
         images: list[str],
-        wrapper: "StudioWrapper",
         app: "AIStudio",
     ) -> None:
         if not app.state.is_logged_in():
             app.push_error_message(iface("Please login first"))
             return
 
-        model_name = wrapper.model_name
+        model_name = app.client.model_name
         if self._running.get(model_name, False):
             app.push_info_message(iface("Prompt reverse is already running, ignore click"))
             return
 
         self._running[model_name] = True
         manager = app.state.prompt_reverse_manager
-        prompt_widget = self._find_prompt_widget(wrapper)
+        prompt_widget = self._find_prompt_widget(app)
 
         def _on_success(content: str):
             def _append():
@@ -96,8 +95,9 @@ class PromptReverseTool(ImageTool):
         app.push_info_message(iface("Prompt reverse task submitted, please wait..."))
 
     @staticmethod
-    def _find_prompt_widget(wrapper: "StudioWrapper"):
+    def _find_prompt_widget(app: "AIStudio"):
         """从 wrapper 中查找 prompt 控件"""
+        wrapper = app.client_wrapper
         for widget in wrapper.get_widgets_by_category("Input"):
             if widget.widget_name == "prompt":
                 return widget

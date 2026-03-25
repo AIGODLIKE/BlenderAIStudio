@@ -52,10 +52,9 @@ class EditImageTool(ImageTool):
         image_path: str,
         image_index: int,
         images: list[str],
-        wrapper: "StudioWrapper",
         app: "AIStudio",
     ) -> None:
         self._panel.open(image_path)
 
-    def draw_panel(self, app: "AIStudio"):
+    def draw(self, app: "AIStudio"):
         self._panel.draw(app)

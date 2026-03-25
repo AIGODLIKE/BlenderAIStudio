@@ -76,10 +76,9 @@ class RemoveBackgroundTool(ImageTool):
         image_path: str,
         image_index: int,
         images: list[str],
-        wrapper: "StudioWrapper",
         app: "AIStudio",
     ) -> None:
-        model_name = wrapper.model_name
+        model_name = app.client.model_name
         if self._running.get(model_name, False):
             app.push_info_message("Remove background is already running")
             return
@@ -92,13 +91,12 @@ class RemoveBackgroundTool(ImageTool):
             app.push_info_message("Failed to compress image")
             self._running[model_name] = False
             return
-
-        client = wrapper.studio_client
+        client = app.client
         account = app.state
-        old_model_name = wrapper.studio_client.current_model_name
-        wrapper.studio_client.current_model_name = "ZT"
+        old_model_name = client.current_model_name
+        client.current_model_name = "API"
         item, _task = client.add_remove_background_task(image_path, account)
-        wrapper.studio_client.current_model_name = old_model_name
+        client.current_model_name = old_model_name
 
         def _poll_job():
             if item and not item.is_finished():
