@@ -554,8 +554,12 @@ models:
         options:
           - "auto"
           - "1024x1024"
-          - "1024x1536"
           - "1536x1024"
+          - "1024x1536"
+          - "2048x2048"
+          - "2048x1152"
+          - "3840x2160"
+          - "2160x3840"
         default: "auto"
 
       - name: quality
@@ -578,7 +582,6 @@ models:
         options:
           - "auto"
           - "opaque"
-          - "transparent"
         default: "auto"
 
     request_builder: GPTImageGenerateBuilder

@@ -188,6 +188,14 @@ studio_panel_translations = (
     ("Render failed for prompt reverse", "提示词反求渲染失败", None),
     ("Render result is empty", "渲染结果为空", None),
     ("Prompt reverse task submitted, please wait...", "提示词反求任务提交成功，请等待结果", None),
+    ("Size", "尺寸", PROP_TCTX),
+    ("Quality", "质量", PROP_TCTX),
+    ("auto", "自动", PROP_TCTX),
+    ("low", "低", PROP_TCTX),
+    ("medium", "中", PROP_TCTX),
+    ("high", "高", PROP_TCTX),
+    ("Background", "背景", PROP_TCTX),
+    ("opaque", "不透明", PROP_TCTX),
 )
 
 task_translations = (
