@@ -6,7 +6,7 @@ import requests
 from typing import List, Tuple, Any, Optional
 from .base import ResponseParser
 from .utils import _check_response_account_mode
-from ...core.exception import StudioException
+from ...exception import StudioException
 
 try:
     from ....logger import logger
@@ -106,7 +106,7 @@ def _parse_image_data_from_response_json(resp: dict) -> List[Tuple[str, bytes]]:
             raise GPTImageAPIError(err.get("message") or str(err))
         raise GPTImageAPIError(str(err))
 
-    raise GPTImageAPIError("Invalid response format - missing image data.")
+    raise GPTImageAPIError("Generating... please wait...")
 
 
 def _parse_b64_data(b64: str) -> Optional[List[Tuple[str, bytes]]]:

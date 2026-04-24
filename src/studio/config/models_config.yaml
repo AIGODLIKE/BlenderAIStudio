@@ -519,7 +519,7 @@ models:
           X-Image-Size: "{size}"
           Content-Type: application/json
 
-        response_parser: GPTImageParserAccount
+        response_parser: GPTImageParser
 
     input_processors:
       - processor: RenderProcessor

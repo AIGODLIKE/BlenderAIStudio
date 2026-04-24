@@ -15,7 +15,8 @@ from .seedream_prompt import (
     EDIT_WITH_REFERENCES,
     EDIT_BASE_PROMPT,
 )
-from ....utils import ImageProcessor, get_pref
+from ....utils import get_pref
+from ....utils.image_processor import ImageProcessor
 
 if TYPE_CHECKING:
     from ...config.model_registry import ModelConfig
@@ -134,7 +135,6 @@ class GPTImageGenerateBuilder(RequestBuilder):
             payload["image"] = images
         if mask_obj is not None:
             payload["mask"] = mask_obj
-        print(payload)
         return payload
 
     def _build_edit_payload(self, params: Dict[str, Any], model_config: "ModelConfig", payload_model: str) -> dict:

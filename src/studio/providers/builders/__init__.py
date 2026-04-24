@@ -9,6 +9,7 @@ from .api_builder import APIBuilder
 BuilderRegistry.register("GeminiImageGenerateBuilder", GeminiImageGenerateBuilder)
 BuilderRegistry.register("GeminiImageGenerateBuilderPro", lambda: GeminiImageGenerateBuilder(is_pro=True))
 BuilderRegistry.register("SeedreamImageGenerateBuilder", SeedreamImageGenerateBuilder)
+BuilderRegistry.register("GPTImageGenerateBuilder", GPTImageGenerateBuilder)
 BuilderRegistry.register("APIBuilder", APIBuilder)
 
 __all__ = [
