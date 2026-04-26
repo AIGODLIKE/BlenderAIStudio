@@ -525,9 +525,9 @@ models:
       - processor: RenderProcessor
         group: main_image
         input_mapping:
-          render_sources: reference_images
+          input_type: input_image_type
         output_mapping:
-          rendered_images: reference_images
+          image_path: main_image
 
     parameters:
       - name: input_image_type

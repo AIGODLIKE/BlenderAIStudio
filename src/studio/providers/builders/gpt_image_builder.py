@@ -9,6 +9,8 @@ from .base import RequestBuilder, RequestData
 from .seedream_prompt import (
     GENERATE_RENDER_WITH_REFERENCE,
     GENERATE_RENDER_WITHOUT_REFERENCE,
+    GENERATE_DEPTH_MAP_WITH_REFERENCE,
+    GENERATE_DEPTH_MAP_WITHOUT_REFERENCE,
     EDIT_SMART_REPAIR,
     EDIT_WITH_MASK_AND_REFERENCES,
     EDIT_WITH_MASK,
@@ -275,10 +277,18 @@ class GPTImageGenerateBuilder(RequestBuilder):
         if self._should_exclude_system_prompt(params):
             return user_prompt
 
-        if has_reference:
-            base_prompt = GENERATE_RENDER_WITH_REFERENCE
+        is_color_render = params.get("input_image_type", "") != "CameraDepth"
+
+        if is_color_render:
+            if has_reference:
+                base_prompt = GENERATE_RENDER_WITH_REFERENCE
+            else:
+                base_prompt = GENERATE_RENDER_WITHOUT_REFERENCE
         else:
-            base_prompt = GENERATE_RENDER_WITHOUT_REFERENCE
+            if has_reference:
+                base_prompt = GENERATE_DEPTH_MAP_WITH_REFERENCE
+            else:
+                base_prompt = GENERATE_DEPTH_MAP_WITHOUT_REFERENCE
 
         if user_prompt.strip():
             return f"{base_prompt}\n\n用户的编辑说明: {user_prompt.strip()}"
