@@ -188,6 +188,15 @@ studio_panel_translations = (
     ("Render failed for prompt reverse", "提示词反求渲染失败", None),
     ("Render result is empty", "渲染结果为空", None),
     ("Prompt reverse task submitted, please wait...", "提示词反求任务提交成功，请等待结果", None),
+    ("Size", "尺寸", PROP_TCTX),
+    ("Quality", "质量", PROP_TCTX),
+    ("auto", "自动", PROP_TCTX),
+    ("low", "低", PROP_TCTX),
+    ("medium", "中", PROP_TCTX),
+    ("high", "高", PROP_TCTX),
+    ("Background", "背景", PROP_TCTX),
+    ("opaque", "不透明", PROP_TCTX),
+    ("transparent", "透明", PROP_TCTX),
 )
 
 task_translations = (
@@ -400,6 +409,7 @@ Reference images must also be selected manually by the user""",
     ("Generation failed, points not deducted", "生成失败,未扣除积分", ""),
     ("Please check your prompt words&reference pictures", "请检查您的提示词&参考图", ""),
     ("Generating...", "生成中...", ""),
+    ("Generating... please wait...", "生成中... 请等待...", None),
     *preferences_translations,
     *edit_image_translations,
     *error_translations,

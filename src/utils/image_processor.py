@@ -8,14 +8,16 @@
 - PNG compression 属性无效
 """
 
+import base64
 import os
 import shutil
 import tempfile
 import OpenImageIO as oiio
 import numpy as np
 
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Sequence
 
 try:
     from .. import logger
@@ -29,6 +31,23 @@ except ImportError:
 
 
 ImageFormat = Literal["jpg", "jpeg", "png"]
+
+# 上传前压缩：最长边递减序列(像素)
+_UPLOAD_MAX_DIMENSION_STEPS: tuple[int, ...] = (4096, 3072, 2048, 1536, 1024, 768, 512, 384, 256)
+
+
+def guess_image_mime_type(path: str | Path) -> str:
+    """根据扩展名返回 image/* MIME(用于 Base64 / API)。"""
+    ext = Path(path).suffix.lower().lstrip(".")
+    if ext in ("jpg", "jpeg"):
+        return "image/jpeg"
+    if ext == "png":
+        return "image/png"
+    if ext == "webp":
+        return "image/webp"
+    if ext == "gif":
+        return "image/gif"
+    return "image/png"
 
 
 # ─── OIIO 内部工具 ───────────────────────────────────────────────────────────
@@ -65,6 +84,17 @@ def _oiio_buf_from_array(arr: np.ndarray) -> oiio.ImageBuf:
     buf.set_pixels(roi, arr)
     return buf
 
+
+@dataclass
+class PreparedUpload:
+    """prepare_images_for_upload 的返回结果。
+
+    paths: 与输入顺序一致的最终文件路径(可能为压缩后的临时文件)。
+    temp_files: 需要调用方在适当时机删除的临时文件路径(例如请求发送完成后)。
+    """
+
+    paths: list[str]
+    temp_files: list[str] = field(default_factory=list)
 
 # ─── ImageProcessor ───────────────────────────────────────────────────────────
 
@@ -203,6 +233,248 @@ class ImageProcessor:
     def convert_format(cls, input_path: str, output_path: str) -> bool:
         """转换图像格式（按 output_path 扩展名自动识别）"""
         return cls._write_oiio(input_path, output_path)
+
+    @classmethod
+    def prepare_images_for_upload(
+        cls,
+        paths: Sequence[str | None],
+        total_size_limit_bytes: int | None = None,
+    ) -> PreparedUpload:
+        """将多张图片在总字节数限制下做压缩(PNG 无透明可转 JPG + 按最长边递减缩放)。
+
+        - 未超限：记录日志并原样返回路径。
+        - 超限：循环尝试 PNG->JPG(仅全不透明 PNG)与按最长边缩放，每步打日志；仍超限则 ``ValueError``。
+
+        Args:
+            paths: 文件路径序列(忽略 None / 空串)。
+            total_size_limit_bytes: 总大小上限，默认 20MB。
+
+        Returns:
+            PreparedUpload: ``paths`` 为与输入**非空路径**同序的结果；``temp_files`` 为临时文件列表。
+        """
+        limit = total_size_limit_bytes if total_size_limit_bytes is not None else cls.MAX_FILE_SIZE_MB * 1024 * 1024
+
+        ordered: list[str] = []
+        for raw in paths:
+            if not raw:
+                continue
+            p = str(Path(raw))
+            if not os.path.isfile(p):
+                raise FileNotFoundError(p)
+            ordered.append(p)
+
+        if not ordered:
+            return PreparedUpload(paths=[], temp_files=[])
+
+        def total_bytes(ps: list[str]) -> int:
+            return cls._total_paths_bytes(ps)
+
+        initial_total = total_bytes(ordered)
+        if initial_total <= limit:
+            logger.info(
+                "图片总大小未超限，无需压缩: 合计 %.2f MB (限制 %.2f MB)",
+                initial_total / (1024 * 1024),
+                limit / (1024 * 1024),
+            )
+            return PreparedUpload(paths=list(ordered), temp_files=[])
+
+        current_paths = list(ordered)
+        temp_files: list[str] = []
+        png_jpg_attempted: set[int] = set()
+
+        initial_snapshot: list[dict] = []
+        for p in ordered:
+            wh = cls.get_image_size(p)
+            initial_snapshot.append(
+                {
+                    "path": p,
+                    "size": os.path.getsize(p),
+                    "wh": wh,
+                }
+            )
+
+        def make_temp_path(suffix: str) -> str:
+            t = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+            t.close()
+            temp_files.append(t.name)
+            return t.name
+
+        def replace_path_everywhere(old_path: str, new_path: str) -> None:
+            """将所有引用同一磁盘路径的槽位更新为 new_path，并删除我们创建的 old 临时文件。"""
+            nonlocal current_paths, temp_files
+            if old_path == new_path:
+                return
+            if old_path in temp_files:
+                try:
+                    os.remove(old_path)
+                except OSError:
+                    pass
+                temp_files.remove(old_path)
+            for j in range(len(current_paths)):
+                if current_paths[j] == old_path:
+                    current_paths[j] = new_path
+
+        safety = 0
+        while total_bytes(current_paths) > limit and safety < 200:
+            safety += 1
+            progressed = False
+            before_step = total_bytes(current_paths)
+
+            # 1) PNG -> JPG(仅全不透明)
+            for i, p in enumerate(current_paths):
+                if i in png_jpg_attempted:
+                    continue
+                if Path(p).suffix.lower() != ".png":
+                    png_jpg_attempted.add(i)
+                    continue
+                if not cls.png_is_fully_opaque(p):
+                    logger.info("保留PNG(含透明通道): %s 跳过格式转换", p)
+                    png_jpg_attempted.add(i)
+                    continue
+                tmp_jpg = make_temp_path(".jpg")
+                if cls.convert_format(p, tmp_jpg):
+                    old_sz = os.path.getsize(p)
+                    new_sz = os.path.getsize(tmp_jpg)
+                    pct = round((1.0 - new_sz / old_sz) * 100, 1) if old_sz else 0.0
+                    logger.info(
+                        "PNG->JPG: %s %.2f MB -> %.2f MB (-%s%%)",
+                        Path(p).name,
+                        old_sz / (1024 * 1024),
+                        new_sz / (1024 * 1024),
+                        pct,
+                    )
+                    replace_path_everywhere(p, tmp_jpg)
+                    png_jpg_attempted.add(i)
+                    progressed = True
+                else:
+                    try:
+                        os.remove(tmp_jpg)
+                    except OSError:
+                        pass
+                    if tmp_jpg in temp_files:
+                        temp_files.remove(tmp_jpg)
+                    png_jpg_attempted.add(i)
+
+            if total_bytes(current_paths) <= limit:
+                break
+
+            # 2) 按最长边递减缩放
+            cur_max = cls._current_max_edge(current_paths)
+            target = cls._next_resize_target(cur_max)
+            if target is None:
+                break
+
+            for i, p in enumerate(current_paths):
+                wh = cls.get_image_size(p)
+                if not wh:
+                    continue
+                w, h = wh
+                if max(w, h) <= target:
+                    continue
+                suffix = Path(p).suffix.lower() or ".png"
+                tmp_out = make_temp_path(suffix)
+                before_sz = os.path.getsize(p)
+                if cls.resize_by_max_dimension(p, tmp_out, max_dimension=target):
+                    after_sz = os.path.getsize(tmp_out)
+                    wh2 = cls.get_image_size(tmp_out)
+                    w2, h2 = wh2 if wh2 else (0, 0)
+                    logger.info(
+                        "缩放: %s %dx%d (%.2f MB) -> %dx%d (%.2f MB) 最长边<=%d",
+                        Path(p).name,
+                        w,
+                        h,
+                        before_sz / (1024 * 1024),
+                        w2,
+                        h2,
+                        after_sz / (1024 * 1024),
+                        target,
+                    )
+                    replace_path_everywhere(p, tmp_out)
+                    progressed = True
+                else:
+                    try:
+                        os.remove(tmp_out)
+                    except OSError:
+                        pass
+                    if tmp_out in temp_files:
+                        temp_files.remove(tmp_out)
+
+            after_step = total_bytes(current_paths)
+            if not progressed and after_step >= before_step:
+                break
+
+        final_total = total_bytes(current_paths)
+        if final_total > limit:
+            raise ValueError(
+                f"图片总大小在压缩后仍超过限制: {final_total / (1024 * 1024):.2f} MB > {limit / (1024 * 1024):.2f} MB"
+            )
+
+        init_mb = initial_total / (1024 * 1024)
+        fin_mb = final_total / (1024 * 1024)
+        saved = round((1.0 - final_total / initial_total) * 100, 1) if initial_total else 0.0
+        logger.info(
+            "压缩摘要: 原始合计 %.2f MB -> 压缩后 %.2f MB (节省 %s%%)",
+            init_mb,
+            fin_mb,
+            saved,
+        )
+        for i, snap in enumerate(initial_snapshot):
+            orig_p = snap["path"]
+            fin_p = current_paths[i]
+            o_sz = snap["size"]
+            f_sz = os.path.getsize(fin_p)
+            o_wh = snap["wh"]
+            f_wh = cls.get_image_size(fin_p)
+            o_wh_s = f"{o_wh[0]}x{o_wh[1]}" if o_wh else "?"
+            f_wh_s = f"{f_wh[0]}x{f_wh[1]}" if f_wh else "?"
+            ratio = round((1.0 - f_sz / o_sz) * 100, 1) if o_sz else 0.0
+            logger.info(
+                "  [%d] %s: %s %.2f MB (%s) -> %.2f MB (%s) 压缩率 %s%%",
+                i,
+                Path(orig_p).name,
+                Path(orig_p).name,
+                o_sz / (1024 * 1024),
+                o_wh_s,
+                f_sz / (1024 * 1024),
+                f_wh_s,
+                ratio,
+            )
+
+        return PreparedUpload(paths=current_paths, temp_files=temp_files)
+
+    @classmethod
+    def image_to_base64(
+        cls,
+        path: str,
+        *,
+        output_format: Literal["gemini", "raw", "data_url"] = "gemini",
+    ) -> dict | str:
+        """将图片文件编码为 Base64。
+
+        Args:
+            path: 图片路径。
+            output_format:
+                - gemini: ``{"inline_data": {"mime_type", "data"}}``
+                - raw: 纯 base64 字符串
+                - data_url: ``data:image/...;base64,...``
+        """
+        p = Path(path)
+        if not p.is_file():
+            raise FileNotFoundError(path)
+        mime = guess_image_mime_type(p)
+        raw_b64 = base64.b64encode(p.read_bytes()).decode("utf-8")
+        size_mb = round(len(raw_b64) / (1024 * 1024), 2)
+        logger.info(f"image_to_base64: mime={mime} base64_size_mb={size_mb} path={path}")
+        if output_format == "gemini":
+            return {"inline_data": {"mime_type": mime, "data": raw_b64}}
+        if output_format == "raw":
+            return raw_b64
+        return f"data:{mime};base64,{raw_b64}"
+
+
+    @classmethod
+    def _total_paths_bytes(cls, paths: Sequence[str]) -> int:
+        return sum(os.path.getsize(p) for p in paths if p and os.path.isfile(p))
 
     # ─── OIIO 实现 ────────────────────────────────────────────────────────────
 

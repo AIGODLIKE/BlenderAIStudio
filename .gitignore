@@ -8,3 +8,5 @@ log.log
 .vscode
 src/studio/gui/example
 imgui.ini
+AGENTS.md
+CLAUDE.md
