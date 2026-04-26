@@ -196,6 +196,7 @@ studio_panel_translations = (
     ("high", "高", PROP_TCTX),
     ("Background", "背景", PROP_TCTX),
     ("opaque", "不透明", PROP_TCTX),
+    ("transparent", "透明", PROP_TCTX),
 )
 
 task_translations = (

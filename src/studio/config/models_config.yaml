@@ -530,6 +530,14 @@ models:
           rendered_images: reference_images
 
     parameters:
+      - name: input_image_type
+        display_name: Input Image
+        category: Input
+        type: ENUM
+        hide_title: false
+        options: [ CameraRender, CameraDepth, FastRender, NoInput ]
+        default: CameraRender
+
       - name: prompt
         display_name: Prompt
         category: Input
@@ -582,6 +590,7 @@ models:
         options:
           - "auto"
           - "opaque"
+          - "transparent"
         default: "auto"
 
     request_builder: GPTImageGenerateBuilder
