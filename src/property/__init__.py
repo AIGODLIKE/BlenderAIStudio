@@ -406,6 +406,84 @@ class DynamicEnumeration:
         **translation_context,
     )
 
+    def get_size_items(self, context) -> list[(str, str, str),]:
+        try:
+            model = self.get_model_registry().get_model(self.model_name)
+            if size := model.get_parameter("size"):
+                if options := size.get("options", None):
+                    return [(i, i, i) for i in options]
+        except Exception as e:
+            print(e)
+        return [("None", "None", "None"), ]
+
+    def get_size(self):
+        key = f"{self.model_name}_size"
+        return get_bl_property(self, key, 0)
+
+    def set_size(self, value):
+        key = f"{self.model_name}_size"
+        set_bl_property(self, key, value)
+
+    size: bpy.props.EnumProperty(
+        name="Size",
+        items=get_size_items,
+        get=get_size,
+        set=set_size,
+        **translation_context,
+    )
+
+    def get_quality_items(self, context) -> list[(str, str, str),]:
+        try:
+            model = self.get_model_registry().get_model(self.model_name)
+            if quality := model.get_parameter("quality"):
+                if options := quality.get("options", None):
+                    return [(i, i, i) for i in options]
+        except Exception as e:
+            print(e)
+        return [("None", "None", "None"), ]
+
+    def get_quality(self):
+        key = f"{self.model_name}_quality"
+        return get_bl_property(self, key, 0)
+
+    def set_quality(self, value):
+        key = f"{self.model_name}_quality"
+        set_bl_property(self, key, value)
+
+    quality: bpy.props.EnumProperty(
+        name="Quality",
+        items=get_quality_items,
+        get=get_quality,
+        set=set_quality,
+        **translation_context,
+    )
+
+    def get_background_items(self, context) -> list[(str, str, str),]:
+        try:
+            model = self.get_model_registry().get_model(self.model_name)
+            if background := model.get_parameter("background"):
+                if options := background.get("options", None):
+                    return [(i, i, i) for i in options]
+        except Exception as e:
+            print(e)
+        return [("None", "None", "None"), ]
+
+    def get_background(self):
+        key = f"{self.model_name}_background"
+        return get_bl_property(self, key, 0)
+
+    def set_background(self, value):
+        key = f"{self.model_name}_background"
+        set_bl_property(self, key, value)
+
+    background: bpy.props.EnumProperty(
+        name="Background",
+        items=get_background_items,
+        get=get_background,
+        set=set_background,
+        **translation_context,
+    )
+
 
 class SceneFailedCheck:
 

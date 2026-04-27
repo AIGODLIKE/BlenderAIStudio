@@ -201,6 +201,10 @@ class ApplyAiEditImage(bpy.types.Operator):
         origin_image = get_edit_main_image(context)
         aspect_ratio = oii.aspect_ratio
         resolution = oii.resolution
+        size = oii.size  # gpt 参数
+        quality = oii.quality  # gpt 参数
+        background = oii.background  # gpt 参数
+
         if not origin_image:
             self.report({"ERROR"}, "No image")
             return {"CANCELLED"}
@@ -263,11 +267,17 @@ class ApplyAiEditImage(bpy.types.Operator):
         print("reference_images_path", reference_images_path)
         print("resolution", resolution)
         print("aspect_ratio", aspect_ratio)
+        print("size", size)
+        print("quality", quality)
+        print("background", background)
         try:
             for i in range(oii.batch_count):
                 self.task_start(
                     context, resolution,
                     aspect_ratio,
+                    size,
+                    quality,
+                    background,
                     origin_image,
                     origin_image_file_path,
                     oii.reference_images,
@@ -290,6 +300,9 @@ class ApplyAiEditImage(bpy.types.Operator):
                    context,
                    resolution,
                    aspect_ratio,
+                   size,
+                   quality,
+                   background,
                    origin_image,
                    origin_image_file_path,
                    reference_images,
@@ -356,7 +369,7 @@ class ApplyAiEditImage(bpy.types.Operator):
         if aspect_ratio == "Auto":  # 处理自动宽高比
             try:
                 width, height = origin_image.size[:]
-                aspect_ratio = calc_appropriate_aspect_ratio(width, height) #其它模型可能会出现不存在宽高比的情况?!
+                aspect_ratio = calc_appropriate_aspect_ratio(width, height)  # 其它模型可能会出现不存在宽高比的情况?!
             except Exception as e:
                 print(e)
                 aspect_ratio = "1:1"  # 默认值
@@ -368,6 +381,9 @@ class ApplyAiEditImage(bpy.types.Operator):
             "reference_images": reference_images,
             "resolution": resolution,
             "aspect_ratio": aspect_ratio,
+            "size": size,
+            "quality": quality,
+            "background": background,
             "__use_internal_prompt": False,
             "__action": "edit",
         }

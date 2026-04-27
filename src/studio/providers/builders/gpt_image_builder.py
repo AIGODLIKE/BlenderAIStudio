@@ -32,11 +32,11 @@ class GPTImageGenerateBuilder(RequestBuilder):
     """
 
     def build(
-        self,
-        params: Dict[str, Any],
-        model_config: "ModelConfig",
-        auth_mode: str,
-        credentials: Dict[str, str],
+            self,
+            params: Dict[str, Any],
+            model_config: "ModelConfig",
+            auth_mode: str,
+            credentials: Dict[str, str],
     ) -> RequestData:
         params = self._preprocess_params(params)
         action = params.get("__action", model_config.default_action)
@@ -83,11 +83,11 @@ class GPTImageGenerateBuilder(RequestBuilder):
         return processed
 
     def _build_headers(
-        self,
-        header_template: Dict[str, str],
-        credentials: Dict[str, str],
-        model_config: "ModelConfig",
-        params: Dict[str, Any],
+            self,
+            header_template: Dict[str, str],
+            credentials: Dict[str, str],
+            model_config: "ModelConfig",
+            params: Dict[str, Any],
     ) -> Dict[str, str]:
         headers = {}
         for key, value in header_template.items():
@@ -100,11 +100,11 @@ class GPTImageGenerateBuilder(RequestBuilder):
         return headers
 
     def _build_generate_payload(
-        self,
-        params: Dict[str, Any],
-        model_config: "ModelConfig",
-        payload_model: str,
-        action: str = "generate",
+            self,
+            params: Dict[str, Any],
+            model_config: "ModelConfig",
+            payload_model: str,
+            action: str = "generate",
     ) -> dict:
         """构建 payload；含参考图时 images 对齐 OpenAI 结构。
 
@@ -209,7 +209,7 @@ class GPTImageGenerateBuilder(RequestBuilder):
         return objs[0] if objs else None
 
     def _collect_openai_input_images(
-        self, params: Dict[str, Any], action: str
+            self, params: Dict[str, Any], action: str
     ) -> Tuple[List[Dict[str, str]], Optional[Dict[str, str]]]:
         """返回 (images 数组, 可选 mask 对象)，格式符合 OpenAI Images API。"""
         if action == "edit":

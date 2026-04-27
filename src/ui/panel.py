@@ -202,6 +202,8 @@ class AIStudioImagePanel(bpy.types.Panel):
                 name = param.get("name", None)
                 if draw_func := getattr(AIStudioImagePanel, f"draw_{name}", None):
                     draw_func(ai, column)
+                elif pref.use_dev_ui:
+                    column.label(text=f'{name}还没有绘制')
             AIStudioImagePanel.draw_batch_count(ai, column)
         except ValueError:
             ...
@@ -225,6 +227,24 @@ class AIStudioImagePanel(bpy.types.Panel):
         row = layout.row(align=True)
         row.label(text="", icon_value=get_custom_icon("resolution"))
         row.prop(ai, "resolution", text="")
+
+    @staticmethod
+    def draw_size(ai, layout: bpy.types.UILayout):
+        row = layout.row(align=True)
+        row.label(text="", icon_value=get_custom_icon("resolution"))
+        row.prop(ai, "size", text="")
+
+    @staticmethod
+    def draw_quality(ai, layout: bpy.types.UILayout):
+        row = layout.row(align=True)
+        row.label(text="", icon_value=get_custom_icon("quality"))
+        row.prop(ai, "quality", text="")
+
+    @staticmethod
+    def draw_background(ai, layout: bpy.types.UILayout):
+        row = layout.row(align=True)
+        row.label(text="", icon_value=get_custom_icon("background"))
+        row.prop(ai, "background", text="")
 
     @staticmethod
     def draw_size_config(ai, layout: bpy.types.UILayout):
