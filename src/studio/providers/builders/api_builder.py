@@ -1,6 +1,5 @@
 import mimetypes
 
-from typing_extensions import override
 from pathlib import Path
 from typing import Any, TYPE_CHECKING
 
@@ -13,7 +12,6 @@ if TYPE_CHECKING:
 
 
 class APIBuilder(RequestBuilder):
-    @override
     def build(
         self,
         params: dict[str, Any],

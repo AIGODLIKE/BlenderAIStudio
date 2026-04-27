@@ -1,6 +1,5 @@
 import base64
 
-from typing_extensions import override
 from pathlib import Path
 from typing import Any, TYPE_CHECKING
 
@@ -13,7 +12,6 @@ if TYPE_CHECKING:
 
 
 class PromptReverseBuilder(RequestBuilder):
-    @override
     def build(
         self,
         params: dict[str, Any],

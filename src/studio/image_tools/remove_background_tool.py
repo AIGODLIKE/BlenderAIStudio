@@ -1,7 +1,6 @@
 import bpy
 
 from typing import TYPE_CHECKING
-from typing_extensions import override
 
 from .base import ImageTool, ToolState
 from ...utils.image_processor import ImageProcessor
@@ -16,40 +15,32 @@ class RemoveBackgroundTool(ImageTool):
     _running: dict[str, bool] = {}
 
     @property
-    @override
     def name(self) -> str:
         return "remove_background"
 
     @property
-    @override
     def display_name(self) -> str:
         return "移除背景"
 
     @property
-    @override
     def title(self) -> str:
         return "移除背景 (万物抠图)"
 
     @property
-    @override
     def category(self) -> str:
         return "抠图"
 
-    @override
     def cost(self, app: "AIStudio") -> str:
         return "3"
 
     @property
-    @override
     def category_color(self) -> tuple[float, float, float, float]:
         return (67 / 255, 207 / 255, 124 / 255, 1.0)
 
     @property
-    @override
     def icon(self) -> str | None:
         return "image_tools/remove_background"
 
-    @override
     def tooltips(self, app: "AIStudio") -> list[str]:
         return [
             "消耗3积分",
@@ -58,17 +49,14 @@ class RemoveBackgroundTool(ImageTool):
         ]
 
     @property
-    @override
     def enabled(self) -> bool:
         return True
 
-    @override
     def get_state(self, wrapper: "StudioWrapper") -> ToolState:
         if self._running.get(wrapper.model_name, False):
             return ToolState.RUNNING
         return ToolState.IDLE
 
-    @override
     def execute(
         self,
         image_path: str,
