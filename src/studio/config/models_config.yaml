@@ -19,7 +19,7 @@ models:
       account:
         help_url: https://shimo.im/docs/47kgMZ7nj4Sm963V
         base_url: "{account_api_base_url}"
-        entry: service/cpick
+        entry: v2/service/image
         method: POST
         headers:
           X-Auth-T: "{token}"
@@ -27,7 +27,8 @@ models:
           X-Image-Size: "{size}"
           Content-Type: application/json
 
-        response_parser: GeminiImageParserAccount
+        request_builder: V2GeminiImageBuilderPro
+        response_parser: V2ImageParser
 
     input_processors:
       - processor: RenderProcessor
@@ -137,7 +138,7 @@ models:
       account:
         help_url: https://shimo.im/docs/47kgMZ7nj4Sm963V
         base_url: "{account_api_base_url}"
-        entry: service/cpick
+        entry: v2/service/image
         method: POST
         headers:
           X-Auth-T: "{token}"
@@ -145,7 +146,8 @@ models:
           X-Image-Size: "{size}"
           Content-Type: application/json
 
-        response_parser: GeminiImageParserAccount
+        request_builder: V2GeminiImageBuilderPro
+        response_parser: V2ImageParser
 
     input_processors:
       - processor: RenderProcessor
@@ -251,7 +253,7 @@ models:
       account:
         help_url: https://shimo.im/docs/47kgMZ7nj4Sm963V
         base_url: "{account_api_base_url}"
-        entry: service/cpick
+        entry: v2/service/image
         method: POST
         headers:
           X-Auth-T: "{token}"
@@ -259,7 +261,8 @@ models:
           X-Image-Size: "{size}"
           Content-Type: application/json
 
-        response_parser: GeminiImageParserAccount
+        request_builder: V2GeminiImageBuilder
+        response_parser: V2ImageParser
 
     input_processors:
       - processor: RenderProcessor
@@ -348,7 +351,7 @@ models:
       account:
         help_url: https://shimo.im/docs/47kgMZ7nj4Sm963V
         base_url: "{account_api_base_url}"
-        entry: service/cpick
+        entry: v2/service/image
         method: POST
         headers:
           X-Auth-T: "{token}"
@@ -356,7 +359,8 @@ models:
           X-Image-Size: "{size}"
           Content-Type: application/json
 
-        response_parser: SeedreamImageParserAccount
+        request_builder: V2SeedreamImageBuilder
+        response_parser: V2ImageParser
 
     input_processors:
       - processor: RenderProcessor
@@ -429,7 +433,7 @@ models:
       account:
         help_url: https://shimo.im/docs/47kgMZ7nj4Sm963V
         base_url: "{account_api_base_url}"
-        entry: service/cpick
+        entry: v2/service/image
         method: POST
         headers:
           X-Auth-T: "{token}"
@@ -437,7 +441,8 @@ models:
           X-Image-Size: "{size}"
           Content-Type: application/json
 
-        response_parser: SeedreamImageParserAccount
+        request_builder: V2SeedreamImageBuilder
+        response_parser: V2ImageParser
 
     input_processors:
       - processor: RenderProcessor
@@ -510,7 +515,7 @@ models:
       account:
         help_url: https://shimo.im/docs/47kgMZ7nj4Sm963V
         base_url: "{account_api_base_url}"
-        entry: service/cpick
+        entry: v2/service/image
         method: POST
         payload_model: "gpt-image-2"
         headers:
@@ -519,7 +524,8 @@ models:
           X-Image-Size: "{size}"
           Content-Type: application/json
 
-        response_parser: GPTImageParser
+        request_builder: V2GPTImageBuilder
+        response_parser: V2ImageParser
 
     input_processors:
       - processor: RenderProcessor
@@ -618,7 +624,7 @@ models:
     endpoints:
       account:
         base_url: "{account_api_base_url}"
-        entry: service/api
+        entry: v1/service/api
         method: POST
         headers:
           X-Auth-T: "{token}"

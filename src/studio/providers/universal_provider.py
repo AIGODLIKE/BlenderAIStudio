@@ -41,12 +41,13 @@ class UniversalProvider(BaseProvider):
         self.credentials = credentials
         self.task_id = task_id
 
-        # 动态加载构建器
-        self.request_builder = self._get_builder(model_config.request_builder)
+        # 动态加载构建器(优先从 endpoint 配置中获取)
+        endpoint = model_config.get_endpoint(auth_mode)
+        builder_name = endpoint.get("request_builder") or model_config.request_builder
+        self.request_builder = self._get_builder(builder_name)
         logger.debug(f"Using request builder: {self.request_builder}")
 
-        # 动态加载觧析器（优先从 endpoint 配置中获取）
-        endpoint = model_config.get_endpoint(auth_mode)
+        # 动态加载觧析器(优先从 endpoint 配置中获取)
         parser_name = endpoint.get("response_parser") or model_config.response_parser
         logger.debug(f"parser_name:{parser_name}")
         self.response_parser = self._get_parser(parser_name)
@@ -86,11 +87,15 @@ class UniversalProvider(BaseProvider):
             Exception: 其他异常
         """
         # 1. 使用 Builder 构建完整请求
+        credentials = self.credentials
+        if self.auth_mode == AuthMode.ACCOUNT.value:
+            credentials.setdefault("reqId", self.task_id)
+
         request_data = self.request_builder.build(
             params=params,
             model_config=self.model_config,
             auth_mode=self.auth_mode,
-            credentials=self.credentials,
+            credentials=credentials,
         )
 
         # TODO 待改进(目前硬编码) 这里ID用于账户模式后端标识

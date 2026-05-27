@@ -23,7 +23,7 @@ def collect_info():
         from ..studio.account import Account
         try:
             account = Account.get_instance()
-            url = f"{account.service_url}/sys/device-statistics"
+            url = f"{account.base_url}/v1/sys/device-statistics"
 
             headers = {
                 "X-Auth-T": account.token,
