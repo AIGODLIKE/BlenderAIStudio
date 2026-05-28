@@ -3,19 +3,9 @@ models:
     modelName: NanoBanana2
     provider: gemini
     category: IMAGE_GENERATION
-    auth_modes: [api, account]
+    auth_modes: [account]
 
     endpoints:
-      api:
-        help_url: https://ai.google.dev/gemini-api/docs/image-generation
-        base_url: https://generativelanguage.googleapis.com/v1beta
-        entry: "models/{model}:generateContent"
-        method: POST
-        headers:
-          x-goog-api-key: "{api_key}"
-          Content-Type: application/json
-        response_parser: GeminiImageParser
-
       account:
         help_url: https://shimo.im/docs/47kgMZ7nj4Sm963V
         base_url: "{account_api_base_url}"
@@ -122,19 +112,9 @@ models:
     modelName: NanoBananaPro
     provider: gemini
     category: IMAGE_GENERATION
-    auth_modes: [api, account]
+    auth_modes: [account]
 
     endpoints:
-      api:
-        help_url: https://ai.google.dev/gemini-api/docs/image-generation
-        base_url: https://generativelanguage.googleapis.com/v1beta
-        entry: "models/{model}:generateContent"
-        method: POST
-        headers:
-          x-goog-api-key: "{api_key}"
-          Content-Type: application/json
-        response_parser: GeminiImageParser
-
       account:
         help_url: https://shimo.im/docs/47kgMZ7nj4Sm963V
         base_url: "{account_api_base_url}"
