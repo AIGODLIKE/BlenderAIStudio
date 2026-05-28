@@ -87,7 +87,8 @@ class UniversalProvider(BaseProvider):
             Exception: 其他异常
         """
         # 1. 使用 Builder 构建完整请求
-        credentials = self.credentials
+        # 注意：credentials 是共享对象（batch 提交时多 task 共用），需要拷贝后再注入 reqId
+        credentials = dict(self.credentials)
         if self.auth_mode == AuthMode.ACCOUNT.value:
             credentials.setdefault("reqId", self.task_id)
 
