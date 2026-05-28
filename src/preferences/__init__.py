@@ -191,9 +191,7 @@ Reference images must also be selected manually by the user""",
         UpdateService.draw_update_info(layout)
 
     def draw_account(self, layout):
-        layout.prop(self, "account_auth_mode", text="Operating Mode")
-        if not self.is_api_mode:
-            layout.prop(self, "account_pricing_strategy", text="Pricing Strategy")
+        layout.prop(self, "account_pricing_strategy", text="Pricing Strategy")
 
     def draw_service(self, layout):
         from ..studio.account import Account
