@@ -592,18 +592,6 @@ models:
         options: [1K, 2K, 4K]
         default: "1K"
 
-      - name: quality
-        display_name: Quality
-        category: Input
-        type: ENUM
-        hide_title: false
-        options:
-          - "auto"
-          - "low"
-          - "medium"
-          - "high"
-        default: "auto"
-
     request_builder: GPTImageGenerateBuilder
     response_parser: GPTImageParser
     pricing:
