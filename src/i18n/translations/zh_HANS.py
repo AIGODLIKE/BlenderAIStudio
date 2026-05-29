@@ -184,6 +184,7 @@ studio_panel_translations = (
     ("Reference object for computing camera relative azimuth and elevation. Its position is origin, its forward direction is positive.",
      "用于计算相机相对方位角和俯仰角的参照物，其位置为原点，朝向为正方向", PROP_TCTX),
     ("Please login first", "请先登录", None),
+    ("Prompt cannot be empty", "提示词不能为空", None),
     ("Prompt reverse is already running, ignore click", "提示词反求正在运行，请勿重复点击", None),
     ("Render failed for prompt reverse", "提示词反求渲染失败", None),
     ("Render result is empty", "渲染结果为空", None),
