@@ -113,7 +113,7 @@ def upload_error_report_async(ops):
     if not account.token:
         raise RuntimeError("Token is empty, please login first")
 
-    url = f"{account.service_url}/sys/error-report"
+    url = f"{account.base_url}/v1/sys/error-report"
     headers = {
         "X-Auth-T": account.token,
         "Content-Type": "application/json",

@@ -133,6 +133,12 @@ class GPTImageGenerateBuilder(RequestBuilder):
             "output_format": "png",
         }
 
+        # gpt-image-2-a 使用独立的 resolution 字段（1k/2k/4k）
+        # 通过 params 中是否存在 resolution 区分新老模型
+        resolution = params.get("resolution")
+        if isinstance(resolution, str) and resolution.strip():
+            payload["resolution"] = resolution.strip().lower()
+
         if images:
             payload["image"] = images
         if mask_obj is not None:
@@ -153,14 +159,20 @@ class GPTImageGenerateBuilder(RequestBuilder):
         return payload
 
     def _resolve_size(self, params: Dict[str, Any]) -> str:
-        # 优先使用 resolution（与其他模型保持一致）
-        resolution = params.get("resolution")
-        if isinstance(resolution, str) and resolution.strip():
-            return resolution.strip()
-
+        """解析 size 字段
+        - gpt-image-2-a: size 是 aspect ratio（如 "16:9"），resolution 单独传
+        - gpt-image-2: size 是分辨率档位（如 "1K"）或像素尺寸
+        """
+        # 直接使用 size（适用于 gpt-image-2-a 的 aspect ratio，
+        # 也适用于 gpt-image-2 的 resolution/像素尺寸）
         size = params.get("size")
         if isinstance(size, str) and size.strip():
             return size.strip()
+
+        # 兼容老逻辑：从 resolution 取值（仅当 size 为空时）
+        resolution = params.get("resolution")
+        if isinstance(resolution, str) and resolution.strip():
+            return resolution.strip()
 
         w = params.get("width")
         h = params.get("height")

@@ -288,6 +288,7 @@ class TaskStatusPoller:
     """任务状态轮询器
 
     定期扫描待同步的任务，调用同步服务更新状态。
+    提示词反求任务也通过同一轮询器查询 v2/history。
     """
 
     def __init__(self, account: "Account", sync_service: "TaskSyncService", interval: float = 10.0):

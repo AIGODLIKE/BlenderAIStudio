@@ -106,11 +106,21 @@ def check_failed_task():
     return 1 / 2
 
 
+def _force_account_mode():
+    """启动时强制切换到 account 模式（兼容旧 preferences 中保存的 api 模式）"""
+    from .utils import get_pref
+    from .preferences import AuthMode
+    pref = get_pref()
+    if pref.account_auth_mode != AuthMode.ACCOUNT.value:
+        pref.account_auth_mode = AuthMode.ACCOUNT.value
+
+
 def register():
     Timer.reg()
     bpy.app.timers.register(privacy, first_interval=0.5)  # 只在第一次启动时执行
     bpy.app.timers.register(check_update, first_interval=1)  # 只在第一次启动时执行
     bpy.app.timers.register(check_failed_task, first_interval=0.1, persistent=True)
+    bpy.app.timers.register(_force_account_mode, first_interval=0.1)
 
 
 def unregister():

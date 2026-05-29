@@ -98,6 +98,6 @@ class URLConfigManager:
     def get_model_api_base_url(self, auth_mode: str) -> str | None:
         if auth_mode == "account":
             # account 模式使用服务 URL
-            return self.get_service_url()
+            return self.get_service_base_url()
         # api 模式返回 None，使用模型自己的配置
         return None

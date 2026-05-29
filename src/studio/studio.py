@@ -3025,7 +3025,7 @@ class AIStudio(AppHud):
             imgui.push_style_var_x(imgui.StyleVar.BUTTON_TEXT_ALIGN, 0)
             imgui.push_style_color(imgui.Col.FRAME_BG, Const.FRAME_BG)
             imgui.push_style_color(imgui.Col.BUTTON, Const.TRANSPARENT)
-            items = AuthMode
+            items = [AuthMode.ACCOUNT]
             aw = imgui.get_content_region_avail()[0]
             if imgui.begin_combo("##Item", _T(AuthMode(self.state.auth_mode).display_name)):
                 for item in items:

@@ -119,7 +119,7 @@ class CTalkApiClient:
         Raises:
             各类 StudioException
         """
-        url = f"{self._account.service_url}/service/ctalk"
+        url = f"{self._account.base_url}/v1/service/ctalk"
         payload = {
             "imageBase64": image_base64,
             "reqId": req_id,
@@ -155,7 +155,7 @@ class CTalkApiClient:
         if not req_ids:
             return {}
 
-        url = f"{self._account.service_url}/service/history-ctalk"
+        url = f"{self._account.base_url}/v1/service/history-ctalk"
         payload = {"reqIds": req_ids}
 
         session = get_session()

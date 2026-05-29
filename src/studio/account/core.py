@@ -138,10 +138,10 @@ class Account:
     @property
     def help_url(self) -> str:
         return self._url_manager.get_help_url()
-
+    
     @property
-    def service_url(self) -> str:
-        return self._url_manager.get_service_url()
+    def base_url(self) -> str:
+        return self._url_manager.get_service_base_url()
 
     @property
     def login_url(self) -> str:
@@ -296,7 +296,7 @@ class Account:
     # ==================== 服务连接检测 ====================
 
     def ping_once(self):
-        url = f"{self.service_url}/billing/model-price"
+        url = f"{self.base_url}/v1/billing/model-price"
         headers = {
             "Content-Type": "application/json",
         }
@@ -314,7 +314,7 @@ class Account:
     # ==================== 积分管理 ====================
 
     def redeem_credits(self, code: str) -> int:
-        url = f"{self.service_url}/billing/redeem-code"
+        url = f"{self.base_url}/v1/billing/redeem-code"
         headers = {
             "X-Auth-T": self.token,
             "Content-Type": "application/json",
@@ -376,7 +376,7 @@ class Account:
         def _fetch_credits():
             if self.auth_mode != AuthMode.ACCOUNT.value:
                 return
-            url = f"{self.service_url}/billing/balance"
+            url = f"{self.base_url}/v1/billing/balance"
             headers = {
                 "X-Auth-T": self.token,
                 "Content-Type": "application/json",
@@ -428,7 +428,7 @@ class Account:
         def _fetch_credits_price():
             if self.price_table:
                 return
-            url = f"{self.service_url}/billing/model-price"
+            url = f"{self.base_url}/v1/billing/model-price"
             headers = {
                 "Content-Type": "application/json",
             }
@@ -496,7 +496,7 @@ class Account:
         Thread(target=_job, args=(task_ids,), daemon=True).start()
 
     def _fetch_task_status(self, task_ids: list[str]) -> dict:
-        url = f"{self.service_url}/service/history-v2"
+        url = f"{self.base_url}/v2/history"
 
         headers = {
             "X-Auth-T": self.token,

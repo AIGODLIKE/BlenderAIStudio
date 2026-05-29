@@ -3,23 +3,13 @@ models:
     modelName: NanoBanana2
     provider: gemini
     category: IMAGE_GENERATION
-    auth_modes: [api, account]
+    auth_modes: [account]
 
     endpoints:
-      api:
-        help_url: https://ai.google.dev/gemini-api/docs/image-generation
-        base_url: https://generativelanguage.googleapis.com/v1beta
-        entry: "models/{model}:generateContent"
-        method: POST
-        headers:
-          x-goog-api-key: "{api_key}"
-          Content-Type: application/json
-        response_parser: GeminiImageParser
-
       account:
         help_url: https://shimo.im/docs/47kgMZ7nj4Sm963V
         base_url: "{account_api_base_url}"
-        entry: service/cpick
+        entry: v2/service/image
         method: POST
         headers:
           X-Auth-T: "{token}"
@@ -27,7 +17,8 @@ models:
           X-Image-Size: "{size}"
           Content-Type: application/json
 
-        response_parser: GeminiImageParserAccount
+        request_builder: V2GeminiImageBuilderPro
+        response_parser: V2ImageParser
 
     input_processors:
       - processor: RenderProcessor
@@ -121,23 +112,13 @@ models:
     modelName: NanoBananaPro
     provider: gemini
     category: IMAGE_GENERATION
-    auth_modes: [api, account]
+    auth_modes: [account]
 
     endpoints:
-      api:
-        help_url: https://ai.google.dev/gemini-api/docs/image-generation
-        base_url: https://generativelanguage.googleapis.com/v1beta
-        entry: "models/{model}:generateContent"
-        method: POST
-        headers:
-          x-goog-api-key: "{api_key}"
-          Content-Type: application/json
-        response_parser: GeminiImageParser
-
       account:
         help_url: https://shimo.im/docs/47kgMZ7nj4Sm963V
         base_url: "{account_api_base_url}"
-        entry: service/cpick
+        entry: v2/service/image
         method: POST
         headers:
           X-Auth-T: "{token}"
@@ -145,7 +126,8 @@ models:
           X-Image-Size: "{size}"
           Content-Type: application/json
 
-        response_parser: GeminiImageParserAccount
+        request_builder: V2GeminiImageBuilderPro
+        response_parser: V2ImageParser
 
     input_processors:
       - processor: RenderProcessor
@@ -231,277 +213,8 @@ models:
 
     default_action: generate
 
-  - modelId: gemini-2.5-flash-image
-    modelName: NanoBanana
-    provider: gemini
-    category: IMAGE_GENERATION
-    auth_modes: [api, account]
-
-    endpoints:
-      api:
-        help_url: https://ai.google.dev/gemini-api/docs/image-generation
-        base_url: https://generativelanguage.googleapis.com/v1beta
-        entry: "models/{model}:generateContent"
-        method: POST
-        headers:
-          x-goog-api-key: "{api_key}"
-          Content-Type: application/json
-        response_parser: GeminiImageParser
-
-      account:
-        help_url: https://shimo.im/docs/47kgMZ7nj4Sm963V
-        base_url: "{account_api_base_url}"
-        entry: service/cpick
-        method: POST
-        headers:
-          X-Auth-T: "{token}"
-          X-Model-ID: "{modelId}"
-          X-Image-Size: "{size}"
-          Content-Type: application/json
-
-        response_parser: GeminiImageParserAccount
-
-    input_processors:
-      - processor: RenderProcessor
-        group: main_image
-        input_mapping:
-          input_type: input_image_type
-        output_mapping:
-          image_path: main_image
-
-    parameters:
-      - name: input_image_type
-        display_name: Input Image
-        category: Input
-        type: ENUM
-        hide_title: false
-        options: [CameraRender, CameraDepth, FastRender, NoInput]
-        default: CameraRender
-
-      - name: prompt
-        display_name: Prompt
-        category: Input
-        type: STRING
-        hide_title: false
-        multiline: true
-        resizable: true
-        default: ""
-
-      - name: reference_images
-        display_name: Reference Images
-        category: Input
-        type: IMAGE_LIST
-        hide_title: false
-        limit: 12
-
-      - name: aspect_ratio
-        display_name: Size Config
-        category: Input
-        type: ENUM
-        hide_title: false
-        options:
-          - "Auto"
-          - "1:1"
-          - "9:16"
-          - "16:9"
-          - "3:4"
-          - "4:3"
-          - "3:2"
-          - "2:3"
-          - "5:4"
-          - "4:5"
-          - "21:9"
-
-      - name: api_key
-        display_name: API Key
-        category: Settings
-        type: STRING
-        hide_title: true
-        multiline: false
-        default: ""
-
-    request_builder: GeminiImageGenerateBuilder
-    response_parser: GeminiImageParser
-
-    actions:
-      generate:
-        display_name: Generate Image
-        description: Generate image from depth/render
-
-      edit:
-        display_name: Edit Image
-        description: Edit existing image with prompt/mask
-
-      transfer:
-        display_name: Style Transfer
-        description: Transfer style from reference image
-
-    default_action: generate
-
-  - modelId: "doubao-seedream-4-0-250828"
-    modelName: Seedream-v4
-    provider: seedream
-    category: IMAGE_GENERATION
-    auth_modes: [account]
-
-    endpoints:
-      account:
-        help_url: https://shimo.im/docs/47kgMZ7nj4Sm963V
-        base_url: "{account_api_base_url}"
-        entry: service/cpick
-        method: POST
-        headers:
-          X-Auth-T: "{token}"
-          X-Model-ID: "{modelId}"
-          X-Image-Size: "{size}"
-          Content-Type: application/json
-
-        response_parser: SeedreamImageParserAccount
-
-    input_processors:
-      - processor: RenderProcessor
-        group: main_image
-        input_mapping:
-          input_type: input_image_type
-        output_mapping:
-          image_path: main_image
-
-    parameters:
-      - name: input_image_type
-        display_name: Input Image
-        category: Input
-        type: ENUM
-        hide_title: false
-        options: [CameraRender, CameraDepth, FastRender, NoInput]
-        default: CameraRender
-
-      - name: prompt
-        display_name: Prompt
-        category: Input
-        type: STRING
-        hide_title: false
-        multiline: true
-        resizable: true
-        default: ""
-
-      - name: reference_images
-        display_name: Reference Images
-        category: Input
-        type: IMAGE_LIST
-        hide_title: false
-        limit: 12
-
-      - name: resolution
-        display_name: Resolution
-        category: Input
-        type: ENUM
-        hide_title: false
-        options: [1K, 2K, 4K]
-
-      - name: api_key
-        display_name: API Key
-        category: Settings
-        type: STRING
-        hide_title: true
-        multiline: false
-        default: ""
-
-    request_builder: SeedreamImageGenerateBuilder
-    response_parser: SeedreamImageParser
-
-    actions:
-      generate:
-        display_name: Generate Image
-        description: Generate image from depth/render
-      edit:
-        display_name: Edit Image
-        description: Edit existing image with prompt/mask
-
-    default_action: generate
-
-  - modelId: "doubao-seedream-4-5-251128"
-    modelName: Seedream-v4.5
-    provider: seedream
-    category: IMAGE_GENERATION
-    auth_modes: [account]
-
-    endpoints:
-      account:
-        help_url: https://shimo.im/docs/47kgMZ7nj4Sm963V
-        base_url: "{account_api_base_url}"
-        entry: service/cpick
-        method: POST
-        headers:
-          X-Auth-T: "{token}"
-          X-Model-ID: "{modelId}"
-          X-Image-Size: "{size}"
-          Content-Type: application/json
-
-        response_parser: SeedreamImageParserAccount
-
-    input_processors:
-      - processor: RenderProcessor
-        group: main_image
-        input_mapping:
-          input_type: input_image_type
-        output_mapping:
-          image_path: main_image
-
-    parameters:
-      - name: input_image_type
-        display_name: Input Image
-        category: Input
-        type: ENUM
-        hide_title: false
-        options: [CameraRender, CameraDepth, FastRender, NoInput]
-        default: CameraRender
-
-      - name: prompt
-        display_name: Prompt
-        category: Input
-        type: STRING
-        hide_title: false
-        multiline: true
-        resizable: true
-        default: ""
-
-      - name: reference_images
-        display_name: Reference Images
-        category: Input
-        type: IMAGE_LIST
-        hide_title: false
-        limit: 12
-
-      - name: resolution
-        display_name: Resolution
-        category: Input
-        type: ENUM
-        hide_title: false
-        options: [2K, 4K]
-
-      - name: api_key
-        display_name: API Key
-        category: Settings
-        type: STRING
-        hide_title: true
-        multiline: false
-        default: ""
-
-    request_builder: SeedreamImageGenerateBuilder
-    response_parser: SeedreamImageParser
-
-    actions:
-      generate:
-        display_name: Generate Image
-        description: Generate image from depth/render
-      edit:
-        display_name: Edit Image
-        description: Edit existing image with prompt/mask
-
-    default_action: generate
-
-  - modelId: "GPT-Image2"
-    modelName: GPT-Image2
+  - modelId: "gpt-image-2-a"
+    modelName: GPT-Image2-A
     provider: openai
     category: IMAGE_GENERATION
     auth_modes: [account]
@@ -510,7 +223,7 @@ models:
       account:
         help_url: https://shimo.im/docs/47kgMZ7nj4Sm963V
         base_url: "{account_api_base_url}"
-        entry: service/cpick
+        entry: v2/service/image
         method: POST
         payload_model: "gpt-image-2"
         headers:
@@ -519,7 +232,8 @@ models:
           X-Image-Size: "{size}"
           Content-Type: application/json
 
-        response_parser: GPTImageParser
+        request_builder: V2GPTImageBuilder
+        response_parser: V2ImageParser
 
     input_processors:
       - processor: RenderProcessor
@@ -555,43 +269,36 @@ models:
         limit: 12
 
       - name: size
-        display_name: Size
+        display_name: Aspect Ratio
         category: Input
         type: ENUM
         hide_title: false
         options:
           - "auto"
-          - "1024x1024"
-          - "1536x1024"
-          - "1024x1536"
-          - "2048x2048"
-          - "2048x1152"
-          - "3840x2160"
-          - "2160x3840"
-        default: "auto"
+          - "1:1"
+          - "3:2"
+          - "2:3"
+          - "4:3"
+          - "3:4"
+          - "5:4"
+          - "4:5"
+          - "16:9"
+          - "9:16"
+          - "2:1"
+          - "1:2"
+          - "3:1"
+          - "1:3"
+          - "21:9"
+          - "9:21"
+        default: "1:1"
 
-      - name: quality
-        display_name: Quality
+      - name: resolution
+        display_name: Resolution
         category: Input
         type: ENUM
         hide_title: false
-        options:
-          - "auto"
-          - "low"
-          - "medium"
-          - "high"
-        default: "auto"
-
-      - name: background
-        display_name: Background
-        category: Input
-        type: ENUM
-        hide_title: false
-        options:
-          - "auto"
-          - "opaque"
-          - "transparent"
-        default: "auto"
+        options: [1K, 2K, 4K]
+        default: "1K"
 
     request_builder: GPTImageGenerateBuilder
     response_parser: GPTImageParser
@@ -618,7 +325,7 @@ models:
     endpoints:
       account:
         base_url: "{account_api_base_url}"
-        entry: service/api
+        entry: v1/service/api
         method: POST
         headers:
           X-Auth-T: "{token}"
