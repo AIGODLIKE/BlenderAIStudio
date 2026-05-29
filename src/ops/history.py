@@ -105,7 +105,7 @@ class OpenImageInNewWindow(bpy.types.Operator):
             if metadata:
                 params = metadata.get("params", None)
                 logger.info(f"{self.bl_label} {params.keys()}")
-                aspect_ratio = params.get("aspect_ratio", "1:1")
+                aspect_ratio = params.get("aspect_ratio", "Auto")
                 resolution = params.get("resolution", "1K")
                 prompt = params.get("prompt", "")
 
