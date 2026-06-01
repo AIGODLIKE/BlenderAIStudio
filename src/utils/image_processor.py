@@ -230,6 +230,51 @@ class ImageProcessor:
                 pass
 
     @classmethod
+    def png_is_fully_opaque(cls, path: str) -> bool:
+        """PNG 是否可视为无透明信息(全不透明)，可安全转为 JPG。"""
+        if Path(path).suffix.lower() != ".png":
+            return False
+        rgba = cls._load_rgba_array(path)
+        if rgba is None:
+            return False
+        if rgba.ndim != 3 or rgba.shape[2] < 4:
+            return True
+        return bool(np.all(rgba[:, :, 3] == 255))
+
+    @classmethod
+    def _load_rgba_array(cls, input_path: str) -> np.ndarray | None:
+        """读取图像为 RGBA uint8 numpy 数组。优先 OIIO，失败回退 Pillow。"""
+        try:
+            buf = oiio.ImageBuf(input_path)
+            if buf.initialized:
+                pixels = np.asarray(buf.get_pixels(oiio.UINT8), dtype=np.uint8)
+                if pixels.ndim == 2:
+                    pixels = pixels[..., np.newaxis]
+                if pixels.ndim == 3:
+                    if pixels.shape[2] == 4:
+                        return np.ascontiguousarray(pixels)
+                    if pixels.shape[2] == 3:
+                        alpha = np.full((pixels.shape[0], pixels.shape[1], 1), 255, dtype=np.uint8)
+                        return np.ascontiguousarray(np.concatenate([pixels, alpha], axis=2))
+                    if pixels.shape[2] == 1:
+                        rgb = np.repeat(pixels, 3, axis=2)
+                        alpha = np.full((pixels.shape[0], pixels.shape[1], 1), 255, dtype=np.uint8)
+                        return np.ascontiguousarray(np.concatenate([rgb, alpha], axis=2))
+                    if pixels.shape[2] > 4:
+                        return np.ascontiguousarray(pixels[..., :4])
+        except Exception as e:
+            logger.warning(f"_load_rgba_array oiio failed: {e}")
+
+        try:
+            from PIL import Image
+
+            with Image.open(input_path) as im:
+                return np.array(im.convert("RGBA"), dtype=np.uint8)
+        except Exception as e:
+            logger.warning(f"_load_rgba_array pillow fallback failed: {e}")
+            return None
+
+    @classmethod
     def convert_format(cls, input_path: str, output_path: str) -> bool:
         """转换图像格式（按 output_path 扩展名自动识别）"""
         return cls._write_oiio(input_path, output_path)
