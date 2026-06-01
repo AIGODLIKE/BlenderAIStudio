@@ -78,7 +78,7 @@ class V2ImageBuilder(RequestBuilder):
             resource_set_id = self._upload_images_to_oss(image_paths, credentials)
 
         # 4. 构建 originalPayloadJson（原始 payload 去除图片数据后序列化）
-        stripped_payload = self._strip_image_data_from_payload(inner_request.payload)
+        stripped_payload = self._strip_payload_by_model(inner_request.payload, model_config)
         original_payload_json = json.dumps(stripped_payload, ensure_ascii=False) if stripped_payload else "{}"
 
         # 5. 构建 ServiceV2ImageGenBo
@@ -393,7 +393,7 @@ class V2ImageBuilder(RequestBuilder):
             return mime_type.split("/", 1)[-1]
         return "png"
 
-    def _strip_image_data_from_payload(self, payload: dict | None) -> dict:
+    def _strip_payload_by_model(self, payload: dict | None, model_config: "ModelConfig") -> dict:
         """从 payload 中移除图片相关的 parts/数据
 
         支持两种 payload 格式：
@@ -409,6 +409,27 @@ class V2ImageBuilder(RequestBuilder):
 
         # Gemini 格式：移除包含 inline_data 的 part
         if "contents" in stripped:
+            # gemini-3-pro-image-preview-a 和 gemini-3.1-flash-image-preview-a 只传 prompt, size, resolution
+            if model_config.model_id in ["gemini-3-pro-image-preview-a", "gemini-3.1-flash-image-preview-a"]:
+                imageConfig = stripped.get("generationConfig", {}).get("imageConfig", {})
+                prompt = ""
+                # 提取prompt
+                for content in stripped.get("contents", []):
+                    parts = content.get("parts", [])
+                    for part in parts:
+                        if "text" in part:
+                            prompt = part.get("text", "")
+                            break
+                size = imageConfig.pop("aspectRatio", "")
+                resolution = imageConfig.pop("imageSize", "")
+                if resolution == "512":
+                    resolution = "0.5K"
+                stripped = {
+                    "prompt": prompt,
+                    "size": size,
+                    "resolution": resolution,
+                }
+                return stripped
             for content in stripped.get("contents", []):
                 parts = content.get("parts", [])
                 content["parts"] = [
