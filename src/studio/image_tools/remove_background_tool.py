@@ -71,7 +71,7 @@ class RemoveBackgroundTool(ImageTool):
 
         self._running[model_name] = True
 
-        # 压缩图片
+        # # 压缩图片
         image_path = ImageProcessor.compress_image_to_tempfile(image_path)
         if not image_path:
             app.push_info_message("Failed to compress image")

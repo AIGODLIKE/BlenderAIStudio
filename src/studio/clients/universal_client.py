@@ -612,6 +612,12 @@ class UniversalClient(StudioClient):
                 self.push_error(_T("Account token not found"))
                 return False
 
+        # 检查 prompt 不为空
+        prompt = self.get_value("prompt")
+        if isinstance(prompt, str) and not prompt.strip():
+            self.push_error(_T("Prompt cannot be empty"))
+            return False
+
         return True
 
 

@@ -9,7 +9,7 @@ __all__ = [
 
 
 def register():
-    bpy.app.timers.register(sync_history_timer, first_interval=1, persistent=True)
+    bpy.app.timers.register(sync_history_timer, first_interval=5, persistent=True)
 
 
 def unregister():
